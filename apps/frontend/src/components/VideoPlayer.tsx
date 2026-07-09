@@ -117,21 +117,7 @@ export function VideoPlayer({
   const [bufferedProgress, setBufferedProgress] = useState(0);
 
   // Resume playback position from watch history on mount
-  useEffect(() => {
-    if (!source) return;
-    const video = videoRef.current;
-    if (!video) return;
-    try {
-      const stored = localStorage.getItem("streamforge:watchhistory");
-      const history = stored ? JSON.parse(stored) : [];
-      const item = history.find((x: any) => x.id === source.movieId);
-      if (item && item.currentTime > 5 && item.currentTime < item.duration - 10) {
-        video.currentTime = item.currentTime;
-      }
-    } catch (e) {
-      console.error("Failed to restore playback position:", e);
-    }
-  }, [source?.movieId]);
+  // Watch history resume position is now deferred and managed safely inside the media ready handlers below to prevent resets
 
   // Record final playback position on unmount
   useEffect(() => {
@@ -231,24 +217,35 @@ export function VideoPlayer({
       }
     };
 
+    const restorePosition = () => {
+      try {
+        const stored = localStorage.getItem("streamforge:watchhistory");
+        const history = stored ? JSON.parse(stored) : [];
+        const item = history.find((x: any) => x.id === source.movieId);
+        if (item && item.currentTime > 5 && item.currentTime < item.duration - 10) {
+          video.currentTime = item.currentTime;
+        }
+      } catch (e) {
+        console.error("Deferred playback position restore error:", e);
+      }
+    };
+
     if (isHls && Hls.isSupported()) {
       hls = new Hls({ enableWorker: true, lowLatencyMode: true });
       hls.loadSource(source.hlsUrl);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        restorePosition();
         startPlayback();
       });
     } else {
       video.src = source.hlsUrl;
-      if (video.readyState >= 3) {
+      const handleCanPlay = () => {
+        restorePosition();
         startPlayback();
-      } else {
-        const handleCanPlay = () => {
-          startPlayback();
-          video.removeEventListener("canplay", handleCanPlay);
-        };
-        video.addEventListener("canplay", handleCanPlay);
-      }
+        video.removeEventListener("canplay", handleCanPlay);
+      };
+      video.addEventListener("canplay", handleCanPlay);
     }
 
     return () => {
@@ -371,13 +368,26 @@ export function VideoPlayer({
   }
 
   const progressBarRef = useRef<HTMLDivElement>(null);
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     const video = videoRef.current;
     if (!video || !progressBarRef.current || !video.duration) return;
     const rect = progressBarRef.current.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const width = rect.width;
-    const seekTime = (clickX / width) * video.duration;
+    
+    let clientX = 0;
+    if ("touches" in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+    } else if ("clientX" in e) {
+      clientX = e.clientX;
+    } else if ((e.nativeEvent as any).touches && (e.nativeEvent as any).touches.length > 0) {
+      clientX = (e.nativeEvent as any).touches[0].clientX;
+    } else if ((e.nativeEvent as any).changedTouches && (e.nativeEvent as any).changedTouches.length > 0) {
+      clientX = (e.nativeEvent as any).changedTouches[0].clientX;
+    } else {
+      return;
+    }
+
+    const clickX = Math.max(0, Math.min(rect.width, clientX - rect.left));
+    const seekTime = (clickX / rect.width) * video.duration;
     video.currentTime = seekTime;
   };
 
@@ -449,6 +459,7 @@ export function VideoPlayer({
         <div 
           ref={progressBarRef}
           onClick={handleSeek}
+          onTouchStart={handleSeek}
           className="relative h-1.5 w-full bg-white/20 cursor-pointer group/progress transition-all hover:h-2"
         >
           {/* Buffered progress */}
