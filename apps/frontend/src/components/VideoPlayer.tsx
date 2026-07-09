@@ -30,6 +30,23 @@ export function VideoPlayer({
   hasNextEpisode?: boolean;
 }) {
   const isEmbed = isEmbedUrl(source.hlsUrl);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleFullscreenForContainer = () => {
+    const container = containerRef.current;
+    if (!container) return;
+    try {
+      if (container.requestFullscreen) {
+        void container.requestFullscreen();
+      } else if ((container as any).webkitRequestFullscreen) {
+        (container as any).webkitRequestFullscreen();
+      } else if ((container as any).msRequestFullscreen) {
+        (container as any).msRequestFullscreen();
+      }
+    } catch (e) {
+      console.error("Fullscreen container error:", e);
+    }
+  };
 
   useEffect(() => {
     if (isEmbed) {
@@ -52,7 +69,7 @@ export function VideoPlayer({
     }
 
     return (
-      <div className="relative h-full w-full bg-black flex flex-col items-center justify-center">
+      <div ref={containerRef} className="relative h-full w-full bg-black flex flex-col items-center justify-center">
         <iframe
           src={embedSrc}
           className="w-full h-full border-none max-h-screen aspect-video"
@@ -61,6 +78,15 @@ export function VideoPlayer({
           title={source.title || "Movie Player"}
           onLoad={() => onPlayStarted?.()}
         />
+        
+        {/* Floating Fullscreen Button for Embed/Iframe on Mobile */}
+        <button
+          onClick={handleFullscreenForContainer}
+          className="absolute top-4 right-4 z-40 md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-black/60 text-white border border-white/20 backdrop-blur-sm hover:scale-105 active:scale-95 transition cursor-pointer"
+          aria-label="Fullscreen"
+        >
+          <Maximize size={18} />
+        </button>
         
         {/* Watch on YouTube fallback button */}
         {(source.hlsUrl.includes("youtube.com") || source.hlsUrl.includes("youtu.be")) && (
@@ -129,32 +155,64 @@ export function VideoPlayer({
     return () => video.removeEventListener("ended", handleEnded);
   }, [onNextEpisode]);
 
+  const handleFullscreen = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    try {
+      if (video.requestFullscreen) {
+        void video.requestFullscreen();
+      } else if ((video as any).webkitEnterFullscreen) {
+        (video as any).webkitEnterFullscreen();
+      } else if ((video as any).webkitRequestFullscreen) {
+        (video as any).webkitRequestFullscreen();
+      } else if ((video as any).msRequestFullscreen) {
+        (video as any).msRequestFullscreen();
+      }
+    } catch (e) {
+      console.error("Fullscreen error:", e);
+    }
+  };
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     const isHls = source.hlsUrl.includes(".m3u8");
     
     let hls: Hls | null = null;
+
+    const startPlayback = () => {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setPlaying(true);
+            onPlayStarted?.();
+          })
+          .catch((err) => {
+            console.log("Autoplay blocked:", err);
+            setPlaying(false);
+          });
+      }
+    };
+
     if (isHls && Hls.isSupported()) {
       hls = new Hls({ enableWorker: true, lowLatencyMode: true });
       hls.loadSource(source.hlsUrl);
       hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        startPlayback();
+      });
     } else {
       video.src = source.hlsUrl;
-    }
-
-    // Explicitly play and handle autoplay rejection (which is standard on mobile)
-    const playPromise = video.play();
-    if (playPromise !== undefined) {
-      playPromise
-        .then(() => {
-          setPlaying(true);
-          onPlayStarted?.();
-        })
-        .catch((err) => {
-          console.log("Autoplay blocked:", err);
-          setPlaying(false);
-        });
+      if (video.readyState >= 3) {
+        startPlayback();
+      } else {
+        const handleCanPlay = () => {
+          startPlayback();
+          video.removeEventListener("canplay", handleCanPlay);
+        };
+        video.addEventListener("canplay", handleCanPlay);
+      }
     }
 
     return () => {
@@ -421,8 +479,8 @@ export function VideoPlayer({
             </Button>
             
             {/* Fullscreen */}
-            <Button variant="ghost" onClick={() => videoRef.current?.requestFullscreen()} className="h-11 w-11 rounded-full p-0" aria-label="Fullscreen">
-              <Maximize size={16} />
+            <Button variant="ghost" onClick={handleFullscreen} className="h-11 w-11 rounded-full p-0 text-white hover:text-[#e50914]" aria-label="Fullscreen">
+              <Maximize size={22} />
             </Button>
           </div>
         </div>

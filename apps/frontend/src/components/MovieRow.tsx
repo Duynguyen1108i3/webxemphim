@@ -16,7 +16,8 @@ function slugify(value: string) {
 }
 
 export function MovieRow({ title, items, ranked = false, compact = false }: { title: string; items: MovieCardDto[]; ranked?: boolean; compact?: boolean }) {
-  const { openDetailModal } = usePlaybackStore();
+  const { openDetailModal, openPlayback } = usePlaybackStore();
+  const isContinueWatching = title === "Continue Watching for Celine";
   const [hovered, setHovered] = useState<{ movie: MovieCardDto; anchor: HTMLElement; rect: DOMRect } | null>(null);
   
   const rowRef = useRef<HTMLDivElement>(null);
@@ -148,7 +149,13 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
                 key={movie.id}
                 movie={movie}
                 rank={ranked ? index + 1 : undefined}
-                onOpen={() => openDetailModal(movie as NormalizedMovie, `card-${movie.id}`)}
+                onOpen={() => {
+                  if (isContinueWatching) {
+                    openPlayback(movie as NormalizedMovie, `card-${movie.id}`);
+                  } else {
+                    openDetailModal(movie as NormalizedMovie, `card-${movie.id}`);
+                  }
+                }}
                 onHover={(anchor) => {
                   clearCloseTimer();
                   clearOpenTimer();
@@ -177,7 +184,13 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
             key={hovered.movie.id}
             movie={hovered.movie}
             rect={hovered.rect}
-            onOpen={() => openDetailModal(hovered.movie as NormalizedMovie, `card-${hovered.movie.id}`)}
+            onOpen={() => {
+              if (isContinueWatching) {
+                openPlayback(hovered.movie as NormalizedMovie, `card-${hovered.movie.id}`);
+              } else {
+                openDetailModal(hovered.movie as NormalizedMovie, `card-${hovered.movie.id}`);
+              }
+            }}
             onMouseEnter={() => {
               clearOpenTimer();
               clearCloseTimer();

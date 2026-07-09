@@ -345,7 +345,7 @@ export function AppShell() {
                           key={item.id}
                           onClick={() => {
                             setIsMobileMenuOpen(false);
-                            usePlaybackStore.getState().openDetailModal(item.movieData, `card-${item.id}`);
+                            usePlaybackStore.getState().openPlayback(item.movieData, `card-${item.id}`);
                           }}
                           className="flex items-center gap-2 hover:text-white hover:bg-white/5 py-1 px-1.5 rounded transition cursor-pointer text-left w-full focus:outline-none"
                         >
