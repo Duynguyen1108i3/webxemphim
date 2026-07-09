@@ -45,7 +45,13 @@ export function AddonsPage() {
       if (favs) setFavorites(JSON.parse(favs));
       
       const inst = localStorage.getItem("streamforge:addons:installed");
-      if (inst) setInstalled(JSON.parse(inst));
+      if (inst) {
+        setInstalled(JSON.parse(inst));
+      } else {
+        const defaults = ["tmdb", "opensubtitles-v3"];
+        setInstalled(defaults);
+        localStorage.setItem("streamforge:addons:installed", JSON.stringify(defaults));
+      }
     } catch (e) {
       console.error("Failed to load addons local state:", e);
     }
