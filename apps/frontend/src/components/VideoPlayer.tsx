@@ -4,7 +4,55 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@streamforge/ui";
 import type { PlaybackSourceDto } from "@streamforge/shared-types";
 
-export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: PlaybackSourceDto; onProgress?: (seconds: number, duration: number) => void; onPlayStarted?: () => void }) {
+function isEmbedUrl(url: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return (
+    lower.includes("embed") ||
+    lower.includes("share") ||
+    lower.includes("youtube.com") ||
+    lower.includes("youtu.be") ||
+    !/\.(m3u8|mp4|webm|ogg)($|\?)/i.test(url)
+  );
+}
+
+export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: PlaybackSourceDto & { title?: string }; onProgress?: (seconds: number, duration: number) => void; onPlayStarted?: () => void }) {
+  const isEmbed = isEmbedUrl(source.hlsUrl);
+
+  useEffect(() => {
+    if (isEmbed) {
+      const timer = setTimeout(() => {
+        onPlayStarted?.();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isEmbed, onPlayStarted]);
+
+  if (isEmbed) {
+    let embedSrc = source.hlsUrl;
+    if (embedSrc.includes("youtube.com") || embedSrc.includes("youtu.be")) {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = embedSrc.match(regExp);
+      const videoId = (match && match[2].length === 11) ? match[2] : null;
+      if (videoId) {
+        embedSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&rel=0`;
+      }
+    }
+
+    return (
+      <div className="relative h-full w-full bg-black flex items-center justify-center">
+        <iframe
+          src={embedSrc}
+          className="w-full h-full border-none max-h-screen aspect-video"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          title={source.title || "Movie Player"}
+          onLoad={() => onPlayStarted?.()}
+        />
+      </div>
+    );
+  }
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
