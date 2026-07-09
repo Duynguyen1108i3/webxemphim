@@ -219,6 +219,11 @@ const MovieTile = React.memo(function MovieTile({
     >
       <button onClick={onOpen} className="relative block w-full overflow-hidden rounded-md bg-zinc-900 text-left focus:outline-none focus:ring-2 focus:ring-white/70" aria-label={`Open ${movie.title}`}>
         <motion.img layoutId={`card-${movie.id}`} src={movie.backdropUrl || movie.posterUrl} alt={movie.title} loading="lazy" className="aspect-video w-full object-cover transition duration-500 group-hover:brightness-90" />
+        {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700 z-10">
+            <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />
+          </div>
+        )}
         {rank && <span className="absolute -left-1 bottom-0 text-[4rem] font-black leading-none text-black/70 [-webkit-text-stroke:1.5px_rgba(255,255,255,.72)] md:text-[5.5rem]">{rank}</span>}
         <span className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/85 to-transparent" />
         <span className="absolute bottom-2 left-2 line-clamp-1 pr-2 text-xs font-bold text-white md:text-sm">{movie.title}</span>
@@ -263,6 +268,11 @@ const HoverPreview = React.memo(function HoverPreview({
       >
         <button onClick={onOpen} className="relative block w-full overflow-hidden bg-zinc-950 text-left" aria-label={`Open ${movie.title} preview`}>
           <motion.img layoutId={`card-${movie.id}`} src={movie.backdropUrl || movie.posterUrl} alt={movie.title} className="aspect-video w-full object-cover" />
+          {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
+            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-zinc-700 z-10">
+              <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#181818] via-transparent to-transparent" />
           <h3 className="absolute bottom-3 left-3 right-3 line-clamp-1 text-xl font-black text-white">{movie.title}</h3>
         </button>

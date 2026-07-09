@@ -45,9 +45,15 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "new-popular
   });
   const rows = data?.rows ?? [];
   const hero = rows[0]?.items[0];
-  const { myList, toggleMyList } = usePlaybackStore();
+  const { myList, toggleMyList, watchHistory } = usePlaybackStore();
   const inMyList = hero ? myList.some((item) => item.id === hero.id) : false;
   const [isHeroMuted, setIsHeroMuted] = useState(true);
+
+  // Map watch history to cards with progress bars
+  const continueWatchingItems = watchHistory.map((item) => ({
+    ...item.movieData,
+    progress: item.progress,
+  }));
   const heroCopy = {
     hidden: { opacity: 0, y: 28 },
     visible: { opacity: 1, y: 0 }
@@ -125,6 +131,9 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "new-popular
       </section>
       <Suspense fallback={<RowSkeleton />}>
         <div className="-mt-24 space-y-7 pb-16">
+          {continueWatchingItems.length > 0 && (
+            <MovieRow title="Continue Watching for Celine" items={continueWatchingItems as any[]} />
+          )}
           {isLoading ? <RowSkeleton /> : rows.map((row) => <MovieRow key={row.title} title={row.title} items={row.items as MovieCardDto[]} ranked={row.ranked} />)}
         </div>
       </Suspense>

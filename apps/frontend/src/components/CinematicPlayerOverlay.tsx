@@ -7,7 +7,7 @@ import { movieApi } from "../lib/movieApi";
 import { VideoPlayer } from "./VideoPlayer";
 
 export function CinematicPlayerOverlay() {
-  const { activePlayback, clickedElementId, closePlayback } = usePlaybackStore();
+  const { activePlayback, clickedElementId, closePlayback, updateWatchHistory } = usePlaybackStore();
   const [openingFinished, setOpeningFinished] = useState(false);
   const [playbackStarted, setPlaybackStarted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -144,8 +144,8 @@ export function CinematicPlayerOverlay() {
           >
             <VideoPlayer
               source={source}
-              onProgress={() => {
-                // Fired periodically to simulate progress recording
+              onProgress={(currentTime, duration) => {
+                updateWatchHistory(activePlayback, currentTime, duration);
               }}
               // Custom play tracking to fade out loader
               onPlayStarted={() => {

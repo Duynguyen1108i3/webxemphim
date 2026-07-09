@@ -1,6 +1,18 @@
 import { create } from "zustand";
 import type { NormalizedMovie } from "../lib/movieApi";
 
+export interface WatchHistoryItem {
+  id: string;
+  slug: string;
+  title: string;
+  backdropUrl: string;
+  posterUrl: string;
+  currentTime: number;
+  duration: number;
+  progress: number; // percentage 0-100
+  movieData: NormalizedMovie;
+}
+
 interface PlaybackState {
   activeMovieDetail: NormalizedMovie | null;
   activePlayback: NormalizedMovie | null;
@@ -12,6 +24,8 @@ interface PlaybackState {
   closePlayback: () => void;
   myList: NormalizedMovie[];
   toggleMyList: (movie: NormalizedMovie) => void;
+  watchHistory: WatchHistoryItem[];
+  updateWatchHistory: (movie: NormalizedMovie, currentTime: number, duration: number) => void;
 }
 
 export const usePlaybackStore = create<PlaybackState>((set) => ({
@@ -105,6 +119,52 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         activePlayback: null,
         clickedElementId: null,
       };
+    });
+  },
+
+  watchHistory: (() => {
+    try {
+      const stored = localStorage.getItem("streamforge:watchhistory");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  })(),
+
+  updateWatchHistory: (movie, currentTime, duration) => {
+    set((state) => {
+      if (!movie) return {};
+      // Calculate progress percentage
+      const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+      
+      // Don't record very short views or completed videos (e.g. within 10 seconds of end)
+      if (currentTime < 5 || (duration > 0 && currentTime > duration - 10)) {
+        // Just remove from history if finished!
+        const updated = state.watchHistory.filter((item) => item.id !== movie.id);
+        localStorage.setItem("streamforge:watchhistory", JSON.stringify(updated));
+        return { watchHistory: updated };
+      }
+
+      // Filter out existing item
+      const filtered = state.watchHistory.filter((item) => item.id !== movie.id);
+      
+      // Construct item
+      const newItem: WatchHistoryItem = {
+        id: movie.id,
+        slug: movie.slug,
+        title: movie.title,
+        backdropUrl: movie.backdropUrl,
+        posterUrl: movie.posterUrl,
+        currentTime,
+        duration,
+        progress,
+        movieData: movie,
+      };
+
+      // Put at the beginning
+      const updated = [newItem, ...filtered].slice(0, 12);
+      localStorage.setItem("streamforge:watchhistory", JSON.stringify(updated));
+      return { watchHistory: updated };
     });
   },
 }));

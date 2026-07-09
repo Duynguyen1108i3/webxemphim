@@ -40,7 +40,7 @@ export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: Pla
     }
 
     return (
-      <div className="relative h-full w-full bg-black flex items-center justify-center">
+      <div className="relative h-full w-full bg-black flex flex-col items-center justify-center">
         <iframe
           src={embedSrc}
           className="w-full h-full border-none max-h-screen aspect-video"
@@ -49,6 +49,21 @@ export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: Pla
           title={source.title || "Movie Player"}
           onLoad={() => onPlayStarted?.()}
         />
+        
+        {/* Watch on YouTube fallback button */}
+        {(source.hlsUrl.includes("youtube.com") || source.hlsUrl.includes("youtu.be")) && (
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 bg-black/80 px-4 py-3 rounded-lg border border-white/10 text-center max-w-[90vw] backdrop-blur-sm shadow-xl">
+            <p className="text-xs text-white/60">YouTube may restrict playing certain trailers inside other apps (Error 153).</p>
+            <a
+              href={source.hlsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded bg-[#e50914] px-4 text-xs font-bold text-white transition hover:bg-[#b20710] focus:outline-none cursor-pointer"
+            >
+              Watch Trailer on YouTube
+            </a>
+          </div>
+        )}
       </div>
     );
   }
@@ -62,6 +77,32 @@ export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: Pla
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [bufferedProgress, setBufferedProgress] = useState(0);
+
+  // Resume playback position from watch history on mount
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    try {
+      const stored = localStorage.getItem("streamforge:watchhistory");
+      const history = stored ? JSON.parse(stored) : [];
+      const item = history.find((x: any) => x.id === source.movieId);
+      if (item && item.currentTime > 5 && item.currentTime < item.duration - 10) {
+        video.currentTime = item.currentTime;
+      }
+    } catch (e) {
+      console.error("Failed to restore playback position:", e);
+    }
+  }, [source.movieId]);
+
+  // Record final playback position on unmount
+  useEffect(() => {
+    return () => {
+      const video = videoRef.current;
+      if (video && onProgress && video.duration) {
+        onProgress(Math.floor(video.currentTime), Math.floor(video.duration));
+      }
+    };
+  }, [onProgress]);
 
   useEffect(() => {
     const video = videoRef.current;
