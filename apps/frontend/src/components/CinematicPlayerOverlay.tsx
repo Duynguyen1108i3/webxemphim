@@ -131,9 +131,9 @@ export function CinematicPlayerOverlay() {
         )}
 
         {/* Actual Video Player container (scales & fades in) */}
-        {openingFinished && source && (() => {
-          const currentIndex = source.episodesList?.findIndex((ep: any) => ep.id === source.currentEpisodeId) ?? -1;
-          const nextEpisode = currentIndex !== -1 && source.episodesList ? source.episodesList[currentIndex + 1] : null;
+        {openingFinished && (() => {
+          const currentIndex = source?.episodesList?.findIndex((ep: any) => ep.id === source.currentEpisodeId) ?? -1;
+          const nextEpisode = currentIndex !== -1 && source?.episodesList ? source.episodesList[currentIndex + 1] : null;
           
           const handleNextEpisode = (nextEpisodeId: string) => {
             setPlaybackStarted(false);
@@ -150,7 +150,9 @@ export function CinematicPlayerOverlay() {
               <VideoPlayer
                 source={source}
                 onProgress={(currentTime, duration) => {
-                  updateWatchHistory(activePlayback, currentTime, duration, source.currentEpisodeId, source.title);
+                  if (source) {
+                    updateWatchHistory(activePlayback, currentTime, duration, source.currentEpisodeId, source.title);
+                  }
                 }}
                 onPlayStarted={() => {
                   setPlaybackStarted(true);

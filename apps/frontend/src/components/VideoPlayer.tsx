@@ -23,13 +23,13 @@ export function VideoPlayer({
   onNextEpisode,
   hasNextEpisode = false
 }: {
-  source: PlaybackSourceDto & { title?: string; currentEpisodeId?: string; episodesList?: any[] };
+  source?: PlaybackSourceDto & { title?: string; currentEpisodeId?: string; episodesList?: any[] } | null;
   onProgress?: (seconds: number, duration: number, episodeId?: string, episodeTitle?: string) => void;
   onPlayStarted?: () => void;
   onNextEpisode?: () => void;
   hasNextEpisode?: boolean;
 }) {
-  const isEmbed = isEmbedUrl(source.hlsUrl);
+  const isEmbed = source ? isEmbedUrl(source.hlsUrl) : false;
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleFullscreenForContainer = () => {
@@ -57,7 +57,7 @@ export function VideoPlayer({
     }
   }, [isEmbed, onPlayStarted]);
 
-  if (isEmbed) {
+  if (source && isEmbed) {
     let embedSrc = source.hlsUrl;
     if (embedSrc.includes("youtube.com") || embedSrc.includes("youtu.be")) {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -118,6 +118,7 @@ export function VideoPlayer({
 
   // Resume playback position from watch history on mount
   useEffect(() => {
+    if (!source) return;
     const video = videoRef.current;
     if (!video) return;
     try {
@@ -130,17 +131,17 @@ export function VideoPlayer({
     } catch (e) {
       console.error("Failed to restore playback position:", e);
     }
-  }, [source.movieId]);
+  }, [source?.movieId]);
 
   // Record final playback position on unmount
   useEffect(() => {
     return () => {
       const video = videoRef.current;
-      if (video && onProgress && video.duration) {
+      if (video && onProgress && video.duration && source) {
         onProgress(Math.floor(video.currentTime), Math.floor(video.duration), source.currentEpisodeId, source.title);
       }
     };
-  }, [onProgress, source.currentEpisodeId, source.title]);
+  }, [onProgress, source]);
 
   // Listen to video ended event to automatically play next episode
   useEffect(() => {
@@ -173,7 +174,24 @@ export function VideoPlayer({
     }
   };
 
+  // Unlock the video element synchronously on mount inside the user's click tick
   useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          video.pause();
+        })
+        .catch((err) => {
+          console.log("Sync video element unlock attempt:", err);
+        });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!source) return;
     const video = videoRef.current;
     if (!video) return;
     const isHls = source.hlsUrl.includes(".m3u8");
@@ -238,15 +256,16 @@ export function VideoPlayer({
         hls.destroy();
       }
     };
-  }, [source.hlsUrl, onPlayStarted]);
+  }, [source?.hlsUrl, onPlayStarted]);
 
   useEffect(() => {
+    if (!source) return;
     const video = videoRef.current;
     if (!video) return;
     const handler = () => onProgress?.(Math.floor(video.currentTime), Math.floor(video.duration || 0), source.currentEpisodeId, source.title);
     const interval = window.setInterval(handler, 10_000);
     return () => window.clearInterval(interval);
-  }, [onProgress, source.currentEpisodeId, source.title]);
+  }, [onProgress, source]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -384,7 +403,7 @@ export function VideoPlayer({
   return (
     <div className="group relative grid min-h-screen place-items-center overflow-hidden bg-black select-none">
       <video ref={videoRef} className="h-full max-h-screen w-full object-contain" autoPlay playsInline poster="" crossOrigin="anonymous">
-        {source.subtitles.map((sub) => <track key={sub.url} kind="subtitles" srcLang={sub.language} label={sub.label} src={sub.url} />)}
+        {source?.subtitles?.map((sub) => <track key={sub.url} kind="subtitles" srcLang={sub.language} label={sub.label} src={sub.url} />)}
       </video>
       <button onClick={toggle} className="absolute inset-0" aria-label={playing ? "Pause video" : "Play video"} />
 
@@ -424,7 +443,7 @@ export function VideoPlayer({
       )}
       
       {/* Controls Container Overlay */}
-      <div className="absolute inset-x-0 bottom-0 space-y-4 bg-gradient-to-t from-black via-black/80 to-transparent p-4 opacity-100 transition md:p-8 md:opacity-0 md:group-hover:opacity-100">
+      <div className="absolute inset-x-0 bottom-16 md:bottom-0 space-y-4 bg-gradient-to-t from-black via-black/80 to-transparent p-4 opacity-100 transition md:p-8 md:opacity-0 md:group-hover:opacity-100">
         
         {/* Clickable Seekbar Wrapper */}
         <div 
@@ -475,7 +494,7 @@ export function VideoPlayer({
             )}
 
             {/* Skip Intro */}
-            {typeof source.introEndSeconds === "number" && source.introEndSeconds > 0 && (
+            {source && typeof source.introEndSeconds === "number" && source.introEndSeconds > 0 && (
               <Button variant="ghost" className="h-9 px-3 text-xs shrink-0" onClick={() => { if (videoRef.current) videoRef.current.currentTime = source.introEndSeconds!; }}>
                 <SkipForward size={14} /> Skip Intro
               </Button>
