@@ -1,6 +1,6 @@
 import Hls from "hls.js";
 import { Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForward, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@streamforge/ui";
 import type { PlaybackSourceDto } from "@streamforge/shared-types";
 
@@ -161,7 +161,7 @@ export function VideoPlayer({
   };
 
   // Unlock the video element synchronously on mount inside the user's click tick
-  useEffect(() => {
+  useLayoutEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     const playPromise = video.play();
@@ -193,26 +193,8 @@ export function VideoPlayer({
             onPlayStarted?.();
           })
           .catch((err) => {
-            console.log("Autoplay blocked unmuted, trying muted:", err);
-            video.muted = true;
-            setMuted(true);
-            
-            // Retry playing muted
-            const playPromiseMuted = video.play();
-            if (playPromiseMuted !== undefined) {
-              playPromiseMuted
-                .then(() => {
-                  setPlaying(true);
-                  onPlayStarted?.();
-                })
-                .catch((err2) => {
-                  console.log("Muted autoplay also blocked:", err2);
-                  setPlaying(false);
-                });
-            } else {
-              setPlaying(true);
-              onPlayStarted?.();
-            }
+            console.log("Autoplay blocked:", err);
+            setPlaying(false);
           });
       }
     };
@@ -433,24 +415,7 @@ export function VideoPlayer({
         </div>
       )}
 
-      {/* Floating Unmute Helper Banner when playing muted */}
-      {muted && playing && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (videoRef.current) {
-                videoRef.current.muted = false;
-                setMuted(false);
-              }
-            }}
-            className="flex items-center gap-2 rounded bg-black/80 px-4 py-2 text-xs font-bold text-white border border-white/20 backdrop-blur-sm hover:bg-black/90 cursor-pointer shadow-lg animate-bounce"
-          >
-            <VolumeX size={14} className="text-[#e50914]" />
-            Chạm để bật âm thanh
-          </button>
-        </div>
-      )}
+
       
       {/* Controls Container Overlay */}
       <div className="absolute inset-x-0 bottom-16 md:bottom-0 space-y-4 bg-gradient-to-t from-black via-black/80 to-transparent p-4 opacity-100 transition md:p-8 md:opacity-0 md:group-hover:opacity-100">
@@ -480,8 +445,8 @@ export function VideoPlayer({
         </div>
 
         {/* Control Button bar */}
-        <div className="flex items-center justify-between gap-2 w-full">
-          <div className="flex items-center gap-1.5 md:gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 w-full">
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-3">
             {/* Play/Pause */}
             <Button onClick={toggle} className="h-10 w-10 md:h-12 md:w-12 rounded-full p-0 shrink-0" aria-label={playing ? "Pause" : "Play"}>
               {playing ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
@@ -523,7 +488,7 @@ export function VideoPlayer({
                 step="0.05"
                 value={muted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="hidden md:block h-1 w-16 cursor-pointer rounded-lg bg-zinc-600 accent-[#e50914] appearance-none"
+                className="h-1 w-12 sm:w-16 cursor-pointer rounded-lg bg-zinc-600 accent-[#e50914] appearance-none"
                 aria-label="Volume level"
               />
             </div>
@@ -536,12 +501,12 @@ export function VideoPlayer({
 
           <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
             {/* Speed selection */}
-            <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} className="hidden md:block rounded bg-white/10 border border-white/10 px-2 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white">
+            <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} className="rounded bg-white/10 border border-white/10 px-1 py-1 sm:px-2 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-1 focus:ring-white">
               {[0.5, 1, 1.25, 1.5, 2].map((value) => <option key={value} value={value} className="bg-zinc-900">{value}x</option>)}
             </select>
             
             {/* Picture-in-Picture */}
-            <Button variant="ghost" onClick={() => videoRef.current?.requestPictureInPicture()} className="hidden md:flex h-10 w-10 md:h-11 md:w-11 rounded-full p-0" aria-label="Picture in picture">
+            <Button variant="ghost" onClick={() => videoRef.current?.requestPictureInPicture()} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 flex items-center justify-center" aria-label="Picture in picture">
               <PictureInPicture2 size={16} />
             </Button>
             

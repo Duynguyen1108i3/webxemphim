@@ -12,8 +12,11 @@ import { MovieRow } from "./MovieRow";
 import { Skeleton } from "@streamforge/ui";
 import type { MovieCardDto } from "@streamforge/shared-types";
 
+import { useAuthStore } from "../store/auth";
+
 export function AppShell() {
   const { activeMovieDetail, activePlayback, watchHistory } = usePlaybackStore();
+  const { user, initialize } = useAuthStore();
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -21,6 +24,25 @@ export function AppShell() {
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchExpanded, setSearchExpanded] = useState(false);
+
+  // Initialize auth state on mount
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  // Auth Guard: redirect unauthenticated users to login
+  useEffect(() => {
+    if (!user && location.pathname !== "/login" && location.pathname !== "/register") {
+      navigate("/login");
+    } else if (user && (location.pathname === "/login" || location.pathname === "/register")) {
+      navigate("/");
+    }
+  }, [user, location.pathname, navigate]);
+
+  // If not logged in and on login/register page, bypass layout headers and footers
+  if (!user && (location.pathname === "/login" || location.pathname === "/register")) {
+    return <Outlet />;
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
