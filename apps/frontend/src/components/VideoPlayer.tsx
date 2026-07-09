@@ -413,41 +413,41 @@ export function VideoPlayer({
         </div>
 
         {/* Control Button bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-2 w-full">
+          <div className="flex items-center gap-1.5 md:gap-3">
             {/* Play/Pause */}
-            <Button onClick={toggle} className="h-12 w-12 rounded-full p-0" aria-label={playing ? "Pause" : "Play"}>
-              {playing ? <Pause size={22} /> : <Play size={22} fill="currentColor" />}
+            <Button onClick={toggle} className="h-10 w-10 md:h-12 md:w-12 rounded-full p-0 shrink-0" aria-label={playing ? "Pause" : "Play"}>
+              {playing ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
             </Button>
             
             {/* Rewind 10s */}
-            <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }} className="h-11 w-11 rounded-full p-0" aria-label="Rewind 10 seconds">
-              <RotateCcw size={18} />
+            <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0" aria-label="Rewind 10 seconds">
+              <RotateCcw size={16} />
             </Button>
 
             {/* Forward 10s */}
-            <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10); }} className="h-11 w-11 rounded-full p-0" aria-label="Forward 10 seconds">
-              <RotateCw size={18} />
+            <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0" aria-label="Forward 10 seconds">
+              <RotateCw size={16} />
             </Button>
 
             {/* Next Episode */}
             {hasNextEpisode && onNextEpisode && (
-              <Button variant="ghost" onClick={onNextEpisode} className="h-11 w-11 rounded-full p-0 text-white hover:text-[#46d369]" aria-label="Next Episode">
-                <SkipForward size={20} fill="currentColor" />
+              <Button variant="ghost" onClick={onNextEpisode} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#46d369] shrink-0" aria-label="Next Episode">
+                <SkipForward size={18} fill="currentColor" />
               </Button>
             )}
 
             {/* Skip Intro */}
-            {source.introEndSeconds && (
-              <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = source.introEndSeconds!; }}>
-                <SkipForward size={16} /> Skip Intro
+            {typeof source.introEndSeconds === "number" && source.introEndSeconds > 0 && (
+              <Button variant="ghost" className="h-9 px-3 text-xs shrink-0" onClick={() => { if (videoRef.current) videoRef.current.currentTime = source.introEndSeconds!; }}>
+                <SkipForward size={14} /> Skip Intro
               </Button>
             )}
 
             {/* Volume bar */}
-            <div className="flex items-center gap-2 group/volume ml-2">
-              <Button variant="ghost" onClick={toggleMute} className="h-11 w-11 rounded-full p-0" aria-label={muted ? "Unmute" : "Mute"}>
-                {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            <div className="flex items-center gap-1.5 md:gap-2 ml-1">
+              <Button variant="ghost" onClick={toggleMute} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0" aria-label={muted ? "Unmute" : "Mute"}>
+                {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </Button>
               <input
                 type="range"
@@ -456,31 +456,31 @@ export function VideoPlayer({
                 step="0.05"
                 value={muted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="h-1 w-16 cursor-pointer rounded-lg bg-zinc-600 accent-[#e50914] appearance-none"
+                className="hidden md:block h-1 w-16 cursor-pointer rounded-lg bg-zinc-600 accent-[#e50914] appearance-none"
                 aria-label="Volume level"
               />
             </div>
 
             {/* Time display */}
-            <div className="text-xs sm:text-sm font-semibold tracking-wider text-zinc-300 ml-2">
+            <div className="text-[11px] md:text-sm font-semibold tracking-wider text-zinc-300 ml-1 whitespace-nowrap">
               {formatTime(currentTime)} / {formatTime(duration)}
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
             {/* Speed selection */}
-            <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} className="rounded bg-white/10 border border-white/10 px-2 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white">
+            <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} className="hidden md:block rounded bg-white/10 border border-white/10 px-2 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white">
               {[0.5, 1, 1.25, 1.5, 2].map((value) => <option key={value} value={value} className="bg-zinc-900">{value}x</option>)}
             </select>
             
             {/* Picture-in-Picture */}
-            <Button variant="ghost" onClick={() => videoRef.current?.requestPictureInPicture()} className="h-11 w-11 rounded-full p-0" aria-label="Picture in picture">
+            <Button variant="ghost" onClick={() => videoRef.current?.requestPictureInPicture()} className="hidden md:flex h-10 w-10 md:h-11 md:w-11 rounded-full p-0" aria-label="Picture in picture">
               <PictureInPicture2 size={16} />
             </Button>
             
             {/* Fullscreen */}
-            <Button variant="ghost" onClick={handleFullscreen} className="h-11 w-11 rounded-full p-0 text-white hover:text-[#e50914]" aria-label="Fullscreen">
-              <Maximize size={22} />
+            <Button variant="ghost" onClick={handleFullscreen} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#e50914]" aria-label="Fullscreen">
+              <Maximize size={20} />
             </Button>
           </div>
         </div>
