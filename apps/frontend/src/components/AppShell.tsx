@@ -39,10 +39,7 @@ export function AppShell() {
     }
   }, [user, location.pathname, navigate]);
 
-  // If not logged in and on login/register page, bypass layout headers and footers
-  if (!user && (location.pathname === "/login" || location.pathname === "/register")) {
-    return <Outlet />;
-  }
+
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -151,6 +148,11 @@ export function AppShell() {
       document.body.style.overflow = "";
     };
   }, [isMobileMenuOpen]);
+
+  // If not logged in and on login/register page, bypass layout headers and footers
+  if (!user && (location.pathname === "/login" || location.pathname === "/register")) {
+    return <Outlet />;
+  }
 
   return (
     <div className="min-h-screen bg-[#141414] text-white">
