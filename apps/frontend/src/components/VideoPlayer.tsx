@@ -3,6 +3,7 @@ import { Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForw
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@streamforge/ui";
 import type { PlaybackSourceDto } from "@streamforge/shared-types";
+import { useAuthStore } from "../store/auth";
 
 function isEmbedUrl(url: string): boolean {
   if (!url) return false;
@@ -201,7 +202,9 @@ export function VideoPlayer({
 
     const restorePosition = () => {
       try {
-        const stored = localStorage.getItem("streamforge:watchhistory");
+        const user = useAuthStore.getState().user;
+        const historyKey = user?.email ? `streamforge:${user.email}:watchhistory` : "streamforge:watchhistory";
+        const stored = localStorage.getItem(historyKey);
         const history = stored ? JSON.parse(stored) : [];
         const item = history.find((x: any) => x.id === source.movieId);
         if (item && item.currentTime > 5 && item.currentTime < item.duration - 10) {

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { NormalizedMovie } from "../lib/movieApi";
+import { useAuthStore } from "./auth";
 
 export interface WatchHistoryItem {
   id: string;
@@ -29,6 +30,7 @@ interface PlaybackState {
   toggleMyList: (movie: NormalizedMovie) => void;
   watchHistory: WatchHistoryItem[];
   updateWatchHistory: (movie: NormalizedMovie, currentTime: number, duration: number, episodeId?: string, episodeTitle?: string) => void;
+  loadUserData: () => void;
 }
 
 export const usePlaybackStore = create<PlaybackState>((set) => ({
@@ -36,14 +38,27 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
   activePlayback: null,
   clickedElementId: null,
   scrollPosition: 0,
-  myList: (() => {
+  myList: [],
+  watchHistory: [],
+
+  loadUserData: () => {
     try {
-      const stored = localStorage.getItem("streamforge:mylist");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
+      const user = useAuthStore.getState().user;
+      const email = user?.email || "";
+      const mylistKey = email ? `streamforge:${email}:mylist` : "streamforge:mylist";
+      const historyKey = email ? `streamforge:${email}:watchhistory` : "streamforge:watchhistory";
+
+      const storedList = localStorage.getItem(mylistKey);
+      const storedHistory = localStorage.getItem(historyKey);
+
+      set({
+        myList: storedList ? JSON.parse(storedList) : [],
+        watchHistory: storedHistory ? JSON.parse(storedHistory) : []
+      });
+    } catch (e) {
+      console.error("Failed to load user-scoped data:", e);
     }
-  })(),
+  },
 
   toggleMyList: (movie) => {
     set((state) => {
@@ -54,7 +69,10 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       } else {
         updated = [...state.myList, movie];
       }
-      localStorage.setItem("streamforge:mylist", JSON.stringify(updated));
+      
+      const user = useAuthStore.getState().user;
+      const mylistKey = user?.email ? `streamforge:${user.email}:mylist` : "streamforge:mylist";
+      localStorage.setItem(mylistKey, JSON.stringify(updated));
       return { myList: updated };
     });
   },
@@ -109,7 +127,9 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       episodeId = elementId.replace("episode-", "");
     } else {
       try {
-        const stored = localStorage.getItem("streamforge:watchhistory");
+        const user = useAuthStore.getState().user;
+        const historyKey = user?.email ? `streamforge:${user.email}:watchhistory` : "streamforge:watchhistory";
+        const stored = localStorage.getItem(historyKey);
         const history: any[] = stored ? JSON.parse(stored) : [];
         const item = history.find((x) => x.id === movie.id);
         if (item && item.episodeId) {
@@ -146,26 +166,20 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
     });
   },
 
-  watchHistory: (() => {
-    try {
-      const stored = localStorage.getItem("streamforge:watchhistory");
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  })(),
-
   updateWatchHistory: (movie, currentTime, duration, episodeId, episodeTitle) => {
     set((state) => {
       if (!movie) return {};
       // Calculate progress percentage
       const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
       
+      const user = useAuthStore.getState().user;
+      const historyKey = user?.email ? `streamforge:${user.email}:watchhistory` : "streamforge:watchhistory";
+
       // Don't record very short views or completed videos (e.g. within 10 seconds of end)
       if (currentTime < 5 || (duration > 0 && currentTime > duration - 10)) {
         // Just remove from history if finished!
         const updated = state.watchHistory.filter((item) => item.id !== movie.id);
-        localStorage.setItem("streamforge:watchhistory", JSON.stringify(updated));
+        localStorage.setItem(historyKey, JSON.stringify(updated));
         return { watchHistory: updated };
       }
 
@@ -189,7 +203,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
 
       // Put at the beginning
       const updated = [newItem, ...filtered].slice(0, 12);
-      localStorage.setItem("streamforge:watchhistory", JSON.stringify(updated));
+      localStorage.setItem(historyKey, JSON.stringify(updated));
       return { watchHistory: updated };
     });
   },

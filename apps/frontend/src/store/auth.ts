@@ -46,6 +46,8 @@ const seedDefaultAdmin = () => {
   }
 };
 
+import { usePlaybackStore } from "./playbackStore";
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   profileId: null,
@@ -56,6 +58,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.removeItem("streamforge:auth:user");
     }
     set({ user });
+    usePlaybackStore.getState().loadUserData();
   },
   setProfileId: (profileId) => {
     if (profileId) {
@@ -77,11 +80,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.removeItem("streamforge:auth:user");
       localStorage.removeItem("streamforge:auth:profileId");
     }
+    usePlaybackStore.getState().loadUserData();
   },
   logout: () => {
     localStorage.removeItem("streamforge:auth:user");
     localStorage.removeItem("streamforge:auth:profileId");
     set({ user: null, profileId: null });
+    usePlaybackStore.getState().loadUserData();
   }
 }));
 

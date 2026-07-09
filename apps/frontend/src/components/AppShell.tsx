@@ -149,140 +149,139 @@ export function AppShell() {
     };
   }, [isMobileMenuOpen]);
 
-  // If not logged in and on login/register page, bypass layout headers and footers
-  if (!user && (location.pathname === "/login" || location.pathname === "/register")) {
-    return <Outlet />;
+  if (!user) {
+    return <div className="min-h-screen bg-[#141414]" />;
   }
 
   return (
     <div className="min-h-screen bg-[#141414] text-white">
-      <header className={`fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between px-4 transition-all duration-300 sm:px-8 md:px-14 lg:px-16 ${scrolled ? "bg-[#141414]/95 shadow-lg shadow-black/20 backdrop-blur-md" : "bg-gradient-to-b from-black/80 via-black/35 to-transparent"}`}>
-        <div className="flex items-center gap-2 sm:gap-7">
-          {/* Hamburger menu button for mobile */}
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="nf-icon md:hidden rounded-full p-1.5 hover:bg-white/10"
-            aria-label="Open navigation menu"
-          >
-            <Menu size={22} />
-          </button>
-          
-          <NavLink to="/" className={`brand-logo text-lg font-black tracking-tight text-[#e50914] sm:text-2xl md:text-3xl ${searchExpanded ? "hidden md:block" : ""}`}>STREAMFORGE</NavLink>
-          <nav className="hidden items-center gap-5 text-sm font-medium text-white/75 md:flex">
-            <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Home</NavLink>
-            <NavLink to="/tv-shows" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>TV Shows</NavLink>
-            <NavLink to="/movies" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Movies</NavLink>
-            <NavLink to="/new-popular" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>New & Popular</NavLink>
-            <NavLink to="/my-list" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>My List</NavLink>
-            <NavLink to="/search" className="nav-link hover:text-white">Browse by Languages</NavLink>
-          </nav>
-        </div>
-        <nav className={`flex items-center gap-1.5 text-sm font-medium text-white md:gap-5 ${searchExpanded ? "flex-1 justify-end" : ""}`}>
-          {/* Inline Expanding Search Bar */}
-          {searchExpanded ? (
-            <div className="flex flex-1 md:flex-initial items-center gap-1.5 border border-white/40 bg-black/75 px-2 py-1 rounded transition-all duration-300 max-w-[180px] sm:max-w-none">
-              <Search
-                size={18}
-                className="text-white/80 shrink-0 cursor-pointer"
-                onClick={() => {
-                  setSearchExpanded(false);
-                  const params = new URLSearchParams(location.search);
-                  params.delete("q");
-                  navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
-                }}
-              />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Titles, people, genres..."
-                value={localQ}
-                onChange={(e) => setLocalQ(e.target.value)}
-                onBlur={() => {
-                  if (!localQ) {
-                    setSearchExpanded(false);
-                  }
-                }}
-                className="w-full md:w-44 bg-transparent text-base md:text-xs text-white focus:outline-none"
-                autoFocus
-              />
-              {localQ && (
-                <button 
-                  onClick={() => {
-                    setLocalQ("");
-                    searchInputRef.current?.focus();
-                  }} 
-                  className="text-white/60 hover:text-white"
-                  aria-label="Clear search"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-          ) : (
-            <button 
-              onClick={() => {
-                setSearchExpanded(true);
-              }} 
-              aria-label="Search" 
-              className="nf-icon rounded-full p-2 hover:bg-white/10"
-            >
-              <Search size={21} />
-            </button>
-          )}
-
-          <span className={`hidden text-sm md:inline ${searchExpanded ? "hidden" : ""}`}>Kids</span>
-          
-          {/* Notifications Dropdown */}
-          <div className="relative">
+      {location.pathname === "/profile" ? (
+        <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center px-4 sm:px-8 md:px-14 lg:px-16 bg-gradient-to-b from-black/60 to-transparent">
+          <span className="brand-logo text-lg font-black tracking-tight text-[#e50914] sm:text-2xl md:text-3xl select-none">STREAMFORGE</span>
+        </header>
+      ) : (
+        <header className={`fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between px-4 transition-all duration-300 sm:px-8 md:px-14 lg:px-16 ${scrolled ? "bg-[#141414]/95 shadow-lg shadow-black/20 backdrop-blur-md" : "bg-gradient-to-b from-black/80 via-black/35 to-transparent"}`}>
+          <div className="flex items-center gap-2 sm:gap-7">
+            {/* Hamburger menu button for mobile */}
             <button
-              onClick={toggleNotification}
-              className="nf-icon relative rounded-full p-1.5 hover:bg-white/10 focus:outline-none cursor-pointer"
-              aria-label="Notifications"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="nf-icon md:hidden rounded-full p-1.5 hover:bg-white/10"
+              aria-label="Open navigation menu"
             >
-              <Bell size={20} />
-              {hasNotification && (
-                <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#e50914] animate-pulse" />
-              )}
+              <Menu size={22} />
             </button>
             
-            {notificationOpen && (
-              <div className="absolute right-0 mt-2 w-72 origin-top-right rounded-md bg-[#181818] py-2 shadow-2xl border border-white/10 z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="px-4 py-2 border-b border-white/10">
-                  <p className="text-xs uppercase tracking-wider text-white/50 font-bold">Cập nhật phim mới</p>
-                </div>
-                <div className="max-h-80 overflow-y-auto divide-y divide-white/5">
+            <NavLink to="/" className={`brand-logo text-lg font-black tracking-tight text-[#e50914] sm:text-2xl md:text-3xl ${searchExpanded ? "hidden md:block" : ""}`}>STREAMFORGE</NavLink>
+            <nav className="hidden items-center gap-5 text-sm font-medium text-white/75 md:flex">
+              <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Home</NavLink>
+              <NavLink to="/tv-shows" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>TV Shows</NavLink>
+              <NavLink to="/movies" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Movies</NavLink>
+              <NavLink to="/new-popular" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>New & Popular</NavLink>
+              <NavLink to="/my-list" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>My List</NavLink>
+              <NavLink to="/search" className="nav-link hover:text-white">Browse by Languages</NavLink>
+            </nav>
+          </div>
+          <nav className={`flex items-center gap-1.5 text-sm font-medium text-white md:gap-5 ${searchExpanded ? "flex-1 justify-end" : ""}`}>
+            {/* Inline Expanding Search Bar */}
+            {searchExpanded ? (
+              <div className="flex flex-1 md:flex-initial items-center gap-1.5 border border-white/40 bg-black/75 px-2 py-1 rounded transition-all duration-300 max-w-[180px] sm:max-w-none">
+                <Search
+                  size={18}
+                  className="text-white/80 shrink-0 cursor-pointer"
+                  onClick={() => {
+                    setSearchExpanded(false);
+                    const params = new URLSearchParams(location.search);
+                    params.delete("q");
+                    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+                  }}
+                />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={localQ}
+                  onChange={(e) => setLocalQ(e.target.value)}
+                  placeholder="Titles, people, genres..."
+                  className="w-full bg-transparent text-sm text-white focus:outline-none placeholder-white/50"
+                  aria-label="Search movies"
+                />
+                {localQ && (
+                  <button onClick={() => setLocalQ("")} className="text-white/60 hover:text-white p-0.5" aria-label="Clear search text">
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setSearchExpanded(true);
+                  setTimeout(() => searchInputRef.current?.focus(), 100);
+                }}
+                className="nf-icon rounded-full p-1.5 hover:bg-white/10"
+                aria-label="Search"
+              >
+                <Search size={22} />
+              </button>
+            )}
+
+            {/* Kids Mode Link */}
+            <NavLink to="/search" className="hidden lg:block text-sm font-semibold hover:underline">Kids</NavLink>
+
+            {/* Live Updates Notification Bell Icon */}
+            <div className="relative">
+              <button
+                onClick={toggleNotification}
+                className="nf-icon relative rounded-full p-1.5 hover:bg-white/10"
+                aria-label="Notifications"
+              >
+                <Bell size={22} />
+                {hasNotification && (
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#e50914] animate-pulse" />
+                )}
+              </button>
+              
+              {notificationOpen && (
+                <div className="absolute right-0 mt-3 w-80 rounded border border-white/10 bg-black/95 py-2 shadow-2xl z-50 backdrop-blur-md">
+                  <div className="px-4 py-2 border-b border-white/10 text-xs font-bold text-white/50 uppercase tracking-wider">
+                    Phim Mới Cập Nhật
+                  </div>
                   {latestMovies.length > 0 ? (
-                    latestMovies.map((movie) => (
-                      <button
-                        key={movie.id}
-                        onClick={() => {
-                          setNotificationOpen(false);
-                          usePlaybackStore.getState().openDetailModal(movie, `notif-${movie.id}`);
-                        }}
-                        className="flex items-start gap-3 w-full px-4 py-2.5 text-left hover:bg-white/5 transition focus:outline-none cursor-pointer"
-                      >
-                        <img src={movie.posterUrl} className="w-10 aspect-[2/3] object-cover rounded shadow border border-white/10 shrink-0" alt="" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-white truncate">{movie.title}</p>
-                          <p className="text-[10px] text-[#46d369] font-medium mt-0.5">Vừa cập nhật</p>
-                        </div>
-                      </button>
-                    ))
+                    <div className="max-h-80 overflow-y-auto">
+                      {latestMovies.map((movie) => (
+                        <button
+                          key={movie.slug}
+                          onClick={() => {
+                            setNotificationOpen(false);
+                            usePlaybackStore.getState().openDetailModal(movie, `notif-${movie.id}`);
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-white/5 transition text-left cursor-pointer focus:outline-none"
+                        >
+                          <img
+                            src={movie.posterUrl || movie.backdropUrl}
+                            className="h-12 aspect-[2/3] object-cover rounded border border-white/10 shadow-md shrink-0"
+                            alt=""
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-white truncate">{movie.title}</p>
+                            <p className="text-xs text-white/40 mt-0.5 truncate">{movie.description || "Danh mục phim mới cập nhật."}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   ) : (
                     <div className="px-4 py-6 text-center text-xs text-white/40">
                       Không có thông báo mới.
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          <NavLink to="/profile" aria-label="Profile" className="nf-icon flex items-center gap-1 rounded p-1 hover:bg-white/10">
-            <span className="grid h-8 w-8 place-items-center rounded bg-gradient-to-br from-blue-500 to-cyan-300"><UserCircle size={22} /></span>
-          </NavLink>
-        </nav>
-      </header>
+            <NavLink to="/profile" aria-label="Profile" className="nf-icon flex items-center gap-1 rounded p-1 hover:bg-white/10">
+              <span className="grid h-8 w-8 place-items-center rounded bg-gradient-to-br from-blue-500 to-cyan-300"><UserCircle size={22} /></span>
+            </NavLink>
+          </nav>
+        </header>
+      )}
       {q.length > 1 ? (
         <main className="bg-[#141414] min-h-screen pt-28 pb-16 px-4 sm:px-8 md:px-14 lg:px-16">
           <h1 className="text-2xl font-bold mb-6 text-white/50">Search results for "{q}"</h1>
@@ -305,7 +304,7 @@ export function AppShell() {
       )}
       
       {/* Footer component */}
-      <Footer />
+      {location.pathname !== "/profile" && <Footer />}
 
       {/* Mobile Sidebar Navigation Drawer */}
       <AnimatePresence>

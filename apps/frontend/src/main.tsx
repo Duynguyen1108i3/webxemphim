@@ -28,10 +28,16 @@ const router = createBrowserRouter([
       { path: "/search", element: <React.Suspense fallback={null}><SearchPage /></React.Suspense> },
       { path: "/profile", element: <React.Suspense fallback={null}><ProfilePage /></React.Suspense> },
       { path: "/my-list", element: <React.Suspense fallback={null}><MyListPage /></React.Suspense> },
-      { path: "/login", element: <React.Suspense fallback={null}><LoginPage /></React.Suspense> },
-      { path: "/register", element: <React.Suspense fallback={null}><RegisterPage /></React.Suspense> },
       { path: "*", element: <React.Suspense fallback={null}><NotFoundPage /></React.Suspense> }
     ]
+  },
+  {
+    path: "/login",
+    element: <React.Suspense fallback={null}><LoginPage /></React.Suspense>
+  },
+  {
+    path: "/register",
+    element: <React.Suspense fallback={null}><RegisterPage /></React.Suspense>
   },
   {
     path: "/watch/:id",
