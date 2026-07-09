@@ -369,13 +369,33 @@ export const movieApi = {
     }
 
     // Default Embed Player fallback using IMDB ID or TMDB ID
-    if (!selectedStreamUrl) {
-      const playId = imdbId || tmdbId;
-      if (mediaType === "movie") {
-        selectedStreamUrl = `https://embed.su/embed/movie/${playId}`;
-      } else {
-        selectedStreamUrl = `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`;
+    const alternateSources: { name: string; url: string }[] = [];
+    const playId = imdbId || tmdbId;
+
+    if (selectedStreamUrl && !selectedStreamUrl.includes("embed") && !selectedStreamUrl.includes("vidsrc") && !selectedStreamUrl.includes("vidlink")) {
+      alternateSources.push({ name: "Addon Stream (Direct)", url: selectedStreamUrl });
+    }
+
+    if (mediaType === "movie") {
+      alternateSources.push({ name: "Server 1 (Embed.su)", url: `https://embed.su/embed/movie/${playId}` });
+      if (imdbId) {
+        alternateSources.push({ name: "Server 2 (Vidsrc.to)", url: `https://vidsrc.to/embed/movie/${imdbId}` });
       }
+      alternateSources.push({ name: "Server 3 (Vidsrc.xyz)", url: `https://vidsrc.xyz/embed/movie/${playId}` });
+      alternateSources.push({ name: "Server 4 (Vidsrc.pro)", url: `https://vidsrc.pro/embed/movie/${playId}` });
+      alternateSources.push({ name: "Server 5 (VidLink)", url: `https://vidlink.pro/embed/movie/${playId}` });
+    } else {
+      alternateSources.push({ name: "Server 1 (Embed.su)", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}` });
+      if (imdbId) {
+        alternateSources.push({ name: "Server 2 (Vidsrc.to)", url: `https://vidsrc.to/embed/tv/${imdbId}/${selectedSeason}/${selectedEpisode}` });
+      }
+      alternateSources.push({ name: "Server 3 (Vidsrc.xyz)", url: `https://vidsrc.xyz/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}` });
+      alternateSources.push({ name: "Server 4 (Vidsrc.pro)", url: `https://vidsrc.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}` });
+      alternateSources.push({ name: "Server 5 (VidLink)", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}` });
+    }
+
+    if (!selectedStreamUrl && alternateSources.length > 0) {
+      selectedStreamUrl = alternateSources[0].url;
     }
 
     const subtitlesList: any[] = [];
@@ -425,6 +445,7 @@ export const movieApi = {
       recapEndSeconds: 0,
       currentEpisodeId: selectedEpisodeId,
       episodesList: allEpisodes,
+      alternateSources
     };
   },
 

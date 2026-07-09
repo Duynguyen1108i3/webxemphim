@@ -30,8 +30,15 @@ export function VideoPlayer({
   onNextEpisode?: () => void;
   hasNextEpisode?: boolean;
 }) {
-  const isEmbed = source ? isEmbedUrl(source.hlsUrl) : false;
+  const [activeUrl, setActiveUrl] = useState(source?.hlsUrl || "");
+  const isEmbed = activeUrl ? isEmbedUrl(activeUrl) : false;
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (source?.hlsUrl) {
+      setActiveUrl(source.hlsUrl);
+    }
+  }, [source?.hlsUrl]);
 
   const handleFullscreenForContainer = () => {
     const container = containerRef.current;
@@ -349,7 +356,7 @@ export function VideoPlayer({
   }
 
   if (source && isEmbed) {
-    let embedSrc = source.hlsUrl;
+    let embedSrc = activeUrl;
     if (embedSrc.includes("youtube.com") || embedSrc.includes("youtu.be")) {
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
       const match = embedSrc.match(regExp);
@@ -359,8 +366,31 @@ export function VideoPlayer({
       }
     }
 
+    const alternateSources = (source as any).alternateSources || [];
+
     return (
       <div ref={containerRef} className="relative h-full w-full bg-black flex flex-col items-center justify-center">
+        {/* Floating Server Selector */}
+        {alternateSources.length > 1 && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[130] flex items-center gap-2 bg-black/60 px-4 py-1.5 rounded-full border border-white/10 backdrop-blur-md shadow-lg select-none pointer-events-auto">
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-white/50">Server:</span>
+            <select
+              value={activeUrl}
+              onChange={(e) => {
+                setActiveUrl(e.target.value);
+                onPlayStarted?.(); // Trigger hide of buffering overlay
+              }}
+              className="bg-transparent text-xs font-bold text-[#e50914] outline-none cursor-pointer border-none py-0.5 pr-2 focus:ring-0"
+            >
+              {alternateSources.map((src: any) => (
+                <option key={src.url} value={src.url} className="bg-[#141414] text-white">
+                  {src.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <iframe
           src={embedSrc}
           className="w-full h-full border-none max-h-screen aspect-video"
@@ -380,11 +410,11 @@ export function VideoPlayer({
         </button>
         
         {/* Watch on YouTube fallback button */}
-        {(source.hlsUrl.includes("youtube.com") || source.hlsUrl.includes("youtu.be")) && (
+        {(activeUrl.includes("youtube.com") || activeUrl.includes("youtu.be")) && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 bg-black/80 px-4 py-3 rounded-lg border border-white/10 text-center max-w-[90vw] backdrop-blur-sm shadow-xl">
             <p className="text-xs text-white/60">YouTube may restrict playing certain trailers inside other apps (Error 153).</p>
             <a
-              href={source.hlsUrl}
+              href={activeUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex h-9 items-center justify-center gap-2 rounded bg-[#e50914] px-4 text-xs font-bold text-white transition hover:bg-[#b20710] focus:outline-none cursor-pointer"

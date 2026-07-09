@@ -1,4 +1,4 @@
-import { Bell, Menu, Search, UserCircle, X } from "lucide-react";
+import { Bell, Lock, Menu, Search, UserCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -16,7 +16,7 @@ import { useAuthStore } from "../store/auth";
 
 export function AppShell() {
   const { activeMovieDetail, activePlayback, watchHistory } = usePlaybackStore();
-  const { user, initialize } = useAuthStore();
+  const { user, profileId, setProfileId, logout, initialize } = useAuthStore();
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -174,12 +174,11 @@ export function AppShell() {
             <NavLink to="/" className={`brand-logo text-lg font-black tracking-tight text-[#e50914] sm:text-2xl md:text-3xl ${searchExpanded ? "hidden md:block" : ""}`}>STREAMFORGE</NavLink>
             <nav className="hidden items-center gap-5 text-sm font-medium text-white/75 md:flex">
               <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Home</NavLink>
-              <NavLink to="/tv-shows" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>TV Shows</NavLink>
+              <NavLink to="/tv-shows" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Shows</NavLink>
               <NavLink to="/movies" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Movies</NavLink>
               <NavLink to="/new-popular" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>New & Popular</NavLink>
               <NavLink to="/my-list" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>My List</NavLink>
-              <NavLink to="/addons" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Addons</NavLink>
-              <NavLink to="/search" className="nav-link hover:text-white">Browse by Languages</NavLink>
+              <NavLink to="/search" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Browse by Languages</NavLink>
             </nav>
           </div>
           <nav className={`flex items-center gap-1.5 text-sm font-medium text-white md:gap-5 ${searchExpanded ? "flex-1 justify-end" : ""}`}>
@@ -277,9 +276,76 @@ export function AppShell() {
               )}
             </div>
 
-            <NavLink to="/profile" aria-label="Profile" className="nf-icon flex items-center gap-1 rounded p-1 hover:bg-white/10">
-              <span className="grid h-8 w-8 place-items-center rounded bg-gradient-to-br from-blue-500 to-cyan-300"><UserCircle size={22} /></span>
-            </NavLink>
+            {/* Profile Dropdown */}
+            <div className="relative group/profile py-2">
+              <button className="flex items-center gap-1.5 focus:outline-none cursor-pointer" aria-label="Profile Menu">
+                <span className={`grid h-8 w-8 place-items-center rounded bg-gradient-to-br ${
+                  profileId === "Kids" ? "from-yellow-400 to-orange-500" :
+                  profileId === "Guest" ? "from-purple-500 to-pink-500" :
+                  profileId === "Private" ? "from-zinc-600 to-zinc-900" :
+                  "from-blue-500 to-cyan-300"
+                }`}>
+                  {profileId === "Private" ? <Lock size={14} className="text-white/80" /> : <span className="text-sm font-black text-white">{profileId ? profileId[0].toUpperCase() : (user?.username ? user.username[0].toUpperCase() : "M")}</span>}
+                </span>
+                <span className="border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 group-hover/profile:rotate-180" />
+              </button>
+
+              {/* Dropdown Menu (fades & slides in on hover) */}
+              <div className="absolute right-0 top-full mt-1 w-52 origin-top-right rounded border border-white/10 bg-black/95 py-2 shadow-2xl backdrop-blur-md opacity-0 scale-95 pointer-events-none group-hover/profile:opacity-100 group-hover/profile:scale-100 group-hover/profile:pointer-events-auto transition-all duration-200 z-[120]">
+                {/* Profile List */}
+                <div className="flex flex-col gap-1 px-2 py-1">
+                  {[
+                    [user?.username || "Main", "from-blue-500 to-cyan-300"],
+                    ["Kids", "from-yellow-400 to-orange-500"],
+                    ["Guest", "from-purple-500 to-pink-500"],
+                    ["Private", "from-zinc-600 to-zinc-900"]
+                  ].filter(([name]) => name !== profileId).map(([name, color]) => (
+                    <button
+                      key={name}
+                      onClick={() => {
+                        if (name === "Private") {
+                          const pin = prompt("Nhập mã PIN bảo mật cho hồ sơ riêng tư (mặc định: 1234):");
+                          if (pin !== "1234") {
+                            alert("Mã PIN không chính xác!");
+                            return;
+                          }
+                        }
+                        setProfileId(name);
+                        navigate("/");
+                      }}
+                      className="flex items-center gap-2.5 w-full rounded px-2.5 py-1.5 hover:bg-white/10 transition text-left text-xs font-semibold cursor-pointer text-white/80 hover:text-white"
+                    >
+                      <span className={`grid h-6 w-6 place-items-center rounded bg-gradient-to-br ${color}`}>
+                        {name === "Private" ? <Lock size={10} className="text-white/80" /> : <span className="text-[10px] font-black text-white">{name[0]}</span>}
+                      </span>
+                      <span>{name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <hr className="border-white/10 my-1.5" />
+
+                <NavLink to="/profile" className="flex items-center gap-2.5 px-4 py-1.5 hover:bg-white/10 transition text-xs font-semibold text-white/70 hover:text-white">
+                  Quản lý hồ sơ
+                </NavLink>
+                
+                <NavLink to="/addons" className="flex items-center gap-2.5 px-4 py-1.5 hover:bg-white/10 transition text-xs font-semibold text-white/70 hover:text-white">
+                  Addons của tôi
+                </NavLink>
+
+                <hr className="border-white/10 my-1.5" />
+
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate("/login");
+                  }}
+                  className="flex items-center gap-2.5 w-full px-4 py-1.5 hover:bg-white/10 transition text-xs font-bold text-[#e50914] text-left cursor-pointer"
+                >
+                  Đăng xuất khỏi StreamForge
+                </button>
+              </div>
+            </div>
           </nav>
         </header>
       )}
@@ -339,11 +405,45 @@ export function AppShell() {
               </div>
               <div className="flex flex-col gap-4 text-lg font-medium text-white/80">
                 <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>Home</NavLink>
-                <NavLink to="/tv-shows" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>TV Shows</NavLink>
+                <NavLink to="/tv-shows" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>Shows</NavLink>
                 <NavLink to="/movies" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>Movies</NavLink>
                 <NavLink to="/new-popular" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>New & Popular</NavLink>
                 <NavLink to="/my-list" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>My List</NavLink>
-                <NavLink to="/addons" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>Addons</NavLink>
+                <NavLink to="/search" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>Browse by Languages</NavLink>
+                
+                {/* Profile section for mobile */}
+                <hr className="border-white/10 my-1" />
+                <p className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Tài khoản & Hồ sơ</p>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      navigate("/profile");
+                    }}
+                    className="flex items-center gap-2.5 text-left text-sm font-semibold text-white/60 hover:text-white"
+                  >
+                    <span className="grid h-6 w-6 place-items-center rounded bg-gradient-to-br from-blue-500 to-cyan-300 text-[10px] font-black text-white">
+                      {profileId ? profileId[0].toUpperCase() : "M"}
+                    </span>
+                    <span>Chuyển hồ sơ ({profileId || "Main"})</span>
+                  </button>
+                  
+                  <NavLink to="/addons" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 text-sm font-semibold text-white/60 hover:text-white">
+                    <span className="grid h-6 w-6 place-items-center rounded bg-[#e50914] text-[10px] font-black text-white">A</span>
+                    <span>Addons của tôi</span>
+                  </NavLink>
+
+                  <button 
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      logout();
+                      navigate("/login");
+                    }}
+                    className="flex items-center gap-2.5 text-left text-sm font-bold text-[#e50914]"
+                  >
+                    <span>Đăng xuất</span>
+                  </button>
+                </div>
                 
                 {/* Separator line */}
                 <hr className="border-white/10 my-1" />
