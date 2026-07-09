@@ -368,30 +368,30 @@ export const movieApi = {
       console.error("Addon stream resolve failed:", e);
     }
 
-    // Default Embed Player fallback using IMDB ID or TMDB ID
-    const alternateSources: { name: string; url: string }[] = [];
+    // Build alternate embed servers ordered by quality: best → worst
+    const alternateSources: { name: string; url: string; quality: string }[] = [];
     const playId = imdbId || tmdbId;
 
     if (selectedStreamUrl && !selectedStreamUrl.includes("embed") && !selectedStreamUrl.includes("vidsrc") && !selectedStreamUrl.includes("vidlink")) {
-      alternateSources.push({ name: "Addon Stream (Direct)", url: selectedStreamUrl });
+      alternateSources.push({ name: "Addon Stream (Direct)", url: selectedStreamUrl, quality: "Source" });
     }
 
     if (mediaType === "movie") {
-      alternateSources.push({ name: "Server 1 (Embed.su)", url: `https://embed.su/embed/movie/${playId}` });
+      alternateSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/movie/${playId}`, quality: "4K" });
+      alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/movie/${playId}`, quality: "1080p" });
       if (imdbId) {
-        alternateSources.push({ name: "Server 2 (Vidsrc.to)", url: `https://vidsrc.to/embed/movie/${imdbId}` });
+        alternateSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/movie/${imdbId}`, quality: "1080p" });
       }
-      alternateSources.push({ name: "Server 3 (Vidsrc.xyz)", url: `https://vidsrc.xyz/embed/movie/${playId}` });
-      alternateSources.push({ name: "Server 4 (Vidsrc.pro)", url: `https://vidsrc.pro/embed/movie/${playId}` });
-      alternateSources.push({ name: "Server 5 (VidLink)", url: `https://vidlink.pro/embed/movie/${playId}` });
+      alternateSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/movie/${playId}`, quality: "720p" });
+      alternateSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/movie/${playId}`, quality: "720p" });
     } else {
-      alternateSources.push({ name: "Server 1 (Embed.su)", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}` });
+      alternateSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "4K" });
+      alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p" });
       if (imdbId) {
-        alternateSources.push({ name: "Server 2 (Vidsrc.to)", url: `https://vidsrc.to/embed/tv/${imdbId}/${selectedSeason}/${selectedEpisode}` });
+        alternateSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/tv/${imdbId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p" });
       }
-      alternateSources.push({ name: "Server 3 (Vidsrc.xyz)", url: `https://vidsrc.xyz/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}` });
-      alternateSources.push({ name: "Server 4 (Vidsrc.pro)", url: `https://vidsrc.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}` });
-      alternateSources.push({ name: "Server 5 (VidLink)", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}` });
+      alternateSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p" });
+      alternateSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p" });
     }
 
     if (!selectedStreamUrl && alternateSources.length > 0) {

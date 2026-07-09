@@ -41,7 +41,7 @@ export interface PlaybackSourceDto {
   introStartSeconds?: number;
   introEndSeconds?: number;
   recapEndSeconds?: number;
-  alternateSources?: Array<{ name: string; url: string }>;
+  alternateSources?: Array<{ name: string; url: string; quality: string }>;
 }
 
 export interface RecommendationDto extends MovieCardDto {
