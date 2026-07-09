@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@streamforge/shared-types": ["packages/shared-types/src"],
+      "@streamforge/utils": ["packages/utils/src"],
+      "@streamforge/ui": ["packages/ui/src"]
+    }
+  }
+}

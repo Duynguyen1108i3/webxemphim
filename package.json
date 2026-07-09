@@ -1,0 +1,31 @@
+{
+  "name": "streamforge",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Enterprise streaming platform monorepo with React, Express, Prisma, PostgreSQL, Redis, Docker and monitoring.",
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @streamforge/backend",
+    "dev:frontend": "npm run dev --workspace @streamforge/frontend",
+    "dev:admin": "npm run dev --workspace @streamforge/admin",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "prisma": "^6.2.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

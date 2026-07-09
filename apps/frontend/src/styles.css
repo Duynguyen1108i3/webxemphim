@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  background: #141414;
+  font-family: 'Poppins', Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Climate Crisis for large titles */
+h1, .large-title, .brand-logo {
+  font-family: 'Climate Crisis', cursive, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+/* Playfair Display for descriptions and synopsis */
+.synopsis, .description, p.synopsis, p.description {
+  font-family: 'Playfair Display', Georgia, serif;
+  line-height: 1.6;
+}
+
+body { margin: 0; min-width: 320px; background: #141414; color: white; }
+img { max-width: 100%; display: block; }
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.cinema-mask { background: linear-gradient(90deg, rgba(20,20,20,.98) 0%, rgba(20,20,20,.76) 34%, rgba(20,20,20,.18) 72%), linear-gradient(0deg, #141414 0%, rgba(20,20,20,0) 38%), linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 26%); }
+.text-shadow { text-shadow: 0 2px 14px rgba(0,0,0,.9); }
+
+:root {
+  --nf-ease: cubic-bezier(.22, 1, .36, 1);
+  --nf-fast: 150ms;
+  --nf-medium: 250ms;
+}
+
+.hero-ken-burns {
+  animation: hero-ken-burns 16s var(--nf-ease) infinite alternate;
+  will-change: transform, opacity;
+}
+
+.nav-link {
+  position: relative;
+  transition: color var(--nf-fast) var(--nf-ease);
+}
+
+.nav-link::after {
+  background: #e50914;
+  bottom: -7px;
+  content: "";
+  height: 2px;
+  left: 0;
+  position: absolute;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 180ms var(--nf-ease);
+  width: 100%;
+}
+
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+.nav-link:focus,
+.nav-link:focus-visible,
+.nf-icon:focus {
+  outline: none;
+}
+
+.nav-link:focus-visible {
+  color: #fff;
+}
+
+.nf-icon:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255,255,255,.65);
+}
+
+.nf-button,
+.nf-icon {
+  transition: transform 180ms var(--nf-ease), filter 180ms var(--nf-ease), box-shadow 180ms var(--nf-ease), background-color 180ms var(--nf-ease);
+  will-change: transform;
+}
+
+.nf-button:hover,
+.nf-icon:hover {
+  filter: brightness(1.05);
+  transform: scale(1.03);
+}
+
+.nf-button:active,
+.nf-icon:active {
+  transform: scale(.98);
+}
+
+@keyframes hero-ken-burns {
+  from { transform: scale(1); }
+  to { transform: scale(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+
+  .hero-ken-burns {
+    animation: none;
+  }
+}

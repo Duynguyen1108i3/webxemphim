@@ -1,0 +1,8 @@
+[build]
+  command = "npm run build --workspace @streamforge/frontend"
+  publish = "apps/frontend/dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
