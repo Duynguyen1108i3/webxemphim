@@ -189,8 +189,26 @@ export function VideoPlayer({
             onPlayStarted?.();
           })
           .catch((err) => {
-            console.log("Autoplay blocked:", err);
-            setPlaying(false);
+            console.log("Autoplay blocked unmuted, trying muted:", err);
+            video.muted = true;
+            setMuted(true);
+            
+            // Retry playing muted
+            const playPromiseMuted = video.play();
+            if (playPromiseMuted !== undefined) {
+              playPromiseMuted
+                .then(() => {
+                  setPlaying(true);
+                  onPlayStarted?.();
+                })
+                .catch((err2) => {
+                  console.log("Muted autoplay also blocked:", err2);
+                  setPlaying(false);
+                });
+            } else {
+              setPlaying(true);
+              onPlayStarted?.();
+            }
           });
       }
     };
@@ -382,6 +400,25 @@ export function VideoPlayer({
             aria-label="Play video"
           >
             <Play size={36} fill="currentColor" className="ml-1 text-white" />
+          </button>
+        </div>
+      )}
+
+      {/* Floating Unmute Helper Banner when playing muted */}
+      {muted && playing && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (videoRef.current) {
+                videoRef.current.muted = false;
+                setMuted(false);
+              }
+            }}
+            className="flex items-center gap-2 rounded bg-black/80 px-4 py-2 text-xs font-bold text-white border border-white/20 backdrop-blur-sm hover:bg-black/90 cursor-pointer shadow-lg animate-bounce"
+          >
+            <VolumeX size={14} className="text-[#e50914]" />
+            Chạm để bật âm thanh
           </button>
         </div>
       )}
