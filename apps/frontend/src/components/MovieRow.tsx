@@ -7,6 +7,14 @@ import { formatRuntime } from "@streamforge/utils";
 import type { NormalizedMovie } from "../lib/movieApi";
 import { usePlaybackStore } from "../store/playbackStore";
 
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
+
 export function MovieRow({ title, items, ranked = false, compact = false }: { title: string; items: MovieCardDto[]; ranked?: boolean; compact?: boolean }) {
   const { openDetailModal } = usePlaybackStore();
   const [hovered, setHovered] = useState<{ movie: MovieCardDto; anchor: HTMLElement; rect: DOMRect } | null>(null);
@@ -18,41 +26,40 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
   const updateScrollState = () => {
     if (rowRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
-      setCanScrollLeft(scrollLeft > 1);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 2);
+      setCanScrollLeft(scrollLeft > 5);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 5);
     }
   };
 
   const scroll = (direction: "left" | "right") => {
     if (rowRef.current) {
-      const { clientWidth } = rowRef.current;
-      const scrollAmount = direction === "left" ? -clientWidth * 0.75 : clientWidth * 0.75;
-      rowRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+      const { clientWidth, scrollLeft } = rowRef.current;
+      const offset = direction === "left" ? -clientWidth * 0.75 : clientWidth * 0.75;
+      rowRef.current.scrollTo({ left: scrollLeft + offset, behavior: "smooth" });
     }
   };
 
   useEffect(() => {
-    updateScrollState();
-    window.addEventListener("resize", updateScrollState);
-    return () => window.removeEventListener("resize", updateScrollState);
-  }, [items]);
-  const closeHoverTimer = useRef<number | null>(null);
+    const el = rowRef.current;
+    if (el) {
+      el.addEventListener("scroll", updateScrollState, { passive: true });
+      updateScrollState();
+      // Recalculate on window resize
+      const handleResize = () => updateScrollState();
+      window.addEventListener("resize", handleResize);
+      return () => {
+        el.removeEventListener("scroll", updateScrollState);
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+  }, []);
+
   const openHoverTimer = useRef<number | null>(null);
+  const closeHoverTimer = useRef<number | null>(null);
   const hoverFrame = useRef<number | null>(null);
 
-  function clearCloseTimer() {
-    if (closeHoverTimer.current) {
-      window.clearTimeout(closeHoverTimer.current);
-      closeHoverTimer.current = null;
-    }
-  }
-
-  function clearOpenTimer() {
-    if (openHoverTimer.current) {
-      window.clearTimeout(openHoverTimer.current);
-      openHoverTimer.current = null;
-    }
-  }
+  const clearOpenTimer = () => { if (openHoverTimer.current != null) { window.clearTimeout(openHoverTimer.current); openHoverTimer.current = null; } };
+  const clearCloseTimer = () => { if (closeHoverTimer.current != null) { window.clearTimeout(closeHoverTimer.current); closeHoverTimer.current = null; } };
 
   function scheduleHoverClose() {
     clearCloseTimer();
@@ -108,6 +115,7 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
   return (
     <>
       <motion.section
+        id={title ? `row-${slugify(title)}` : undefined}
         className={`relative z-20 space-y-2 ${compact ? "px-0" : "px-4 sm:px-8 md:px-14 lg:px-16"}`}
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
