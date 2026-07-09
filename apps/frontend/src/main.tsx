@@ -15,6 +15,7 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const MyListPage = lazy(() => import("./pages/MyListPage").then((m) => ({ default: m.MyListPage })));
 const LoginPage = lazy(() => import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import("./pages/RegisterPage").then((m) => ({ default: m.RegisterPage })));
+const AddonsPage = lazy(() => import("./pages/AddonsPage").then((m) => ({ default: m.AddonsPage })));
 
 const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
       { path: "/search", element: <React.Suspense fallback={null}><SearchPage /></React.Suspense> },
       { path: "/profile", element: <React.Suspense fallback={null}><ProfilePage /></React.Suspense> },
       { path: "/my-list", element: <React.Suspense fallback={null}><MyListPage /></React.Suspense> },
+      { path: "/addons", element: <React.Suspense fallback={null}><AddonsPage /></React.Suspense> },
       { path: "*", element: <React.Suspense fallback={null}><NotFoundPage /></React.Suspense> }
     ]
   },
