@@ -65,15 +65,17 @@ export function AppShell() {
       <header className={`fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between px-4 transition-all duration-300 sm:px-8 md:px-14 lg:px-16 ${scrolled ? "bg-[#141414]/95 shadow-lg shadow-black/20 backdrop-blur-md" : "bg-gradient-to-b from-black/80 via-black/35 to-transparent"}`}>
         <div className="flex items-center gap-4 sm:gap-7">
           {/* Hamburger menu button for mobile */}
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="nf-icon md:hidden rounded-full p-1.5 hover:bg-white/10"
-            aria-label="Open navigation menu"
-          >
-            <Menu size={22} />
-          </button>
+          {!searchExpanded && (
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="nf-icon md:hidden rounded-full p-1.5 hover:bg-white/10"
+              aria-label="Open navigation menu"
+            >
+              <Menu size={22} />
+            </button>
+          )}
           
-          <NavLink to="/" className="brand-logo text-2xl font-black tracking-tight text-[#e50914] md:text-3xl">STREAMFORGE</NavLink>
+          <NavLink to="/" className={`brand-logo text-2xl font-black tracking-tight text-[#e50914] md:text-3xl ${searchExpanded ? "hidden md:block" : ""}`}>STREAMFORGE</NavLink>
           <nav className="hidden items-center gap-5 text-sm font-medium text-white/75 md:flex">
             <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Home</NavLink>
             <NavLink to="/tv-shows" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>TV Shows</NavLink>
@@ -83,10 +85,10 @@ export function AppShell() {
             <NavLink to="/search" className="nav-link hover:text-white">Browse by Languages</NavLink>
           </nav>
         </div>
-        <nav className="flex items-center gap-3 text-sm font-medium text-white md:gap-5">
+        <nav className={`flex items-center gap-3 text-sm font-medium text-white md:gap-5 ${searchExpanded ? "flex-1 justify-end" : ""}`}>
           {/* Inline Expanding Search Bar */}
           {searchExpanded ? (
-            <div className="flex items-center gap-1.5 border border-white/40 bg-black/75 px-2 py-1 rounded transition-all duration-300">
+            <div className="flex flex-1 md:flex-initial items-center gap-1.5 border border-white/40 bg-black/75 px-2 py-1 rounded transition-all duration-300 max-w-full">
               <Search
                 size={18}
                 className="text-white/80 shrink-0 cursor-pointer"
@@ -118,7 +120,7 @@ export function AppShell() {
                     setSearchExpanded(false);
                   }
                 }}
-                className="w-24 sm:w-36 md:w-44 bg-transparent text-xs text-white focus:outline-none"
+                className="w-full md:w-44 bg-transparent text-xs text-white focus:outline-none"
                 autoFocus
               />
               {(new URLSearchParams(location.search).get("q") ?? "") && (
@@ -148,9 +150,9 @@ export function AppShell() {
             </button>
           )}
 
-          <span className="hidden text-sm md:inline">Kids</span>
-          <button aria-label="Notifications" className="nf-icon rounded-full p-2 hover:bg-white/10"><Bell size={19} /></button>
-          <NavLink to="/profile" aria-label="Profile" className="nf-icon flex items-center gap-1 rounded p-1 hover:bg-white/10">
+          <span className={`hidden text-sm md:inline ${searchExpanded ? "hidden" : ""}`}>Kids</span>
+          <button aria-label="Notifications" className={`nf-icon rounded-full p-2 hover:bg-white/10 ${searchExpanded ? "hidden md:block" : ""}`}><Bell size={19} /></button>
+          <NavLink to="/profile" aria-label="Profile" className={`nf-icon flex items-center gap-1 rounded p-1 hover:bg-white/10 ${searchExpanded ? "hidden md:block" : ""}`}>
             <span className="grid h-8 w-8 place-items-center rounded bg-gradient-to-br from-blue-500 to-cyan-300"><UserCircle size={22} /></span>
           </NavLink>
         </nav>

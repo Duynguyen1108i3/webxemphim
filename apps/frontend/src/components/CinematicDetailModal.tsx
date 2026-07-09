@@ -127,12 +127,12 @@ export function CinematicDetailModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex justify-center items-start overflow-y-auto bg-black/80 p-4 pt-10 backdrop-blur-[10px]"
+      className="fixed inset-0 z-[90] flex justify-center items-start overflow-y-auto bg-black/80 p-0 sm:p-4 sm:pt-10 backdrop-blur-[10px]"
       onClick={closeDetailModal}
     >
       <motion.div
         ref={modalContainerRef}
-        className="relative mb-10 w-full max-w-4xl overflow-hidden rounded-lg bg-[#181818] text-white shadow-[0_28px_90px_rgba(0,0,0,.75)] focus:outline-none"
+        className="relative mb-0 sm:mb-10 w-full max-w-4xl overflow-hidden rounded-none sm:rounded-lg bg-[#181818] text-white shadow-[0_28px_90px_rgba(0,0,0,.75)] focus:outline-none"
         onClick={(event) => event.stopPropagation()}
         initial={{ opacity: 0, scale: 0.94, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
