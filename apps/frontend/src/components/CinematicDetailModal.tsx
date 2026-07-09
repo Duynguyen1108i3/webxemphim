@@ -52,6 +52,14 @@ export function CinematicDetailModal() {
     queryFn: () => movieApi.getByGenre(activeGenreSlug!, 1)
   });
 
+  const { data: playbackData, isLoading: playbackLoading } = useQuery({
+    queryKey: ["movie-playback-servers", movie?.slug || ""],
+    enabled: Boolean(movie?.slug),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+    queryFn: () => movieApi.getPlayback(movie!.slug)
+  });
+
   // Keyboard shortcut Esc to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -302,8 +310,66 @@ export function CinematicDetailModal() {
           </motion.div>
         </motion.div>
 
+        {/* Streaming Sources Section */}
+        <section className="px-6 pb-6 md:px-8 border-t border-white/5 pt-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h4 className="text-xl font-black md:text-2xl flex items-center gap-2">
+                <span>Nguồn Phát & Server</span>
+                <span className="text-[10px] uppercase tracking-wider bg-[#e50914] px-2 py-0.5 rounded font-black text-white animate-pulse">LIVE</span>
+              </h4>
+              <p className="text-xs text-white/50 mt-1">Chọn server để phát phim ngay lập tức. Nếu bị chặn, hãy thử server khác.</p>
+            </div>
+            {playbackData?.alternateSources && playbackData.alternateSources.length > 0 && (
+              <span className="text-[10px] font-bold text-white/30 bg-white/5 px-2 py-1 rounded shrink-0">
+                {playbackData.alternateSources.length} SERVER
+              </span>
+            )}
+          </div>
+          
+          {playbackLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-20 rounded-lg bg-white/5 animate-pulse" />
+              ))}
+            </div>
+          ) : playbackData?.alternateSources && playbackData.alternateSources.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {playbackData.alternateSources.map((src: any, idx: number) => {
+                const quality = src.name.toLowerCase().includes("embed") ? "1080p" 
+                  : src.name.toLowerCase().includes("vidsrc") ? "HD" 
+                  : src.name.toLowerCase().includes("vidlink") ? "4K" 
+                  : "HD";
+                return (
+                  <button
+                    key={src.url}
+                    onClick={() => openPlayback(displayMovie, "hero", src.url)}
+                    className="flex items-center gap-3 bg-gradient-to-br from-white/[.04] to-white/[.02] hover:from-[#e50914]/20 hover:to-[#e50914]/5 hover:border-[#e50914]/30 transition-all duration-300 border border-white/8 rounded-xl px-4 py-3.5 text-left cursor-pointer group shadow-lg active:scale-[0.97]"
+                  >
+                    <span className="grid place-items-center h-10 w-10 rounded-xl bg-white/8 text-white group-hover:bg-[#e50914]/30 group-hover:text-white transition-all duration-300 shrink-0">
+                      <Play size={16} fill="currentColor" />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-bold truncate text-white/90 group-hover:text-white">{src.name}</p>
+                        <span className="text-[8px] font-black tracking-wider bg-white/10 group-hover:bg-[#e50914] text-white/60 group-hover:text-white px-1.5 py-0.5 rounded transition-all duration-300 shrink-0">{quality}</span>
+                      </div>
+                      <p className="text-[10px] text-white/35 group-hover:text-white/70 mt-0.5 transition">Server {idx + 1} • Click để phát</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-6 rounded-xl bg-white/[.03] border border-dashed border-white/10 text-center">
+              <p className="text-sm text-white/40 font-semibold">Không có nguồn phát nào khả dụng</p>
+              <p className="text-xs text-white/25 mt-1">Hãy cài đặt thêm Addon trong mục Addons để mở khóa nguồn phát.</p>
+            </div>
+          )}
+        </section>
+
         {/* Episodes Section */}
-        <section className="px-6 pb-6 md:px-8">
+        <section className="px-6 pb-6 md:px-8 border-t border-white/5 pt-6">
           <div className="mb-4 flex items-center justify-between">
             <h4 className="text-xl font-black md:text-2xl">Episodes</h4>
             <span className="text-sm font-semibold text-white/50">

@@ -21,10 +21,11 @@ interface PlaybackState {
   activePlayback: NormalizedMovie | null;
   activeEpisodeId: string | null;
   clickedElementId: string | null;
+  activeCustomUrl: string | null;
   scrollPosition: number;
   openDetailModal: (movie: NormalizedMovie, elementId: string) => void;
   closeDetailModal: () => void;
-  openPlayback: (movie: NormalizedMovie, elementId: string) => void;
+  openPlayback: (movie: NormalizedMovie, elementId: string, customUrl?: string) => void;
   closePlayback: () => void;
   myList: NormalizedMovie[];
   toggleMyList: (movie: NormalizedMovie) => void;
@@ -37,6 +38,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
   activeMovieDetail: null,
   activePlayback: null,
   clickedElementId: null,
+  activeCustomUrl: null,
   scrollPosition: 0,
   myList: [],
   watchHistory: [],
@@ -112,7 +114,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
 
   activeEpisodeId: null,
 
-  openPlayback: (movie, elementId) => {
+  openPlayback: (movie, elementId, customUrl) => {
     const scrollY = window.scrollY;
     // Set body overflow hidden
     document.body.style.position = "fixed";
@@ -145,6 +147,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       activeEpisodeId: episodeId,
       clickedElementId: elementId,
       scrollPosition: scrollY,
+      activeCustomUrl: customUrl || null
     });
   },
 
@@ -162,6 +165,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         activePlayback: null,
         activeEpisodeId: null,
         clickedElementId: null,
+        activeCustomUrl: null
       };
     });
   },

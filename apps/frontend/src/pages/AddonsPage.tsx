@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { 
   Search, Star, Check, Copy, ExternalLink, Github, Heart, Info, 
-  Download, Sparkles, Sliders, ArrowUpDown, BookOpen, Bookmark 
+  Download, Sparkles, Sliders, ArrowUpDown, BookOpen, Bookmark,
+  CheckCircle2, Loader2, DownloadCloud, Trash2, Power, Shield
 } from "lucide-react";
 import addonsData from "../data/addons.json";
 
@@ -36,6 +37,14 @@ export function AddonsPage() {
   const [installed, setInstalled] = useState<string[]>([]);
   const [selectedAddon, setSelectedAddon] = useState<Addon | null>(null);
   const [tmdbKeyInput, setTmdbKeyInput] = useState(localStorage.getItem("streamforge:settings:tmdb_key") || "");
+  const [installAllProgress, setInstallAllProgress] = useState<{ running: boolean; current: number; total: number }>({ running: false, current: 0, total: 0 });
+  const [toasts, setToasts] = useState<{ id: number; message: string; type: "success" | "info" | "error" }[]>([]);
+
+  const showToast = useCallback((message: string, type: "success" | "info" | "error" = "success") => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+  }, []);
   
   // Load data and storage on mount
   useEffect(() => {
@@ -49,7 +58,7 @@ export function AddonsPage() {
       if (inst) {
         setInstalled(JSON.parse(inst));
       } else {
-        const defaults = ["tmdb", "opensubtitles-v3"];
+        const defaults: string[] = [];
         setInstalled(defaults);
         localStorage.setItem("streamforge:addons:installed", JSON.stringify(defaults));
       }
@@ -68,31 +77,50 @@ export function AddonsPage() {
     localStorage.setItem("streamforge:addons:favorites", JSON.stringify(updated));
   };
 
-  const toggleInstall = (addon: Addon, e?: React.MouseEvent) => {
+  const toggleInstall = (addon: Addon, e?: React.MouseEvent, silent = false) => {
     if (e) e.stopPropagation();
     const id = addon.id;
     const isInstalled = installed.includes(id);
     let updated;
     if (isInstalled) {
       updated = installed.filter(instId => instId !== id);
+      if (!silent) showToast(`Đã gỡ cài đặt "${addon.name}"`, "info");
     } else {
       updated = [...installed, id];
-      
-      // Perform installation action
-      const stremioUrl = addon.manifestUrl.replace("https://", "stremio://");
-      // Try to copy manifest to clipboard
-      navigator.clipboard.writeText(addon.manifestUrl).catch(() => {});
-      
-      // Alert and prompt stremio open
-      alert(`✓ Đã thêm Addon "${addon.name}" vào danh sách cài đặt!\n\nLink Manifest đã được sao chép vào bộ nhớ tạm:\n${addon.manifestUrl}`);
-      
-      // Attempt opening stremio:// url
-      window.location.href = stremioUrl;
+      if (!silent) showToast(`✓ Đã cài đặt "${addon.name}"`, "success");
     }
     
     setInstalled(updated);
     localStorage.setItem("streamforge:addons:installed", JSON.stringify(updated));
   };
+
+  const installAll = useCallback(async () => {
+    const notInstalled = addons.filter(a => !installed.includes(a.id));
+    if (notInstalled.length === 0) {
+      showToast("Tất cả addon đã được cài đặt!", "info");
+      return;
+    }
+    setInstallAllProgress({ running: true, current: 0, total: notInstalled.length });
+    
+    const newIds = [...installed];
+    for (let i = 0; i < notInstalled.length; i++) {
+      newIds.push(notInstalled[i].id);
+      setInstalled([...newIds]);
+      localStorage.setItem("streamforge:addons:installed", JSON.stringify([...newIds]));
+      setInstallAllProgress({ running: true, current: i + 1, total: notInstalled.length });
+      // Stagger for visual effect
+      await new Promise(r => setTimeout(r, 250));
+    }
+    
+    setInstallAllProgress({ running: false, current: 0, total: 0 });
+    showToast(`✓ Đã cài đặt thành công ${notInstalled.length} addon!`, "success");
+  }, [addons, installed, showToast]);
+
+  const uninstallAll = useCallback(() => {
+    setInstalled([]);
+    localStorage.setItem("streamforge:addons:installed", JSON.stringify([]));
+    showToast("Đã gỡ cài đặt tất cả addon.", "info");
+  }, [showToast]);
 
   const copyManifest = (url: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -105,12 +133,15 @@ export function AddonsPage() {
   const collections = useMemo(() => {
     const all = addons;
     return {
-      vietsub: all.filter(a => a.language === "Tiếng Việt" || a.id.includes("vietnam") || a.id.includes("vn")),
-      anime: all.filter(a => a.category === "Anime" || a.id.includes("kitsu") || a.id.includes("anilist")),
-      movies: all.filter(a => a.category === "Movies" || a.category === "Torrent" || a.id === "comet" || a.id === "torrentio"),
-      debrid: all.filter(a => a.category === "Debrid")
+      vietsub: all.filter(a => a.category === "Subtitle"),
+      anime: all.filter(a => a.category === "Anime"),
+      movies: all.filter(a => a.category === "Movies" || a.category === "Torrent" || a.category === "TV"),
+      debrid: all.filter(a => a.category === "Debrid"),
+      utility: all.filter(a => a.category === "Utility" || a.category === "Metadata")
     };
   }, [addons]);
+
+  const installedAddons = useMemo(() => addons.filter(a => installed.includes(a.id)), [addons, installed]);
 
   // Filters & Search & Sort operations
   const filteredAddons = useMemo(() => {
@@ -197,17 +228,65 @@ export function AddonsPage() {
           <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 h-64 w-64 rounded-full bg-red-600/10 blur-3xl" />
           <div className="absolute left-1/3 bottom-0 translate-y-16 h-48 w-48 rounded-full bg-blue-600/10 blur-3xl" />
           
-          <div className="relative z-10 max-w-2xl">
-            <div className="flex items-center gap-2 text-xs font-bold text-red-500 uppercase tracking-widest mb-3">
-              <Sparkles size={14} /> StreamForge Extension Catalog
+          <div className="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2 text-xs font-bold text-red-500 uppercase tracking-widest mb-3">
+                <Sparkles size={14} /> StreamForge Extension Catalog
+              </div>
+              <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-4 bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+                Stremio Addons
+              </h1>
+              <p className="text-zinc-400 text-base sm:text-lg leading-relaxed font-medium">
+                Cá nhân hóa trải nghiệm xem phim của bạn. Cài đặt các tiện ích mở rộng cộng đồng để tích hợp nguồn Torrent, Debrid, Phụ đề tiếng Việt và các tính năng truyền hình trực tuyến khác.
+              </p>
             </div>
-            <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-4 bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-              Stremio Addons
-            </h1>
-            <p className="text-zinc-400 text-base sm:text-lg leading-relaxed font-medium">
-              Cá nhân hóa trải nghiệm xem phim của bạn. Cài đặt các tiện ích mở rộng cộng đồng để tích hợp nguồn Torrent, Debrid, Phụ đề tiếng Việt và các tính năng truyền hình trực tuyến khác.
-            </p>
+
+            {/* Install All / Uninstall All Buttons */}
+            <div className="flex items-center gap-3 shrink-0">
+              {installed.length > 0 && installed.length < addons.length && (
+                <button
+                  onClick={uninstallAll}
+                  className="flex items-center gap-2 px-4 py-3 rounded-lg bg-zinc-800/80 border border-white/10 text-zinc-400 hover:text-white hover:bg-red-600/20 hover:border-red-600/30 text-xs font-bold transition-all duration-300 cursor-pointer"
+                >
+                  <Trash2 size={14} /> Gỡ tất cả
+                </button>
+              )}
+              <button
+                onClick={installAll}
+                disabled={installAllProgress.running || installed.length === addons.length}
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-black transition-all duration-300 cursor-pointer shadow-lg ${
+                  installed.length === addons.length
+                    ? "bg-green-600/20 border border-green-500/30 text-green-400 cursor-default"
+                    : installAllProgress.running
+                    ? "bg-amber-600/20 border border-amber-500/30 text-amber-400 cursor-wait"
+                    : "bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 shadow-red-600/25"
+                }`}
+              >
+                {installed.length === addons.length ? (
+                  <><CheckCircle2 size={16} /> Đã cài tất cả</>
+                ) : installAllProgress.running ? (
+                  <><Loader2 size={16} className="animate-spin" /> Đang cài... {installAllProgress.current}/{installAllProgress.total}</>
+                ) : (
+                  <><DownloadCloud size={16} /> Cài tất cả ({addons.length - installed.length})</>
+                )}
+              </button>
+            </div>
           </div>
+
+          {/* Install All Progress Bar */}
+          {installAllProgress.running && (
+            <div className="relative z-10 mt-6">
+              <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-red-600 to-amber-500 transition-all duration-300 ease-out"
+                  style={{ width: `${(installAllProgress.current / installAllProgress.total) * 100}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-zinc-500 font-semibold mt-1.5 text-right">
+                {installAllProgress.current} / {installAllProgress.total} addon đã cài đặt
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Statistics Grid */}
@@ -412,7 +491,30 @@ export function AddonsPage() {
                   </div>
                 )}
 
-                {/* 5. All Addons Grid Header */}
+                {/* 5. Utility & Metadata Addons */}
+                {collections.utility.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-black text-white tracking-wide mb-5 flex items-center gap-2">
+                      <span className="h-4 w-1 bg-red-600 rounded" /> Utility & Metadata Addons
+                    </h3>
+                    <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-thin">
+                      {collections.utility.map(addon => (
+                        <AddonMiniCard 
+                          key={addon.id} 
+                          addon={addon} 
+                          isInstalled={installed.includes(addon.id)}
+                          isFavorite={favorites.includes(addon.id)}
+                          onToggleFavorite={(e) => toggleFavorite(addon.id, e)}
+                          onInstall={(e) => toggleInstall(addon, e)}
+                          onSelect={() => setSelectedAddon(addon)}
+                          renderBadge={renderBadge}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. All Addons Grid Header */}
                 <div>
                   <h3 className="text-xl font-black text-white tracking-wide mb-5 flex items-center gap-2">
                     <span className="h-4 w-1 bg-red-600 rounded" /> Tất Cả Addon
@@ -433,6 +535,79 @@ export function AddonsPage() {
                   </div>
                 </div>
 
+              </div>
+            ) : selectedCategory === "Installed" ? (
+              // Installed Addons Dashboard
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-black text-white tracking-wide flex items-center gap-2">
+                    <span className="h-4 w-1 bg-green-500 rounded" /> Addon Đã Cài Đặt ({installedAddons.length})
+                  </h3>
+                  {installedAddons.length > 0 && (
+                    <button
+                      onClick={uninstallAll}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/10 border border-red-600/20 text-red-400 hover:bg-red-600/20 text-xs font-bold transition cursor-pointer"
+                    >
+                      <Trash2 size={12} /> Gỡ tất cả
+                    </button>
+                  )}
+                </div>
+
+                {installedAddons.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-3">
+                    {installedAddons.map((addon, idx) => (
+                      <div
+                        key={addon.id}
+                        className="flex items-center gap-4 bg-zinc-900/60 border border-white/5 hover:border-green-500/20 rounded-xl p-4 transition-all duration-300 hover:bg-zinc-900/80 group cursor-pointer"
+                        onClick={() => setSelectedAddon(addon)}
+                      >
+                        <span className="text-lg font-black text-zinc-600 w-8 text-center">{idx + 1}</span>
+                        <img src={addon.logo} className="w-12 h-12 rounded-xl object-cover border border-white/10 shrink-0" alt="" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-white truncate group-hover:text-green-400 transition">{addon.name}</h4>
+                            {addon.verified && (
+                              <Shield size={12} className="text-green-500 shrink-0" />
+                            )}
+                            {renderBadge(addon.badge)}
+                          </div>
+                          <p className="text-xs text-zinc-500 truncate mt-0.5">{addon.description}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-500 shrink-0 hidden sm:flex">
+                          <span className="flex items-center gap-0.5 text-amber-400">
+                            <Star size={11} fill="currentColor" /> {addon.rating.toFixed(1)}
+                          </span>
+                          <span>•</span>
+                          <span>v{addon.version}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-green-600/15 border border-green-500/20 text-green-400 text-[10px] font-bold">
+                            <Power size={10} /> Active
+                          </span>
+                          <button
+                            onClick={(e) => toggleInstall(addon, e)}
+                            className="p-1.5 rounded-lg border border-white/5 bg-white/5 text-zinc-400 hover:text-red-400 hover:bg-red-600/10 hover:border-red-600/20 transition cursor-pointer"
+                            title="Gỡ cài đặt"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/10 bg-zinc-900/20 p-16 text-center backdrop-blur-md">
+                    <DownloadCloud size={48} className="mx-auto text-zinc-700 mb-4" />
+                    <p className="text-zinc-500 font-semibold mb-2">Chưa có addon nào được cài đặt</p>
+                    <p className="text-xs text-zinc-600 mb-6">Hãy duyệt danh mục và cài đặt các addon yêu thích của bạn.</p>
+                    <button
+                      onClick={installAll}
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-black shadow-lg shadow-red-600/25 hover:from-red-700 hover:to-red-800 transition cursor-pointer"
+                    >
+                      <DownloadCloud size={16} /> Cài tất cả addon
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               // Filtered / Search layout grid
@@ -598,6 +773,26 @@ export function AddonsPage() {
           </div>
         </div>
       )}
+
+      {/* Toast Notifications */}
+      <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2.5 pointer-events-none">
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            className={`pointer-events-auto flex items-center gap-3 px-5 py-3 rounded-xl border shadow-2xl backdrop-blur-md text-sm font-bold animate-in slide-in-from-right duration-300 ${
+              toast.type === "success"
+                ? "bg-green-950/90 border-green-500/30 text-green-400"
+                : toast.type === "error"
+                ? "bg-red-950/90 border-red-500/30 text-red-400"
+                : "bg-zinc-900/90 border-zinc-700 text-zinc-300"
+            }`}
+          >
+            {toast.type === "success" && <CheckCircle2 size={16} />}
+            {toast.type === "info" && <Info size={16} />}
+            {toast.message}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

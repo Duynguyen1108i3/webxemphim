@@ -7,7 +7,7 @@ import { movieApi } from "../lib/movieApi";
 import { VideoPlayer } from "./VideoPlayer";
 
 export function CinematicPlayerOverlay() {
-  const { activePlayback, activeEpisodeId, clickedElementId, closePlayback, updateWatchHistory } = usePlaybackStore();
+  const { activePlayback, activeEpisodeId, clickedElementId, closePlayback, updateWatchHistory, activeCustomUrl } = usePlaybackStore();
   const [openingFinished, setOpeningFinished] = useState(false);
   const [playbackStarted, setPlaybackStarted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -140,6 +140,8 @@ export function CinematicPlayerOverlay() {
             usePlaybackStore.setState({ activeEpisodeId: nextEpisodeId });
           };
 
+          const finalSource = source && activeCustomUrl ? { ...source, hlsUrl: activeCustomUrl } : source;
+
           return (
             <motion.div
               className="relative h-full w-full bg-black z-20"
@@ -148,10 +150,10 @@ export function CinematicPlayerOverlay() {
               transition={{ duration: 0.3 }}
             >
               <VideoPlayer
-                source={source}
+                source={finalSource}
                 onProgress={(currentTime, duration) => {
-                  if (source) {
-                    updateWatchHistory(activePlayback, currentTime, duration, source.currentEpisodeId, source.title);
+                  if (finalSource) {
+                    updateWatchHistory(activePlayback, currentTime, duration, finalSource.currentEpisodeId, finalSource.title);
                   }
                 }}
                 onPlayStarted={() => {
