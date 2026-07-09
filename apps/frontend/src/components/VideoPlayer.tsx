@@ -67,14 +67,36 @@ export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: Pla
     const video = videoRef.current;
     if (!video) return;
     const isHls = source.hlsUrl.includes(".m3u8");
+    
+    let hls: Hls | null = null;
     if (isHls && Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+      hls = new Hls({ enableWorker: true, lowLatencyMode: true });
       hls.loadSource(source.hlsUrl);
       hls.attachMedia(video);
-      return () => hls.destroy();
+    } else {
+      video.src = source.hlsUrl;
     }
-    video.src = source.hlsUrl;
-  }, [source.hlsUrl]);
+
+    // Explicitly play and handle autoplay rejection (which is standard on mobile)
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          setPlaying(true);
+          onPlayStarted?.();
+        })
+        .catch((err) => {
+          console.log("Autoplay blocked:", err);
+          setPlaying(false);
+        });
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, [source.hlsUrl, onPlayStarted]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -223,6 +245,22 @@ export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: Pla
         {source.subtitles.map((sub) => <track key={sub.url} kind="subtitles" srcLang={sub.language} label={sub.label} src={sub.url} />)}
       </video>
       <button onClick={toggle} className="absolute inset-0" aria-label={playing ? "Pause video" : "Play video"} />
+
+      {/* Play Button Overlay (For Autoplay Block Bypass on mobile) */}
+      {!playing && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none z-10">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggle();
+            }}
+            className="grid h-20 w-20 place-items-center rounded-full bg-black/60 text-white border border-white/20 backdrop-blur-sm pointer-events-auto hover:scale-110 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+            aria-label="Play video"
+          >
+            <Play size={36} fill="currentColor" className="ml-1 text-white" />
+          </button>
+        </div>
+      )}
       
       {/* Controls Container Overlay */}
       <div className="absolute inset-x-0 bottom-0 space-y-4 bg-gradient-to-t from-black via-black/80 to-transparent p-4 opacity-100 transition md:p-8 md:opacity-0 md:group-hover:opacity-100">
