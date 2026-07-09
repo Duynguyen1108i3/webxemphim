@@ -21,23 +21,26 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "new-popular
       
       if (type === "tv-shows") {
         return {
-          rows: fullData.rows.filter(
-            (row) => row.title === "Phim bộ" || row.title === "TV Shows" || row.title === "Hoạt hình"
-          )
+          rows: fullData.rows.filter((row) => {
+            const t = row.title.toLowerCase();
+            return t.includes("bộ") || t.includes("tv") || t.includes("show") || t.includes("anime") || t.includes("hoạt hình") || t.includes("animation");
+          })
         };
       }
       if (type === "movies") {
         return {
-          rows: fullData.rows.filter(
-            (row) => row.title === "Phim lẻ" || row.title === "Hành động" || row.title === "Hàn Quốc"
-          )
+          rows: fullData.rows.filter((row) => {
+            const t = row.title.toLowerCase();
+            return t.includes("lẻ") || t.includes("movie") || t.includes("film") || t.includes("hành động") || t.includes("action") || t.includes("hàn quốc") || t.includes("korean");
+          })
         };
       }
       if (type === "new-popular") {
         return {
-          rows: fullData.rows.filter(
-            (row) => row.title === "Phim mới cập nhật"
-          )
+          rows: fullData.rows.filter((row) => {
+            const t = row.title.toLowerCase();
+            return t.includes("mới") || t.includes("trending") || t.includes("popular") || t.includes("thịnh hành");
+          })
         };
       }
       return fullData;

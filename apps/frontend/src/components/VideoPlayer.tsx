@@ -58,54 +58,7 @@ export function VideoPlayer({
     }
   }, [isEmbed, onPlayStarted]);
 
-  if (source && isEmbed) {
-    let embedSrc = source.hlsUrl;
-    if (embedSrc.includes("youtube.com") || embedSrc.includes("youtu.be")) {
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-      const match = embedSrc.match(regExp);
-      const videoId = (match && match[2].length === 11) ? match[2] : null;
-      if (videoId) {
-        embedSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&rel=0`;
-      }
-    }
-
-    return (
-      <div ref={containerRef} className="relative h-full w-full bg-black flex flex-col items-center justify-center">
-        <iframe
-          src={embedSrc}
-          className="w-full h-full border-none max-h-screen aspect-video"
-          allow="autoplay; fullscreen; picture-in-picture"
-          allowFullScreen
-          title={source.title || "Movie Player"}
-          onLoad={() => onPlayStarted?.()}
-        />
-        
-        {/* Floating Fullscreen Button for Embed/Iframe on Mobile */}
-        <button
-          onClick={handleFullscreenForContainer}
-          className="absolute top-4 right-4 z-40 md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-black/60 text-white border border-white/20 backdrop-blur-sm hover:scale-105 active:scale-95 transition cursor-pointer"
-          aria-label="Fullscreen"
-        >
-          <Maximize size={18} />
-        </button>
-        
-        {/* Watch on YouTube fallback button */}
-        {(source.hlsUrl.includes("youtube.com") || source.hlsUrl.includes("youtu.be")) && (
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 bg-black/80 px-4 py-3 rounded-lg border border-white/10 text-center max-w-[90vw] backdrop-blur-sm shadow-xl">
-            <p className="text-xs text-white/60">YouTube may restrict playing certain trailers inside other apps (Error 153).</p>
-            <a
-              href={source.hlsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded bg-[#e50914] px-4 text-xs font-bold text-white transition hover:bg-[#b20710] focus:outline-none cursor-pointer"
-            >
-              Watch Trailer on YouTube
-            </a>
-          </div>
-        )}
-      </div>
-    );
-  }
+  // early return for iframe embeds moved below all hooks to satisfy react rules
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -393,6 +346,55 @@ export function VideoPlayer({
     const s = Math.floor(seconds % 60);
     const pad = (n: number) => String(n).padStart(2, "0");
     return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  }
+
+  if (source && isEmbed) {
+    let embedSrc = source.hlsUrl;
+    if (embedSrc.includes("youtube.com") || embedSrc.includes("youtu.be")) {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = embedSrc.match(regExp);
+      const videoId = (match && match[2].length === 11) ? match[2] : null;
+      if (videoId) {
+        embedSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&rel=0`;
+      }
+    }
+
+    return (
+      <div ref={containerRef} className="relative h-full w-full bg-black flex flex-col items-center justify-center">
+        <iframe
+          src={embedSrc}
+          className="w-full h-full border-none max-h-screen aspect-video"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          title={source.title || "Movie Player"}
+          onLoad={() => onPlayStarted?.()}
+        />
+        
+        {/* Floating Fullscreen Button for Embed/Iframe on Mobile */}
+        <button
+          onClick={handleFullscreenForContainer}
+          className="absolute top-4 right-4 z-40 md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-black/60 text-white border border-white/20 backdrop-blur-sm hover:scale-105 active:scale-95 transition cursor-pointer"
+          aria-label="Fullscreen"
+        >
+          <Maximize size={18} />
+        </button>
+        
+        {/* Watch on YouTube fallback button */}
+        {(source.hlsUrl.includes("youtube.com") || source.hlsUrl.includes("youtu.be")) && (
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 bg-black/80 px-4 py-3 rounded-lg border border-white/10 text-center max-w-[90vw] backdrop-blur-sm shadow-xl">
+            <p className="text-xs text-white/60">YouTube may restrict playing certain trailers inside other apps (Error 153).</p>
+            <a
+              href={source.hlsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded bg-[#e50914] px-4 text-xs font-bold text-white transition hover:bg-[#b20710] focus:outline-none cursor-pointer"
+            >
+              Watch Trailer on YouTube
+            </a>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
