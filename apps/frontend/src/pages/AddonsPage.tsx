@@ -35,6 +35,7 @@ export function AddonsPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [installed, setInstalled] = useState<string[]>([]);
   const [selectedAddon, setSelectedAddon] = useState<Addon | null>(null);
+  const [tmdbKeyInput, setTmdbKeyInput] = useState(localStorage.getItem("streamforge:settings:tmdb_key") || "");
   
   // Load data and storage on mount
   useEffect(() => {
@@ -258,6 +259,28 @@ export function AddonsPage() {
                 </button>
               ))}
             </nav>
+            <div className="border-t border-white/5 pt-5 hidden lg:block">
+              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">TMDB API Key</h3>
+              <p className="text-[10px] text-zinc-500 leading-normal mb-3">Nhập API key của bạn để hiển thị tên và tóm tắt phim bằng Tiếng Việt chất lượng cao.</p>
+              <input
+                type="text"
+                placeholder="Nhập API Key..."
+                value={tmdbKeyInput}
+                onChange={(e) => {
+                  setTmdbKeyInput(e.target.value);
+                  localStorage.setItem("streamforge:settings:tmdb_key", e.target.value.trim());
+                }}
+                className="w-full bg-zinc-950/70 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-red-600 focus:border-transparent transition-all"
+              />
+              {tmdbKeyInput && (
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full mt-2 bg-red-600/20 hover:bg-red-600/30 text-red-500 hover:text-white py-1.5 rounded text-[10px] font-bold transition cursor-pointer"
+                >
+                  Lưu & Khởi động lại
+                </button>
+              )}
+            </div>
           </aside>
 
           {/* Main Grid & Sliders */}

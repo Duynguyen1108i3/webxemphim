@@ -48,9 +48,26 @@ const seedDefaultAdmin = () => {
 
 import { usePlaybackStore } from "./playbackStore";
 
+const getInitialUser = (): AuthUser | null => {
+  try {
+    const userStr = localStorage.getItem("streamforge:auth:user");
+    return userStr ? JSON.parse(userStr) : null;
+  } catch {
+    return null;
+  }
+};
+
+const getInitialProfileId = (): string | null => {
+  try {
+    return localStorage.getItem("streamforge:auth:profileId");
+  } catch {
+    return null;
+  }
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  profileId: null,
+  user: getInitialUser(),
+  profileId: getInitialProfileId(),
   setUser: (user) => {
     if (user) {
       localStorage.setItem("streamforge:auth:user", JSON.stringify(user));

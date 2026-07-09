@@ -1,7 +1,9 @@
 import type { GenreDto, MovieCardDto, PlaybackSourceDto } from "@streamforge/shared-types";
 import { MOVIE_API_CACHE_TTL_MS, MOVIE_API_TIMEOUT_MS } from "./movieApiConfig";
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || "9a12c85d77f24523de7e112d7c189b4b";
+const getTmdbApiKey = () => {
+  return localStorage.getItem("streamforge:settings:tmdb_key") || import.meta.env.VITE_TMDB_API_KEY || "";
+};
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 export type NormalizedMovie = MovieCardDto & {
@@ -44,12 +46,13 @@ export type MovieDetailResponse = { movie: NormalizedMovie; episodes: any[] };
 
 type FetchOptions = { timeoutMs?: number; cacheTtlMs?: number };
 
-async function fetchJson<T>(path: string, options: FetchOptions = {}): Promise<T> {
+// Helper to query TMDB
+async function fetchTmdb<T>(path: string, options: FetchOptions = {}): Promise<T> {
+  const key = getTmdbApiKey();
   const separator = path.includes("?") ? "&" : "?";
-  const url = `${TMDB_BASE_URL}/${path.replace(/^\//, "")}${separator}api_key=${TMDB_API_KEY}&language=vi-VN`;
+  const url = `${TMDB_BASE_URL}/${path.replace(/^\//, "")}${separator}api_key=${key}&language=vi-VN`;
   const cacheKey = `tmdb:v3:${url}`;
 
-  // Read cache
   const cached = readCache<T>(cacheKey, options.cacheTtlMs ?? MOVIE_API_CACHE_TTL_MS);
   if (cached) return cached;
 
@@ -59,8 +62,7 @@ async function fetchJson<T>(path: string, options: FetchOptions = {}): Promise<T
   try {
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) {
-      // If vietnamese failed, fallback to english
-      const enUrl = `${TMDB_BASE_URL}/${path.replace(/^\//, "")}${separator}api_key=${TMDB_API_KEY}&language=en-US`;
+      const enUrl = `${TMDB_BASE_URL}/${path.replace(/^\//, "")}${separator}api_key=${key}&language=en-US`;
       const enResponse = await fetch(enUrl, { signal: controller.signal });
       if (!enResponse.ok) {
         throw new Error(`TMDB API call failed: ${response.status}`);
@@ -77,128 +79,224 @@ async function fetchJson<T>(path: string, options: FetchOptions = {}): Promise<T
   }
 }
 
+// Helper to query Cinemeta
+async function fetchCinemeta<T>(path: string, options: FetchOptions = {}): Promise<T> {
+  const url = `https://v3-cinemeta.strem.io/${path.replace(/^\//, "")}`;
+  const cacheKey = `cinemeta:${url}`;
+
+  const cached = readCache<T>(cacheKey, options.cacheTtlMs ?? MOVIE_API_CACHE_TTL_MS);
+  if (cached) return cached;
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), options.timeoutMs ?? MOVIE_API_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error("Cinemeta request failed");
+    const data = (await response.json()) as T;
+    writeCache(cacheKey, data);
+    return data;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 export const movieApi = {
   async getNewMovies(page = 1) {
-    const data = await fetchJson<any>(`/trending/all/day?page=${page}`);
-    return normalizeList(data?.results || []);
+    if (getTmdbApiKey()) {
+      const data = await fetchTmdb<any>(`/trending/all/day?page=${page}`);
+      return normalizeList(data?.results || []);
+    } else {
+      const data = await fetchCinemeta<any>("/catalog/movie/top.json");
+      return normalizeCinemetaList(data?.metas || []);
+    }
   },
 
   async getByGenre(slug: string, page = 1) {
-    // Map common Vietnamese OPhim genres slugs to TMDB IDs
-    const genreMap: Record<string, number> = {
-      "hanh-dong": 28,
-      "vien-tuong": 878,
-      "kinh-di": 27,
-      "hai-huoc": 35,
-      "tinh-cam": 10749,
-      "phieu-luu": 12,
-      "hoat-hinh": 16,
-      "hinh-su": 80,
-      "tai-lieu": 99,
-      "gia-dinh": 10751,
-      "gia-tuong": 14,
-      "lich-su": 36,
-      "am-nhac": 10402,
-      "bi-an": 9648,
-      "chien-tranh": 10752
-    };
-    const genreId = genreMap[slug] || 28;
-    const data = await fetchJson<any>(`/discover/movie?with_genres=${genreId}&sort_by=popularity.desc&page=${page}`);
-    return normalizeList(data?.results || []);
+    if (getTmdbApiKey()) {
+      const genreMap: Record<string, number> = {
+        "hanh-dong": 28,
+        "vien-tuong": 878,
+        "kinh-di": 27,
+        "hai-huoc": 35,
+        "tinh-cam": 10749,
+        "phieu-luu": 12,
+        "hoat-hinh": 16,
+        "hinh-su": 80,
+        "tai-lieu": 99,
+        "gia-dinh": 10751,
+        "gia-tuong": 14,
+        "lich-su": 36,
+        "am-nhac": 10402,
+        "bi-an": 9648,
+        "chien-tranh": 10752
+      };
+      const genreId = genreMap[slug] || 28;
+      const data = await fetchTmdb<any>(`/discover/movie?with_genres=${genreId}&sort_by=popularity.desc&page=${page}`);
+      return normalizeList(data?.results || []);
+    } else {
+      const genreMap: Record<string, string> = {
+        "hanh-dong": "Action",
+        "vien-tuong": "Sci-Fi",
+        "kinh-di": "Horror",
+        "hai-huoc": "Comedy",
+        "tinh-cam": "Romance",
+        "phieu-luu": "Adventure",
+        "hoat-hinh": "Animation",
+        "hinh-su": "Crime",
+        "tai-lieu": "Documentary"
+      };
+      const genre = genreMap[slug] || "Action";
+      const data = await fetchCinemeta<any>(`/catalog/movie/top/genre=${genre}.json`);
+      return normalizeCinemetaList(data?.metas || []);
+    }
   },
 
   async getByCountry(slug: string, page = 1) {
-    // Map country codes
-    const countryMap: Record<string, string> = {
-      "au-my": "US,GB,FR,DE",
-      "han-quoc": "KR",
-      "trung-quoc": "CN",
-      "nhat-ban": "JP",
-      "thai-lan": "TH",
-      "hong-kong": "HK",
-      "dai-loan": "TW",
-      "viet-nam": "VN"
-    };
-    const region = countryMap[slug] || "US";
-    const data = await fetchJson<any>(`/discover/movie?with_origin_country=${region}&sort_by=popularity.desc&page=${page}`);
-    return normalizeList(data?.results || []);
+    if (getTmdbApiKey()) {
+      const countryMap: Record<string, string> = {
+        "au-my": "US,GB,FR,DE",
+        "han-quoc": "KR",
+        "trung-quoc": "CN",
+        "nhat-ban": "JP",
+        "thai-lan": "TH",
+        "hong-kong": "HK",
+        "dai-loan": "TW",
+        "viet-nam": "VN"
+      };
+      const region = countryMap[slug] || "US";
+      const data = await fetchTmdb<any>(`/discover/movie?with_origin_country=${region}&sort_by=popularity.desc&page=${page}`);
+      return normalizeList(data?.results || []);
+    } else {
+      // Cinemeta fallback
+      const data = await fetchCinemeta<any>("/catalog/movie/top.json");
+      return normalizeCinemetaList(data?.metas || []);
+    }
   },
 
   async getByYear(year: string | number, page = 1) {
-    const data = await fetchJson<any>(`/discover/movie?primary_release_year=${year}&sort_by=popularity.desc&page=${page}`);
-    return normalizeList(data?.results || []);
+    if (getTmdbApiKey()) {
+      const data = await fetchTmdb<any>(`/discover/movie?primary_release_year=${year}&sort_by=popularity.desc&page=${page}`);
+      return normalizeList(data?.results || []);
+    } else {
+      const data = await fetchCinemeta<any>("/catalog/movie/top.json");
+      return normalizeCinemetaList(data?.metas || []);
+    }
   },
 
   async getByList(type: string, page = 1) {
-    if (type === "phim-bo") {
-      const data = await fetchJson<any>(`/discover/tv?sort_by=popularity.desc&page=${page}`);
-      return normalizeList(data?.results || [], "tv");
-    } else if (type === "phim-le") {
-      const data = await fetchJson<any>(`/discover/movie?sort_by=popularity.desc&page=${page}`);
-      return normalizeList(data?.results || [], "movie");
-    } else if (type === "hoat-hinh") {
-      // Anime list (Japanese animation genre 16)
-      const data = await fetchJson<any>(`/discover/tv?with_genres=16&with_original_language=ja&sort_by=popularity.desc&page=${page}`);
-      return normalizeList(data?.results || [], "tv");
-    } else if (type === "tv-shows") {
-      const data = await fetchJson<any>(`/discover/tv?with_genres=10764&sort_by=popularity.desc&page=${page}`);
-      return normalizeList(data?.results || [], "tv");
+    if (getTmdbApiKey()) {
+      if (type === "phim-bo") {
+        const data = await fetchTmdb<any>(`/discover/tv?sort_by=popularity.desc&page=${page}`);
+        return normalizeList(data?.results || [], "tv");
+      } else if (type === "phim-le") {
+        const data = await fetchTmdb<any>(`/discover/movie?sort_by=popularity.desc&page=${page}`);
+        return normalizeList(data?.results || [], "movie");
+      } else if (type === "hoat-hinh") {
+        const data = await fetchTmdb<any>(`/discover/tv?with_genres=16&with_original_language=ja&sort_by=popularity.desc&page=${page}`);
+        return normalizeList(data?.results || [], "tv");
+      } else if (type === "tv-shows") {
+        const data = await fetchTmdb<any>(`/discover/tv?with_genres=10764&sort_by=popularity.desc&page=${page}`);
+        return normalizeList(data?.results || [], "tv");
+      }
+      const data = await fetchTmdb<any>(`/trending/all/day?page=${page}`);
+      return normalizeList(data?.results || []);
+    } else {
+      if (type === "phim-bo" || type === "tv-shows") {
+        const data = await fetchCinemeta<any>("/catalog/series/top.json");
+        return normalizeCinemetaList(data?.metas || []);
+      } else if (type === "phim-le") {
+        const data = await fetchCinemeta<any>("/catalog/movie/top.json");
+        return normalizeCinemetaList(data?.metas || []);
+      } else if (type === "hoat-hinh") {
+        const data = await fetchCinemeta<any>("/catalog/series/top/genre=Animation.json");
+        return normalizeCinemetaList(data?.metas || []);
+      }
+      const data = await fetchCinemeta<any>("/catalog/movie/top.json");
+      return normalizeCinemetaList(data?.metas || []);
     }
-    const data = await fetchJson<any>(`/trending/all/day?page=${page}`);
-    return normalizeList(data?.results || []);
   },
 
   async searchMovies(keyword: string) {
-    const data = await fetchJson<any>(`/search/multi?query=${encodeURIComponent(keyword)}`);
-    return normalizeList(data?.results || []);
+    if (getTmdbApiKey()) {
+      const data = await fetchTmdb<any>(`/search/multi?query=${encodeURIComponent(keyword)}`);
+      return normalizeList(data?.results || []);
+    } else {
+      // Query movie and series search catalogs in parallel
+      const [movieSearch, seriesSearch] = await Promise.allSettled([
+        fetchCinemeta<any>(`/catalog/movie/top/search=${encodeURIComponent(keyword)}.json`),
+        fetchCinemeta<any>(`/catalog/series/top/search=${encodeURIComponent(keyword)}.json`)
+      ]);
+      const movies = movieSearch.status === "fulfilled" ? (movieSearch.value?.metas || []) : [];
+      const series = seriesSearch.status === "fulfilled" ? (seriesSearch.value?.metas || []) : [];
+      return normalizeCinemetaList([...movies, ...series]);
+    }
   },
 
   async getMovieDetail(slug: string): Promise<MovieDetailResponse> {
-    // Determine type by trying movie first, then falling back to tv show
-    let rawMovie: any = null;
-    let mediaType: "movie" | "tv" = "movie";
+    if (getTmdbApiKey()) {
+      let rawMovie: any = null;
+      let mediaType: "movie" | "tv" = "movie";
 
-    try {
-      rawMovie = await fetchJson<any>(`/movie/${slug}?append_to_response=external_ids,videos,credits`);
-      mediaType = "movie";
-    } catch {
       try {
-        rawMovie = await fetchJson<any>(`/tv/${slug}?append_to_response=external_ids,videos,credits`);
-        mediaType = "tv";
-      } catch (e) {
-        throw new Error(`Failed to load details for TMDB ID: ${slug}`);
-      }
-    }
-
-    // Build seasons & episodes if series
-    const seasonsList: any[] = [];
-    if (mediaType === "tv" && Array.isArray(rawMovie?.seasons)) {
-      // Populate first season or two to limit requests
-      const validSeasons = rawMovie.seasons.filter((s: any) => s.season_number > 0).slice(0, 3);
-      for (const season of validSeasons) {
+        rawMovie = await fetchTmdb<any>(`/movie/${slug}?append_to_response=external_ids,videos,credits`);
+        mediaType = "movie";
+      } catch {
         try {
-          const seasonData = await fetchJson<any>(`/tv/${slug}/season/${season.season_number}`);
-          seasonsList.push(seasonData);
+          rawMovie = await fetchTmdb<any>(`/tv/${slug}?append_to_response=external_ids,videos,credits`);
+          mediaType = "tv";
         } catch {
-          // Ignore failed season loads
+          throw new Error(`Failed to load TMDB movie details: ${slug}`);
         }
       }
-    }
 
-    const movie = normalizeMovie(rawMovie, mediaType, seasonsList);
-    return {
-      movie,
-      episodes: seasonsList
-    };
+      const seasonsList: any[] = [];
+      if (mediaType === "tv" && Array.isArray(rawMovie?.seasons)) {
+        const validSeasons = rawMovie.seasons.filter((s: any) => s.season_number > 0).slice(0, 3);
+        for (const season of validSeasons) {
+          try {
+            const seasonData = await fetchTmdb<any>(`/tv/${slug}/season/${season.season_number}`);
+            seasonsList.push(seasonData);
+          } catch {
+            // Ignore
+          }
+        }
+      }
+
+      return {
+        movie: normalizeMovie(rawMovie, mediaType, seasonsList),
+        episodes: seasonsList
+      };
+    } else {
+      // Fetch details from Cinemeta using IMDB ID
+      let rawMovie: any = null;
+      try {
+        const movieRes = await fetchCinemeta<any>(`/meta/movie/${slug}.json`);
+        rawMovie = movieRes?.meta;
+      } catch {
+        try {
+          const tvRes = await fetchCinemeta<any>(`/meta/series/${slug}.json`);
+          rawMovie = tvRes?.meta;
+        } catch {
+          throw new Error(`Failed to load Cinemeta metadata for: ${slug}`);
+        }
+      }
+      if (!rawMovie) throw new Error("Metadata is empty");
+      
+      const movie = normalizeCinemetaMovie(rawMovie);
+      return {
+        movie,
+        episodes: movie.seasons || []
+      };
+    }
   },
 
   async getPlayback(slug: string, episodeId?: string | null): Promise<PlaybackSourceDto & { title?: string; currentEpisodeId?: string; episodesList?: any[] }> {
     const { movie } = await this.getMovieDetail(slug);
     const mediaType = movie.mediaType || "movie";
-    const tmdbId = movie.id;
-    const imdbId = movie.imdbId || "";
+    const tmdbId = movie.tmdbId || movie.id;
+    const imdbId = movie.imdbId || movie.id || "";
 
-    // Parse requested episode
     let selectedSeason = 1;
     let selectedEpisode = 1;
     let selectedEpisodeId = "";
@@ -229,7 +327,6 @@ export const movieApi = {
       episodeTitle = ` - S${selectedSeason}E${selectedEpisode} - ${epObj.title}`;
     }
 
-    // Look for stream URLs from installed Stremio Addons in local storage
     let selectedStreamUrl = "";
     let streamTitle = `${movie.title}${episodeTitle}`;
     
@@ -237,13 +334,11 @@ export const movieApi = {
       const installedStr = localStorage.getItem("streamforge:addons:installed");
       const installedAddonsList = installedStr ? JSON.parse(installedStr) : [];
       
-      // Filter stream addons (AIOStreams, Torrentio, Comet)
       const streamAddons = (addonsData as any[]).filter(addon => 
         installedAddonsList.includes(addon.id) && 
         (addon.category === "Torrent" || addon.category === "Movies" || addon.category === "Debrid")
       );
 
-      // Query manifest URLs for streams
       for (const addon of streamAddons) {
         const rootUrl = addon.manifestUrl.replace("/manifest.json", "");
         const queryId = mediaType === "movie" ? imdbId : `${imdbId}:${selectedSeason}:${selectedEpisode}`;
@@ -255,8 +350,6 @@ export const movieApi = {
             if (res.ok) {
               const resData = await res.json();
               const streamsList = resData?.streams || [];
-              
-              // Find a clean HTTP stream (from Debrid) or fallback to first stream
               const cleanHttpStream = streamsList.find((s: any) => s.url && s.url.startsWith("http") && !s.url.includes(".mkv"));
               if (cleanHttpStream) {
                 selectedStreamUrl = cleanHttpStream.url;
@@ -266,8 +359,8 @@ export const movieApi = {
                 break;
               }
             }
-          } catch (e) {
-            // Ignore addon errors
+          } catch {
+            // Ignore
           }
         }
       }
@@ -275,16 +368,16 @@ export const movieApi = {
       console.error("Addon stream resolve failed:", e);
     }
 
-    // Default Embed Player fallback if no streams are found
+    // Default Embed Player fallback using IMDB ID or TMDB ID
     if (!selectedStreamUrl) {
+      const playId = imdbId || tmdbId;
       if (mediaType === "movie") {
-        selectedStreamUrl = `https://embed.su/embed/movie/${tmdbId}`;
+        selectedStreamUrl = `https://embed.su/embed/movie/${playId}`;
       } else {
-        selectedStreamUrl = `https://embed.su/embed/tv/${tmdbId}/${selectedSeason}/${selectedEpisode}`;
+        selectedStreamUrl = `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`;
       }
     }
 
-    // Fetch subtitle tracks from installed subtitle addons
     const subtitlesList: any[] = [];
     try {
       const installedStr = localStorage.getItem("streamforge:addons:installed");
@@ -323,7 +416,7 @@ export const movieApi = {
     return {
       movieId: movie.id,
       title: streamTitle,
-      hlsUrl: selectedStreamUrl, // VideoPlayer embeds this if iframe URL
+      hlsUrl: selectedStreamUrl,
       dashUrl: "",
       subtitles: subtitlesList,
       audioTracks: [{ language: "en", label: "English" }],
@@ -346,15 +439,16 @@ export const movieApi = {
       this.getByCountry("han-quoc", 1)
     ]);
 
+    const hasKey = !!getTmdbApiKey();
     return {
       rows: [
-        rowFrom("Phim thịnh hành trong ngày", latest),
-        rowFrom("Phim bộ trực tuyến", series),
-        rowFrom("Phim lẻ chọn lọc", single),
-        rowFrom("Hoạt hình Nhật (Anime)", anime),
-        rowFrom("TV Shows đặc sắc", tvShows),
-        rowFrom("Phim hành động kịch tính", action),
-        rowFrom("Phim bộ Hàn Quốc (K-Dramas)", korea)
+        rowFrom(hasKey ? "Phim thịnh hành trong ngày" : "Trending Movies", latest),
+        rowFrom(hasKey ? "Phim bộ trực tuyến" : "Popular TV Shows", series),
+        rowFrom(hasKey ? "Phim lẻ chọn lọc" : "Featured Movies", single),
+        rowFrom(hasKey ? "Hoạt hình Nhật (Anime)" : "Japanese Anime Collection", anime),
+        rowFrom(hasKey ? "TV Shows đặc sắc" : "Must-Watch TV Shows", tvShows),
+        rowFrom(hasKey ? "Phim hành động kịch tính" : "Action & Adventure", action),
+        rowFrom(hasKey ? "Phim bộ Hàn Quốc (K-Dramas)" : "Korean Dramas (K-Dramas)", korea)
       ].filter((row) => row.items.length > 0)
     };
   }
@@ -389,7 +483,6 @@ function normalizeMovie(input: any, mediaType: "movie" | "tv", seasonsList: any[
   const voteAverage = input?.vote_average || 8;
   const imdbId = input?.external_ids?.imdb_id || input?.imdb_id || "";
 
-  // Map seasons
   const seasons = seasonsList.map((season: any) => ({
     id: `${id}-season-${season.season_number}`,
     title: season.name || `Season ${season.season_number}`,
@@ -446,6 +539,85 @@ function normalizeMovie(input: any, mediaType: "movie" | "tv", seasonsList: any[
   };
 }
 
+// Cinemeta Normalizers
+function normalizeCinemetaList(metas: any[]): NormalizedMovie[] {
+  if (!Array.isArray(metas)) return [];
+  return metas.map(normalizeCinemetaMovie).filter(Boolean) as NormalizedMovie[];
+}
+
+function normalizeCinemetaMovie(item: any): NormalizedMovie {
+  const id = String(item.id || item.imdb_id || "");
+  const title = item.name || "Untitled";
+  const posterUrl = item.poster || createFallbackImage(title);
+  const backdropUrl = item.background || posterUrl;
+  const year = item.releaseInfo ? parseInt(item.releaseInfo) : new Date().getFullYear();
+  const rating = item.imdbRating ? parseFloat(item.imdbRating) : 8.0;
+
+  // Build seasons/episodes
+  const seasons = Array.isArray(item.videos) ? normalizeCinemetaEpisodes(item.videos, id, item.description || "") : [];
+
+  return {
+    id,
+    slug: id,
+    title,
+    synopsis: item.description || "",
+    posterUrl,
+    backdropUrl,
+    trailerUrl: null,
+    releaseYear: year,
+    runtimeMinutes: 45,
+    maturityRating: "PG_13",
+    averageRating: rating,
+    genres: Array.isArray(item.genres) ? item.genres.map((g: string) => ({ id: g, name: g, slug: slugify(g) })) : [],
+    name: title,
+    origin_name: title,
+    poster: posterUrl,
+    thumb: backdropUrl,
+    year,
+    quality: "4K Ultra HD",
+    lang: "en",
+    episode_current: item.type === "series" ? "TV Series" : "Movie",
+    category: [],
+    country: [],
+    description: item.description || "",
+    cast: [],
+    director: "",
+    tags: Array.isArray(item.genres) ? item.genres : [],
+    match: Math.round(rating * 10),
+    reviews: [],
+    seasons,
+    imdbId: id,
+    tmdbId: "",
+    mediaType: item.type === "series" || item.type === "show" ? "tv" : "movie"
+  };
+}
+
+function normalizeCinemetaEpisodes(videos: any[], movieSlug: string, synopsis: string): any[] {
+  const seasonsMap: Record<number, any[]> = {};
+  videos.forEach((video) => {
+    const season = video.season || 1;
+    if (!seasonsMap[season]) seasonsMap[season] = [];
+    seasonsMap[season].push({
+      id: video.id || `${movieSlug}-ep-${season}-${video.episode || video.number || 1}`,
+      title: video.title || `Episode ${video.episode || video.number || 1}`,
+      synopsis: synopsis,
+      runtimeMinutes: 45,
+      posterUrl: video.thumbnail || "",
+      seasonNumber: season,
+      episodeNumber: video.episode || video.number || 1
+    });
+  });
+
+  return Object.keys(seasonsMap).map((seasonNumStr) => {
+    const seasonNum = parseInt(seasonNumStr);
+    return {
+      id: `${movieSlug}-season-${seasonNum}`,
+      title: `Season ${seasonNum}`,
+      episodes: seasonsMap[seasonNum].sort((a, b) => a.episodeNumber - b.episodeNumber)
+    };
+  });
+}
+
 function rowFrom(title: string, result: PromiseSettledResult<NormalizedMovie[]>, ranked = false) {
   return { title, ranked, items: result.status === "fulfilled" ? result.value : [] };
 }
@@ -482,7 +654,7 @@ function writeCache<T>(key: string, data: T) {
   try {
     sessionStorage.setItem(key, JSON.stringify({ expiresAt: Date.now() + MOVIE_API_CACHE_TTL_MS, data }));
   } catch {
-    // Storage can be unavailable in private mode
+    // Ignore
   }
 }
 
