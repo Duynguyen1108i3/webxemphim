@@ -16,7 +16,19 @@ function isEmbedUrl(url: string): boolean {
   );
 }
 
-export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: PlaybackSourceDto & { title?: string }; onProgress?: (seconds: number, duration: number) => void; onPlayStarted?: () => void }) {
+export function VideoPlayer({
+  source,
+  onProgress,
+  onPlayStarted,
+  onNextEpisode,
+  hasNextEpisode = false
+}: {
+  source: PlaybackSourceDto & { title?: string; currentEpisodeId?: string; episodesList?: any[] };
+  onProgress?: (seconds: number, duration: number, episodeId?: string, episodeTitle?: string) => void;
+  onPlayStarted?: () => void;
+  onNextEpisode?: () => void;
+  hasNextEpisode?: boolean;
+}) {
   const isEmbed = isEmbedUrl(source.hlsUrl);
 
   useEffect(() => {
@@ -99,10 +111,23 @@ export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: Pla
     return () => {
       const video = videoRef.current;
       if (video && onProgress && video.duration) {
-        onProgress(Math.floor(video.currentTime), Math.floor(video.duration));
+        onProgress(Math.floor(video.currentTime), Math.floor(video.duration), source.currentEpisodeId, source.title);
       }
     };
-  }, [onProgress]);
+  }, [onProgress, source.currentEpisodeId, source.title]);
+
+  // Listen to video ended event to automatically play next episode
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const handleEnded = () => {
+      if (onNextEpisode) {
+        onNextEpisode();
+      }
+    };
+    video.addEventListener("ended", handleEnded);
+    return () => video.removeEventListener("ended", handleEnded);
+  }, [onNextEpisode]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -142,10 +167,10 @@ export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: Pla
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-    const handler = () => onProgress?.(Math.floor(video.currentTime), Math.floor(video.duration || 0));
+    const handler = () => onProgress?.(Math.floor(video.currentTime), Math.floor(video.duration || 0), source.currentEpisodeId, source.title);
     const interval = window.setInterval(handler, 10_000);
     return () => window.clearInterval(interval);
-  }, [onProgress]);
+  }, [onProgress, source.currentEpisodeId, source.title]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -346,6 +371,13 @@ export function VideoPlayer({ source, onProgress, onPlayStarted }: { source: Pla
             <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10); }} className="h-11 w-11 rounded-full p-0" aria-label="Forward 10 seconds">
               <RotateCw size={18} />
             </Button>
+
+            {/* Next Episode */}
+            {hasNextEpisode && onNextEpisode && (
+              <Button variant="ghost" onClick={onNextEpisode} className="h-11 w-11 rounded-full p-0 text-white hover:text-[#46d369]" aria-label="Next Episode">
+                <SkipForward size={20} fill="currentColor" />
+              </Button>
+            )}
 
             {/* Skip Intro */}
             {source.introEndSeconds && (

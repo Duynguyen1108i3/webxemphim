@@ -11,11 +11,14 @@ export interface WatchHistoryItem {
   duration: number;
   progress: number; // percentage 0-100
   movieData: NormalizedMovie;
+  episodeId?: string;
+  episodeTitle?: string;
 }
 
 interface PlaybackState {
   activeMovieDetail: NormalizedMovie | null;
   activePlayback: NormalizedMovie | null;
+  activeEpisodeId: string | null;
   clickedElementId: string | null;
   scrollPosition: number;
   openDetailModal: (movie: NormalizedMovie, elementId: string) => void;
@@ -25,7 +28,7 @@ interface PlaybackState {
   myList: NormalizedMovie[];
   toggleMyList: (movie: NormalizedMovie) => void;
   watchHistory: WatchHistoryItem[];
-  updateWatchHistory: (movie: NormalizedMovie, currentTime: number, duration: number) => void;
+  updateWatchHistory: (movie: NormalizedMovie, currentTime: number, duration: number, episodeId?: string, episodeTitle?: string) => void;
 }
 
 export const usePlaybackStore = create<PlaybackState>((set) => ({
@@ -89,6 +92,8 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
     });
   },
 
+  activeEpisodeId: null,
+
   openPlayback: (movie, elementId) => {
     const scrollY = window.scrollY;
     // Set body overflow hidden
@@ -98,8 +103,26 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
     document.body.style.right = "0";
     document.body.style.overflow = "hidden";
 
+    // Resolve episode ID: check elementId prefix or fallback to localStorage history
+    let episodeId: string | null = null;
+    if (elementId.startsWith("episode-")) {
+      episodeId = elementId.replace("episode-", "");
+    } else {
+      try {
+        const stored = localStorage.getItem("streamforge:watchhistory");
+        const history: any[] = stored ? JSON.parse(stored) : [];
+        const item = history.find((x) => x.id === movie.id);
+        if (item && item.episodeId) {
+          episodeId = item.episodeId;
+        }
+      } catch (e) {
+        console.error("Failed to read watch history:", e);
+      }
+    }
+
     set({
       activePlayback: movie,
+      activeEpisodeId: episodeId,
       clickedElementId: elementId,
       scrollPosition: scrollY,
     });
@@ -117,6 +140,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
 
       return {
         activePlayback: null,
+        activeEpisodeId: null,
         clickedElementId: null,
       };
     });
@@ -131,7 +155,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
     }
   })(),
 
-  updateWatchHistory: (movie, currentTime, duration) => {
+  updateWatchHistory: (movie, currentTime, duration, episodeId, episodeTitle) => {
     set((state) => {
       if (!movie) return {};
       // Calculate progress percentage
@@ -159,6 +183,8 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         duration,
         progress,
         movieData: movie,
+        episodeId,
+        episodeTitle,
       };
 
       // Put at the beginning

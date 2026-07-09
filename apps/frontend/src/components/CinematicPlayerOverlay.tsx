@@ -7,16 +7,16 @@ import { movieApi } from "../lib/movieApi";
 import { VideoPlayer } from "./VideoPlayer";
 
 export function CinematicPlayerOverlay() {
-  const { activePlayback, clickedElementId, closePlayback, updateWatchHistory } = usePlaybackStore();
+  const { activePlayback, activeEpisodeId, clickedElementId, closePlayback, updateWatchHistory } = usePlaybackStore();
   const [openingFinished, setOpeningFinished] = useState(false);
   const [playbackStarted, setPlaybackStarted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
   // Fetch playback details
   const { data: source, isLoading: apiLoading, error } = useQuery({
-    queryKey: ["playback-overlay", activePlayback?.id],
+    queryKey: ["playback-overlay", activePlayback?.id, activeEpisodeId],
     enabled: Boolean(activePlayback?.id) && openingFinished,
-    queryFn: () => movieApi.getPlayback(activePlayback!.slug),
+    queryFn: () => movieApi.getPlayback(activePlayback!.slug, activeEpisodeId),
     retry: false,
     staleTime: 5 * 60 * 1000
   });
@@ -131,29 +131,36 @@ export function CinematicPlayerOverlay() {
         )}
 
         {/* Actual Video Player container (scales & fades in) */}
-        {openingFinished && source && (
-          <motion.div
-            className="h-full w-full bg-black"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ 
-              opacity: isClosing ? 0 : 1, 
-              scale: isClosing ? 0.98 : 1 
-            }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            style={{ willChange: "transform, opacity" }}
-          >
-            <VideoPlayer
-              source={source}
-              onProgress={(currentTime, duration) => {
-                updateWatchHistory(activePlayback, currentTime, duration);
-              }}
-              // Custom play tracking to fade out loader
-              onPlayStarted={() => {
-                setPlaybackStarted(true);
-              }}
-            />
-          </motion.div>
-        )}
+        {openingFinished && source && (() => {
+          const currentIndex = source.episodesList?.findIndex((ep: any) => ep.id === source.currentEpisodeId) ?? -1;
+          const nextEpisode = currentIndex !== -1 && source.episodesList ? source.episodesList[currentIndex + 1] : null;
+          
+          const handleNextEpisode = (nextEpisodeId: string) => {
+            setPlaybackStarted(false);
+            usePlaybackStore.setState({ activeEpisodeId: nextEpisodeId });
+          };
+
+          return (
+            <motion.div
+              className="relative h-full w-full bg-black z-20"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <VideoPlayer
+                source={source}
+                onProgress={(currentTime, duration) => {
+                  updateWatchHistory(activePlayback, currentTime, duration, source.currentEpisodeId, source.title);
+                }}
+                onPlayStarted={() => {
+                  setPlaybackStarted(true);
+                }}
+                onNextEpisode={nextEpisode ? () => handleNextEpisode(nextEpisode.id) : undefined}
+                hasNextEpisode={Boolean(nextEpisode)}
+              />
+            </motion.div>
+          );
+        })()}
       </div>
     </motion.div>
   );

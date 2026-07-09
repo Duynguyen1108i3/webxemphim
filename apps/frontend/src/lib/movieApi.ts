@@ -128,21 +128,34 @@ export const movieApi = {
     };
   },
 
-  async getPlayback(slug: string): Promise<PlaybackSourceDto & { title?: string }> {
-    const { movie, episodes } = await this.getMovieDetail(slug);
-    const playable = episodes.flatMap((server) => server.server_data ?? []).find((episode) => episode.link_m3u8 || episode.link || episode.link_embed);
-    const hlsUrl = playable?.link_m3u8 || playable?.link || playable?.link_embed || movie.trailerUrl || "";
+  async getPlayback(slug: string, episodeId?: string | null): Promise<PlaybackSourceDto & { title?: string; currentEpisodeId?: string; episodesList?: any[] }> {
+    const { movie } = await this.getMovieDetail(slug);
+    const seasons = movie.seasons || [];
+    
+    // Flatten all episodes from all servers/seasons
+    const allEpisodes = seasons.flatMap((s: any) => s.episodes.map((ep: any) => ({ ...ep, serverName: s.title })));
+    
+    // Find the requested episode, or fallback to the first playable episode
+    let selectedEpisode = allEpisodes.find((ep: any) => ep.id === episodeId);
+    if (!selectedEpisode && allEpisodes.length > 0) {
+      selectedEpisode = allEpisodes.find((ep: any) => ep.link_m3u8 || ep.link || ep.link_embed);
+    }
+    
+    const hlsUrl = selectedEpisode?.link_m3u8 || selectedEpisode?.link || selectedEpisode?.link_embed || movie.trailerUrl || "";
     if (!hlsUrl) throw new MovieApiError("Playback source not available", `/phim/${slug}`);
+    
     return {
       movieId: movie.id,
-      title: movie.title,
+      title: selectedEpisode ? `${movie.title} - ${selectedEpisode.title}` : movie.title,
       hlsUrl,
       dashUrl: "",
       subtitles: [],
       audioTracks: [{ language: "vi", label: "Vietnamese" }],
       introStartSeconds: 0,
       introEndSeconds: 0,
-      recapEndSeconds: 0
+      recapEndSeconds: 0,
+      currentEpisodeId: selectedEpisode?.id || "",
+      episodesList: allEpisodes,
     };
   },
 
