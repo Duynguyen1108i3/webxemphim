@@ -115,7 +115,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "new-popular
         
         {/* Maturity Rating & Volume controls moved directly to section parent for correct viewport alignment */}
         {hero && (
-          <div className="absolute bottom-28 right-0 z-20 flex items-center gap-4 select-none pr-4 sm:pr-8 md:pr-14 lg:pr-16">
+          <div className="absolute bottom-40 sm:bottom-28 right-0 z-20 flex items-center gap-4 select-none pr-4 sm:pr-8 md:pr-14 lg:pr-16">
             <button
               onClick={() => setIsHeroMuted(!isHeroMuted)}
               className="grid h-10 w-10 place-items-center rounded-full border border-white/60 bg-black/35 text-white hover:bg-white/10 transition hover:border-white focus:outline-none cursor-pointer"

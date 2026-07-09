@@ -13,7 +13,7 @@ import { Skeleton } from "@streamforge/ui";
 import type { MovieCardDto } from "@streamforge/shared-types";
 
 export function AppShell() {
-  const { activeMovieDetail, activePlayback } = usePlaybackStore();
+  const { activeMovieDetail, activePlayback, watchHistory } = usePlaybackStore();
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -79,15 +79,13 @@ export function AppShell() {
       <header className={`fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between px-4 transition-all duration-300 sm:px-8 md:px-14 lg:px-16 ${scrolled ? "bg-[#141414]/95 shadow-lg shadow-black/20 backdrop-blur-md" : "bg-gradient-to-b from-black/80 via-black/35 to-transparent"}`}>
         <div className="flex items-center gap-4 sm:gap-7">
           {/* Hamburger menu button for mobile */}
-          {!searchExpanded && (
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="nf-icon md:hidden rounded-full p-1.5 hover:bg-white/10"
-              aria-label="Open navigation menu"
-            >
-              <Menu size={22} />
-            </button>
-          )}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="nf-icon md:hidden rounded-full p-1.5 hover:bg-white/10"
+            aria-label="Open navigation menu"
+          >
+            <Menu size={22} />
+          </button>
           
           <NavLink to="/" className={`brand-logo text-2xl font-black tracking-tight text-[#e50914] md:text-3xl ${searchExpanded ? "hidden md:block" : ""}`}>STREAMFORGE</NavLink>
           <nav className="hidden items-center gap-5 text-sm font-medium text-white/75 md:flex">
@@ -134,7 +132,7 @@ export function AppShell() {
                     setSearchExpanded(false);
                   }
                 }}
-                className="w-full md:w-44 bg-transparent text-xs text-white focus:outline-none"
+                className="w-full md:w-44 bg-transparent text-base md:text-xs text-white focus:outline-none"
                 autoFocus
               />
               {(new URLSearchParams(location.search).get("q") ?? "") && (
@@ -245,6 +243,34 @@ export function AppShell() {
                   <button onClick={() => handleGenreClick("hoat-hinh")} className="text-left hover:text-white hover:bg-white/5 py-1.5 px-2.5 rounded transition cursor-pointer">Hoạt Hình</button>
                   <button onClick={() => handleGenreClick("han-quoc")} className="text-left hover:text-white hover:bg-white/5 py-1.5 px-2.5 rounded transition cursor-pointer">Hàn Quốc</button>
                 </div>
+                
+                {/* Watch History List */}
+                {watchHistory && watchHistory.length > 0 && (
+                  <>
+                    <hr className="border-white/10 my-1" />
+                    <p className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Lịch sử xem</p>
+                    <div className="flex flex-col gap-2.5 text-sm font-semibold text-white/60">
+                      {watchHistory.slice(0, 3).map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            usePlaybackStore.getState().openDetailModal(item.movieData, `card-${item.id}`);
+                          }}
+                          className="flex items-center gap-2 hover:text-white hover:bg-white/5 py-1 px-1.5 rounded transition cursor-pointer text-left w-full focus:outline-none"
+                        >
+                          <img src={item.posterUrl || item.backdropUrl} className="w-8 aspect-[2/3] object-cover rounded shadow-md border border-white/10 shrink-0" alt="" />
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-xs text-white/80">{item.title}</p>
+                            <div className="w-full bg-zinc-700 h-1 rounded overflow-hidden mt-1 max-w-[120px]">
+                              <div className="bg-[#e50914] h-full" style={{ width: `${item.progress}%` }} />
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </motion.nav>
           </>
