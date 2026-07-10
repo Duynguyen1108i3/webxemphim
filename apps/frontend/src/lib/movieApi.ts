@@ -331,7 +331,7 @@ export const movieApi = {
     let streamTitle = `${movie.title}${episodeTitle}`;
     
     // ── Fetch ALL streams from ALL installed addons in parallel ──
-    const allAddonStreams: { name: string; url: string; quality: string; addon: string; title: string; size?: string; seeders?: number; behaviorHints?: any }[] = [];
+    const allAddonStreams: { name: string; url: string; quality: string; addon: string; title: string; size?: string; seeders?: number; behaviorHints?: any; streamType: "http" | "torrent" | "external" }[] = [];
     
     try {
       const installedStr = localStorage.getItem("streamforge:addons:installed");
@@ -358,25 +358,54 @@ export const movieApi = {
               const resData = await res.json();
               const streamsList = resData?.streams || [];
               for (const s of streamsList) {
-                const streamUrl = s.url || s.externalUrl || "";
+                // Determine stream URL and type
+                let streamUrl = "";
+                let streamType: "http" | "torrent" | "external" = "http";
+                
+                if (s.url && s.url.startsWith("http")) {
+                  streamUrl = s.url;
+                  streamType = "http";
+                } else if (s.externalUrl) {
+                  streamUrl = s.externalUrl;
+                  streamType = "external";
+                } else if (s.infoHash) {
+                  // Build magnet URI from infoHash + trackers
+                  const trackers = (s.sources || [])
+                    .filter((src: string) => src.startsWith("tracker:"))
+                    .map((src: string) => src.replace("tracker:", ""))
+                    .slice(0, 5); // Limit trackers to keep URL reasonable
+                  const filename = s.behaviorHints?.filename || s.title?.split("\n")[0] || "";
+                  streamUrl = `magnet:?xt=urn:btih:${s.infoHash}`;
+                  if (filename) streamUrl += `&dn=${encodeURIComponent(filename)}`;
+                  for (const tr of trackers) {
+                    streamUrl += `&tr=${encodeURIComponent(tr)}`;
+                  }
+                  streamType = "torrent";
+                }
+                
                 if (!streamUrl) continue;
                 
-                // Parse quality from title (e.g. "4K HDR", "1080p", "720p", "480p")
-                const titleStr = (s.title || s.name || "").toString();
+                // Parse quality from name/title (e.g. "4K HDR", "1080p", "720p", "480p")
+                const fullText = `${s.name || ""} ${s.title || ""}`;
                 let quality = "HD";
-                if (/2160p|4k|uhd/i.test(titleStr)) quality = "4K";
-                else if (/1080p/i.test(titleStr)) quality = "1080p";
-                else if (/720p/i.test(titleStr)) quality = "720p";
-                else if (/480p/i.test(titleStr)) quality = "480p";
-                if (/hdr|dolby.?vision|dv/i.test(titleStr)) quality += " HDR";
+                if (/2160p|4k|uhd/i.test(fullText)) quality = "4K";
+                else if (/1080p/i.test(fullText)) quality = "1080p";
+                else if (/720p/i.test(fullText)) quality = "720p";
+                else if (/480p/i.test(fullText)) quality = "480p";
+                if (/hdr|dolby.?vision|dv/i.test(fullText)) quality += " HDR";
                 
-                // Parse size (e.g. "18.2 GB", "2.84 GB")
-                const sizeMatch = titleStr.match(/([\d.]+)\s*(GB|MB|TB)/i);
+                // Parse size (e.g. "💾 18.2 GB" or "18.2 GB")
+                const titleStr = (s.title || "").toString();
+                const sizeMatch = titleStr.match(/💾?\s*([\d.]+)\s*(GB|MB|TB)/i);
                 const size = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[2].toUpperCase()}` : undefined;
                 
                 // Parse seeders (e.g. "👤 67")
                 const seederMatch = titleStr.match(/👤\s*(\d+)/);
                 const seeders = seederMatch ? parseInt(seederMatch[1]) : undefined;
+                
+                // Parse source tracker (e.g. "⚙️ NyaaSi", "⚙️ ThePirateBay")
+                const sourceMatch = titleStr.match(/⚙️\s*(\S+)/);
+                const trackerName = sourceMatch ? sourceMatch[1] : undefined;
                 
                 // Build display name from first line of title
                 const displayTitle = titleStr.split("\n")[0].trim().substring(0, 100) || addon.name;
@@ -389,7 +418,8 @@ export const movieApi = {
                   title: titleStr,
                   size,
                   seeders,
-                  behaviorHints: s.behaviorHints
+                  behaviorHints: s.behaviorHints,
+                  streamType
                 });
               }
             }
@@ -414,7 +444,7 @@ export const movieApi = {
     });
 
     // Build alternateSources: addon streams first, then embed fallbacks
-    const alternateSources: { name: string; url: string; quality: string; addon?: string; size?: string; seeders?: number }[] = [];
+    const alternateSources: { name: string; url: string; quality: string; addon?: string; size?: string; seeders?: number; streamType?: "http" | "torrent" | "external" | "embed" }[] = [];
     
     // Add all addon streams
     for (const s of allAddonStreams) {
@@ -424,7 +454,8 @@ export const movieApi = {
         quality: s.quality,
         addon: s.addon,
         size: s.size,
-        seeders: s.seeders
+        seeders: s.seeders,
+        streamType: s.streamType
       });
     }
 
@@ -440,21 +471,21 @@ export const movieApi = {
     // Add embed fallback servers at the end
     const playId = imdbId || tmdbId;
     if (mediaType === "movie") {
-      alternateSources.push({ name: "VidLink (Embed)", url: `https://vidlink.pro/embed/movie/${playId}`, quality: "4K" });
-      alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/movie/${playId}`, quality: "1080p" });
+      alternateSources.push({ name: "VidLink (Embed)", url: `https://vidlink.pro/embed/movie/${playId}`, quality: "4K", streamType: "embed" });
+      alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/movie/${playId}`, quality: "1080p", streamType: "embed" });
       if (imdbId) {
-        alternateSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/movie/${imdbId}`, quality: "1080p" });
+        alternateSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/movie/${imdbId}`, quality: "1080p", streamType: "embed" });
       }
-      alternateSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/movie/${playId}`, quality: "720p" });
-      alternateSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/movie/${playId}`, quality: "720p" });
+      alternateSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
+      alternateSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
     } else {
-      alternateSources.push({ name: "VidLink (Embed)", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "4K" });
-      alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p" });
+      alternateSources.push({ name: "VidLink (Embed)", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "4K", streamType: "embed" });
+      alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       if (imdbId) {
-        alternateSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/tv/${imdbId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p" });
+        alternateSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/tv/${imdbId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       }
-      alternateSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p" });
-      alternateSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p" });
+      alternateSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
+      alternateSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
     }
 
     if (!selectedStreamUrl && alternateSources.length > 0) {

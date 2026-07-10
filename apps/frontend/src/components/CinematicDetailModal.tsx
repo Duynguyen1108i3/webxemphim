@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import { Check, ChevronDown, Play, Plus, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from "lucide-react";
+import { Check, ChevronDown, Download, ExternalLink, Play, Plus, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePlaybackStore } from "../store/playbackStore";
 import { movieApi } from "../lib/movieApi";
@@ -318,7 +318,7 @@ export function CinematicDetailModal() {
                 <span>Nguồn Phát</span>
                 <span className="text-[10px] uppercase tracking-wider bg-[#e50914] px-2 py-0.5 rounded font-black text-white animate-pulse">LIVE</span>
               </h4>
-              <p className="text-xs text-white/50 mt-1">Chọn nguồn phát bất kỳ. Nguồn từ Addon được xếp theo chất lượng (4K → 720p).</p>
+              <p className="text-xs text-white/50 mt-1">Nguồn từ Addon được xếp theo chất lượng. Torrent cần Debrid hoặc ứng dụng torrent.</p>
             </div>
             {playbackData?.alternateSources && playbackData.alternateSources.length > 0 && (
               <span className="text-[10px] font-bold text-white/30 bg-white/5 px-2 py-1 rounded shrink-0">
@@ -335,59 +335,98 @@ export function CinematicDetailModal() {
               <p className="text-[10px] text-white/30 text-center mt-2 animate-pulse">Đang tải nguồn phát từ các Addon đã cài đặt...</p>
             </div>
           ) : playbackData?.alternateSources && playbackData.alternateSources.length > 0 ? (() => {
-            // Separate addon streams from embed fallbacks
-            const addonStreams = playbackData.alternateSources.filter((s: any) => s.addon);
-            const embedStreams = playbackData.alternateSources.filter((s: any) => !s.addon);
+            // Separate streams by type
+            const torrentStreams = playbackData.alternateSources.filter((s: any) => s.streamType === "torrent");
+            const httpStreams = playbackData.alternateSources.filter((s: any) => s.streamType === "http" || s.streamType === "external");
+            const embedStreams = playbackData.alternateSources.filter((s: any) => s.streamType === "embed" || (!s.streamType && !s.addon));
+            
+            const StreamItem = ({ src, idx, isTorrent }: { src: any; idx: number; isTorrent?: boolean }) => (
+              <a
+                key={`stream-${idx}-${src.url?.substring(0, 40)}`}
+                href={isTorrent ? src.url : undefined}
+                onClick={isTorrent ? undefined : (e) => { e.preventDefault(); openPlayback(displayMovie, "hero", src.url); }}
+                target={isTorrent ? "_blank" : undefined}
+                rel={isTorrent ? "noopener noreferrer" : undefined}
+                className="w-full flex items-center gap-3 bg-gradient-to-r from-white/[.03] to-transparent hover:from-[#e50914]/15 hover:to-[#e50914]/5 hover:border-[#e50914]/30 transition-all duration-300 border border-white/5 rounded-lg px-4 py-3 text-left cursor-pointer group active:scale-[0.99]"
+              >
+                {/* Icon based on type */}
+                <span className={`grid place-items-center h-9 w-9 rounded-lg shrink-0 transition-all duration-300 ${
+                  isTorrent 
+                    ? "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/30 group-hover:text-emerald-300"
+                    : "bg-white/5 text-white/70 group-hover:bg-[#e50914]/30 group-hover:text-white"
+                }`}>
+                  {isTorrent ? <Download size={14} /> : <Play size={14} fill="currentColor" />}
+                </span>
+                
+                {/* Stream info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Quality badge */}
+                    <span className={`text-[8px] font-black tracking-wider px-1.5 py-0.5 rounded uppercase shrink-0 ${
+                      src.quality?.includes("4K") ? "bg-purple-600/30 text-purple-300 border border-purple-500/20" :
+                      src.quality?.includes("1080p") ? "bg-blue-600/30 text-blue-300 border border-blue-500/20" :
+                      src.quality?.includes("720p") ? "bg-zinc-600/30 text-zinc-300 border border-zinc-500/20" :
+                      "bg-white/10 text-white/50"
+                    }`}>{src.quality}</span>
+                    {/* Torrent badge */}
+                    {isTorrent && (
+                      <span className="text-[7px] font-black tracking-wider px-1 py-0.5 rounded bg-emerald-600/20 text-emerald-400 border border-emerald-500/20">TORRENT</span>
+                    )}
+                    {/* Stream name */}
+                    <p className="text-[11px] font-semibold truncate text-white/80 group-hover:text-white">{src.name}</p>
+                  </div>
+                  {/* Metadata: addon, size, seeders */}
+                  <div className="flex items-center gap-2 mt-0.5 text-[10px] text-white/30 flex-wrap">
+                    {src.addon && <span className="font-semibold text-white/40">{src.addon}</span>}
+                    {src.size && (
+                      <>
+                        <span>•</span>
+                        <span>💾 {src.size}</span>
+                      </>
+                    )}
+                    {src.seeders !== undefined && src.seeders > 0 && (
+                      <>
+                        <span>•</span>
+                        <span className={src.seeders > 20 ? "text-green-400" : src.seeders > 5 ? "text-amber-400" : "text-red-400"}>👤 {src.seeders}</span>
+                      </>
+                    )}
+                    {isTorrent && <span className="text-emerald-400/50">• Mở bằng Torrent Client</span>}
+                  </div>
+                </div>
+                
+                {/* External link icon for torrents */}
+                {isTorrent && (
+                  <ExternalLink size={14} className="text-white/20 group-hover:text-white/60 shrink-0" />
+                )}
+              </a>
+            );
             
             return (
-              <div className="space-y-4">
-                {/* Addon Streams (like Stremio) */}
-                {addonStreams.length > 0 && (
+              <div className="space-y-5">
+                {/* HTTP Direct Streams */}
+                {httpStreams.length > 0 && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-widest text-white/30 font-bold mb-2">Từ Addon ({addonStreams.length} nguồn)</p>
-                    <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin">
-                      {addonStreams.map((src: any, idx: number) => (
-                        <button
-                          key={`addon-${idx}-${src.url}`}
-                          onClick={() => openPlayback(displayMovie, "hero", src.url)}
-                          className="w-full flex items-center gap-3 bg-gradient-to-r from-white/[.03] to-transparent hover:from-[#e50914]/15 hover:to-[#e50914]/5 hover:border-[#e50914]/30 transition-all duration-300 border border-white/5 rounded-lg px-4 py-3 text-left cursor-pointer group active:scale-[0.99]"
-                        >
-                          {/* Play icon */}
-                          <span className="grid place-items-center h-9 w-9 rounded-lg bg-white/5 text-white/70 group-hover:bg-[#e50914]/30 group-hover:text-white transition-all duration-300 shrink-0">
-                            <Play size={14} fill="currentColor" />
-                          </span>
-                          
-                          {/* Stream info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {/* Quality badge */}
-                              <span className={`text-[8px] font-black tracking-wider px-1.5 py-0.5 rounded uppercase shrink-0 ${
-                                src.quality?.includes("4K") ? "bg-purple-600/30 text-purple-300 border border-purple-500/20" :
-                                src.quality?.includes("1080p") ? "bg-blue-600/30 text-blue-300 border border-blue-500/20" :
-                                src.quality?.includes("720p") ? "bg-zinc-600/30 text-zinc-300 border border-zinc-500/20" :
-                                "bg-white/10 text-white/50"
-                              }`}>{src.quality}</span>
-                              {/* Stream name */}
-                              <p className="text-[11px] font-semibold truncate text-white/80 group-hover:text-white">{src.name}</p>
-                            </div>
-                            {/* Metadata: addon, size, seeders */}
-                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-white/30">
-                              <span className="font-semibold text-white/40">{src.addon}</span>
-                              {src.size && (
-                                <>
-                                  <span>•</span>
-                                  <span>📦 {src.size}</span>
-                                </>
-                              )}
-                              {src.seeders !== undefined && src.seeders > 0 && (
-                                <>
-                                  <span>•</span>
-                                  <span className={src.seeders > 20 ? "text-green-400" : src.seeders > 5 ? "text-amber-400" : "text-red-400"}>👤 {src.seeders}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </button>
+                    <p className="text-[10px] uppercase tracking-widest text-white/30 font-bold mb-2 flex items-center gap-2">
+                      <Play size={10} className="text-[#e50914]" /> Phát trực tiếp ({httpStreams.length})
+                    </p>
+                    <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1">
+                      {httpStreams.map((src: any, idx: number) => (
+                        <StreamItem key={`http-${idx}`} src={src} idx={idx} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Torrent Streams */}
+                {torrentStreams.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-white/30 font-bold mb-2 flex items-center gap-2">
+                      <Download size={10} className="text-emerald-400" /> Torrent ({torrentStreams.length} nguồn)
+                      <span className="text-[8px] text-white/20 font-normal normal-case">• Cần Debrid hoặc uTorrent/qBit</span>
+                    </p>
+                    <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+                      {torrentStreams.map((src: any, idx: number) => (
+                        <StreamItem key={`torrent-${idx}`} src={src} idx={idx} isTorrent />
                       ))}
                     </div>
                   </div>
