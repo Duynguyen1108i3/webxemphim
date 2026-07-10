@@ -355,66 +355,24 @@ export function VideoPlayer({
     return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   }
 
-  // ─── Auto-Fallback Embed Player ───
-  // Tracks which server index we're on, whether auto-probing is active,
-  // and renders a status overlay while trying servers.
-  const [serverIndex, setServerIndex] = useState(0);
-  const [probing, setProbing] = useState(true);
-  const [probeFailed, setProbeFailed] = useState(false);
+  // ─── Instant Embed Player (no probing delay) ───
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const probeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [serverIndex, setServerIndex] = useState(0);
+  
+  // Filter to only embed sources for the player (torrent/magnet links can't be iframed)
+  const allSources: any[] = isEmbed ? ((source as any)?.alternateSources || []) : [];
+  const embedSources = allSources.filter((s: any) => !s.url?.startsWith("magnet:") && s.streamType !== "torrent");
 
-  // Reset probe state when activeUrl or source changes externally
-  useEffect(() => {
-    if (!isEmbed) return;
-    setProbing(true);
-    setProbeFailed(false);
-    // Give the iframe up to 8 seconds to show content; if it stays blank/blocked, skip.
-    if (probeTimerRef.current) clearTimeout(probeTimerRef.current);
-    probeTimerRef.current = setTimeout(() => {
-      // If still probing after 8s, this server likely failed → auto-advance
-      handleServerFailed();
-    }, 8000);
-    return () => {
-      if (probeTimerRef.current) clearTimeout(probeTimerRef.current);
-    };
-  }, [activeUrl, isEmbed]);
-
-  const alternateSources: any[] = isEmbed ? ((source as any)?.alternateSources || []) : [];
-
-  const handleIframeLoaded = () => {
-    // iframe loaded event fires even for blocked pages. We mark probe complete
-    // and cancel the fail timer. If the page is actually blocked (about:blank or 
-    // error page), the user will see a blank → they can click "Skip" or wait for
-    // the 8s auto-fallback.
-    // For cross-origin iframes we can't check content, so we rely on the timer.
-    // A successful load within 8s is considered "working".
-    if (probeTimerRef.current) clearTimeout(probeTimerRef.current);
-    setProbing(false);
-    onPlayStarted?.();
-  };
-
-  const handleServerFailed = () => {
-    if (probeTimerRef.current) clearTimeout(probeTimerRef.current);
-    const nextIndex = serverIndex + 1;
-    if (nextIndex < alternateSources.length) {
-      setServerIndex(nextIndex);
-      setActiveUrl(alternateSources[nextIndex].url);
-      setProbing(true);
-      setProbeFailed(false);
-    } else {
-      // All servers exhausted
-      setProbing(false);
-      setProbeFailed(true);
+  const handleServerSwitch = (idx: number) => {
+    setServerIndex(idx);
+    if (embedSources[idx]) {
+      setActiveUrl(embedSources[idx].url);
     }
   };
 
-  const handleManualServerSwitch = (idx: number) => {
-    if (probeTimerRef.current) clearTimeout(probeTimerRef.current);
-    setServerIndex(idx);
-    setActiveUrl(alternateSources[idx].url);
-    setProbing(true);
-    setProbeFailed(false);
+  const handleNextServer = () => {
+    const next = (serverIndex + 1) % embedSources.length;
+    handleServerSwitch(next);
   };
 
   if (source && isEmbed) {
@@ -428,150 +386,72 @@ export function VideoPlayer({
       }
     }
 
-    const currentServer = alternateSources[serverIndex] || { name: "Unknown", quality: "HD" };
+    const currentServer = embedSources[serverIndex] || { name: activeUrl.split("/")[2] || "Player", quality: "HD" };
 
     return (
       <div ref={containerRef} className="relative h-full w-full bg-black flex flex-col items-center justify-center">
         
-        {/* ── Top Bar: Server Info + Quality Badge + Manual Selector ── */}
-        <div className="absolute top-0 left-0 right-0 z-[130] flex items-center justify-between px-4 py-2.5 bg-gradient-to-b from-black/80 to-transparent pointer-events-auto select-none">
-          {/* Current server info */}
+        {/* ── Compact Top Bar: auto-hides after 4s, shows on hover ── */}
+        <div className="absolute top-0 left-0 right-0 z-[130] flex items-center justify-between px-3 py-2 bg-gradient-to-b from-black/70 to-transparent pointer-events-auto select-none opacity-100 hover:opacity-100 transition-opacity duration-300">
+          {/* Server info */}
           <div className="flex items-center gap-2">
-            <span className={`text-[9px] font-black tracking-wider px-2 py-0.5 rounded uppercase ${
-              currentServer.quality === "4K" ? "bg-purple-600 text-white" :
-              currentServer.quality === "1080p" ? "bg-blue-600 text-white" :
-              currentServer.quality === "Source" ? "bg-green-600 text-white" :
+            <span className={`text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded uppercase ${
+              currentServer.quality?.includes("4K") ? "bg-purple-600 text-white" :
+              currentServer.quality?.includes("1080p") ? "bg-blue-600 text-white" :
               "bg-zinc-600 text-white"
             }`}>
-              {currentServer.quality}
+              {currentServer.quality || "HD"}
             </span>
-            <span className="text-xs font-bold text-white/80">{currentServer.name}</span>
-            {probing && (
-              <span className="flex items-center gap-1 text-[10px] text-amber-400 font-semibold animate-pulse">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
-                Đang kết nối...
-              </span>
-            )}
-            {!probing && !probeFailed && (
-              <span className="flex items-center gap-1 text-[10px] text-green-400 font-semibold">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
-                Đang phát
-              </span>
-            )}
+            <span className="text-[11px] font-bold text-white/70 truncate max-w-[120px] sm:max-w-none">{currentServer.name}</span>
           </div>
 
-          {/* Server selector dropdown */}
-          {alternateSources.length > 1 && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-white/40 font-semibold hidden sm:inline">Server:</span>
-              <select
-                value={serverIndex}
-                onChange={(e) => handleManualServerSwitch(Number(e.target.value))}
-                className="bg-black/60 border border-white/10 text-xs font-bold text-white rounded px-2 py-1 outline-none cursor-pointer backdrop-blur-md"
-              >
-                {alternateSources.map((src: any, idx: number) => (
-                  <option key={src.url} value={idx} className="bg-[#141414] text-white">
-                    {src.name} ({src.quality})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Quick server switch */}
+          <div className="flex items-center gap-2">
+            {embedSources.length > 1 && (
+              <>
+                <button
+                  onClick={handleNextServer}
+                  className="text-[10px] font-bold text-white/50 hover:text-white bg-white/5 hover:bg-white/15 px-2.5 py-1 rounded transition cursor-pointer"
+                >
+                  Server tiếp →
+                </button>
+                <select
+                  value={serverIndex}
+                  onChange={(e) => handleServerSwitch(Number(e.target.value))}
+                  className="bg-black/50 border border-white/10 text-[11px] font-bold text-white rounded px-1.5 py-1 outline-none cursor-pointer max-w-[140px]"
+                >
+                  {embedSources.map((src: any, idx: number) => (
+                    <option key={idx} value={idx} className="bg-[#141414] text-white">
+                      {src.name} ({src.quality})
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* ── Probing / Loading Overlay ── */}
-        {probing && (
-          <div className="absolute inset-0 z-[125] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto">
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative">
-                <div className="h-14 w-14 rounded-full border-2 border-white/10 border-t-[#e50914] animate-spin" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-bold text-white/90">Đang tìm nguồn phát nét nhất...</p>
-                <p className="text-xs text-white/50 mt-1">
-                  Server {serverIndex + 1}/{alternateSources.length}: <span className="text-white/80">{currentServer.name}</span>
-                  <span className={`ml-2 text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded uppercase ${
-                    currentServer.quality === "4K" ? "bg-purple-600/30 text-purple-300" :
-                    currentServer.quality === "1080p" ? "bg-blue-600/30 text-blue-300" :
-                    "bg-zinc-600/30 text-zinc-300"
-                  }`}>{currentServer.quality}</span>
-                </p>
-              </div>
-              {/* Progress dots for servers */}
-              <div className="flex items-center gap-1.5 mt-2">
-                {alternateSources.map((_: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      idx < serverIndex ? "w-1.5 bg-red-500/50" :
-                      idx === serverIndex ? "w-6 bg-[#e50914]" :
-                      "w-1.5 bg-white/15"
-                    }`}
-                  />
-                ))}
-              </div>
-              <button
-                onClick={handleServerFailed}
-                className="mt-3 text-[11px] font-semibold text-white/40 hover:text-white/80 transition cursor-pointer underline underline-offset-4"
-              >
-                Bỏ qua → thử server tiếp
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── All Servers Failed Overlay ── */}
-        {probeFailed && (
-          <div className="absolute inset-0 z-[125] flex flex-col items-center justify-center bg-[#141414] pointer-events-auto">
-            <div className="text-center max-w-md px-6">
-              <div className="text-5xl mb-4">😞</div>
-              <h3 className="text-xl font-black text-white mb-2">Không tìm thấy nguồn phát</h3>
-              <p className="text-sm text-white/50 mb-6 leading-relaxed">
-                Tất cả {alternateSources.length} server đã được thử nhưng đều bị chặn hoặc không khả dụng. 
-                Hãy thử tắt Adblocker hoặc đổi trình duyệt.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <button
-                  onClick={() => handleManualServerSwitch(0)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#e50914] text-white text-sm font-bold hover:bg-[#b20710] transition cursor-pointer"
-                >
-                  <RotateCcw size={14} /> Thử lại từ đầu
-                </button>
-                {alternateSources.map((src: any, idx: number) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleManualServerSwitch(idx)}
-                    className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
-                  >
-                    {src.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Iframe Player ── */}
+        {/* ── Iframe Player — loads IMMEDIATELY, no blocking overlay ── */}
         <iframe
           ref={iframeRef}
           src={embedSrc}
           className="w-full h-full border-none max-h-screen aspect-video"
-          allow="autoplay; fullscreen; picture-in-picture"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowFullScreen
           title={source.title || "Movie Player"}
-          onLoad={handleIframeLoaded}
+          onLoad={() => onPlayStarted?.()}
         />
         
-        {/* Floating Fullscreen Button for Embed/Iframe on Mobile */}
+        {/* Floating Fullscreen Button (Mobile) */}
         <button
           onClick={handleFullscreenForContainer}
-          className="absolute top-4 right-4 z-40 md:hidden flex items-center justify-center h-10 w-10 rounded-full bg-black/60 text-white border border-white/20 backdrop-blur-sm hover:scale-105 active:scale-95 transition cursor-pointer"
+          className="absolute top-2 right-2 z-40 md:hidden flex items-center justify-center h-9 w-9 rounded-full bg-black/50 text-white border border-white/15 backdrop-blur-sm hover:scale-105 active:scale-95 transition cursor-pointer"
           aria-label="Fullscreen"
         >
-          <Maximize size={18} />
+          <Maximize size={16} />
         </button>
         
-        {/* Watch on YouTube fallback button */}
+        {/* YouTube fallback */}
         {(activeUrl.includes("youtube.com") || activeUrl.includes("youtu.be")) && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 bg-black/80 px-4 py-3 rounded-lg border border-white/10 text-center max-w-[90vw] backdrop-blur-sm shadow-xl">
             <p className="text-xs text-white/60">YouTube may restrict playing certain trailers inside other apps (Error 153).</p>

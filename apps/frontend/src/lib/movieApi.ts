@@ -459,38 +459,37 @@ export const movieApi = {
       });
     }
 
-    // Pick best addon stream as primary
-    if (allAddonStreams.length > 0) {
-      const best = allAddonStreams.find(s => s.url.startsWith("http") && !s.url.includes(".torrent") && !s.url.startsWith("magnet:"));
-      if (best) {
-        selectedStreamUrl = best.url;
-        streamTitle = `${movie.title} [${best.addon}] - ${best.name.split("\n")[0]}`;
-      }
-    }
-    
-    // Add embed fallback servers at the end
+    // Add embed servers FIRST — these play instantly in iframe
     const playId = imdbId || tmdbId;
+    const embedSources: typeof alternateSources = [];
     if (mediaType === "movie") {
-      alternateSources.push({ name: "VidLink (Embed)", url: `https://vidlink.pro/embed/movie/${playId}`, quality: "4K", streamType: "embed" });
-      alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/movie/${playId}`, quality: "1080p", streamType: "embed" });
+      embedSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/movie/${playId}`, quality: "4K", streamType: "embed" });
+      embedSources.push({ name: "Embed.su", url: `https://embed.su/embed/movie/${playId}`, quality: "1080p", streamType: "embed" });
       if (imdbId) {
-        alternateSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/movie/${imdbId}`, quality: "1080p", streamType: "embed" });
+        embedSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/movie/${imdbId}`, quality: "1080p", streamType: "embed" });
       }
-      alternateSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
-      alternateSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
+      embedSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
+      embedSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
     } else {
-      alternateSources.push({ name: "VidLink (Embed)", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "4K", streamType: "embed" });
-      alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
+      embedSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "4K", streamType: "embed" });
+      embedSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       if (imdbId) {
-        alternateSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/tv/${imdbId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
+        embedSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/tv/${imdbId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       }
-      alternateSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
-      alternateSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
+      embedSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
+      embedSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
     }
 
-    if (!selectedStreamUrl && alternateSources.length > 0) {
-      selectedStreamUrl = alternateSources[0].url;
-    }
+    // Final order: Embeds first (instant play) → HTTP addon streams → Torrents
+    const httpAddonStreams = alternateSources.filter(s => s.streamType === "http" || s.streamType === "external");
+    const torrentAddonStreams = alternateSources.filter(s => s.streamType === "torrent");
+    const finalSources = [...embedSources, ...httpAddonStreams, ...torrentAddonStreams];
+    // Clear and rebuild alternateSources
+    alternateSources.length = 0;
+    finalSources.forEach(s => alternateSources.push(s));
+
+    // Always use first embed as primary URL — instant playback, no waiting
+    selectedStreamUrl = embedSources[0]?.url || alternateSources[0]?.url || "";
 
     // ── Fetch subtitles from subtitle addons ──
     const subtitlesList: any[] = [];
