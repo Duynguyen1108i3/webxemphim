@@ -434,11 +434,19 @@ export const movieApi = {
       console.error("Addon stream resolve failed:", e);
     }
 
-    // Sort addon streams: highest quality first, then by seeders
-    const qualityOrder: Record<string, number> = { "4K HDR": 0, "4K": 1, "1080p HDR": 2, "1080p": 3, "720p": 4, "480p": 5, "HD": 3.5 };
+    // Sort addon streams: lighter quality first (1080p -> 720p -> 4K)
+    const qualityOrder: Record<string, number> = { 
+      "1080p": 0, 
+      "720p": 1, 
+      "HD": 2, 
+      "1080p HDR": 3, 
+      "4K": 4, 
+      "4K HDR": 5, 
+      "480p": 6 
+    };
     allAddonStreams.sort((a, b) => {
-      const qa = qualityOrder[a.quality] ?? 6;
-      const qb = qualityOrder[b.quality] ?? 6;
+      const qa = qualityOrder[a.quality] ?? 7;
+      const qb = qualityOrder[b.quality] ?? 7;
       if (qa !== qb) return qa - qb;
       return (b.seeders || 0) - (a.seeders || 0);
     });
@@ -459,24 +467,24 @@ export const movieApi = {
       });
     }
 
-    // Add embed servers FIRST — these play instantly in iframe
+    // Add embed servers FIRST — prioritize lightweight/fast ones (1080p/720p) over 4K VidLink
     const playId = imdbId || tmdbId;
     const embedSources: typeof alternateSources = [];
     if (mediaType === "movie") {
-      embedSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/movie/${playId}`, quality: "4K", streamType: "embed" });
       embedSources.push({ name: "Embed.su", url: `https://embed.su/embed/movie/${playId}`, quality: "1080p", streamType: "embed" });
       if (imdbId) {
         embedSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/movie/${imdbId}`, quality: "1080p", streamType: "embed" });
       }
       embedSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
+      embedSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/movie/${playId}`, quality: "4K", streamType: "embed" });
       embedSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
     } else {
-      embedSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "4K", streamType: "embed" });
       embedSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       if (imdbId) {
         embedSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/tv/${imdbId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       }
       embedSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
+      embedSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "4K", streamType: "embed" });
       embedSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
     }
 
