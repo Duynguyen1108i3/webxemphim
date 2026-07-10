@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Play, Plus, ThumbsUp } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Play, Plus, ThumbsUp, X } from "lucide-react";
 import type { MovieCardDto } from "@streamforge/shared-types";
 import { Badge, Button } from "@streamforge/ui";
 import { formatRuntime } from "@streamforge/utils";
@@ -149,6 +149,7 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
                 key={movie.id}
                 movie={movie}
                 rank={ranked ? index + 1 : undefined}
+                isContinueWatching={isContinueWatching}
                 onOpen={() => {
                   if (isContinueWatching) {
                     openPlayback(movie as NormalizedMovie, `card-${movie.id}`);
@@ -184,6 +185,7 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
             key={hovered.movie.id}
             movie={hovered.movie}
             rect={hovered.rect}
+            isContinueWatching={isContinueWatching}
             onOpen={() => {
               if (isContinueWatching) {
                 openPlayback(hovered.movie as NormalizedMovie, `card-${hovered.movie.id}`);
@@ -204,19 +206,23 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
   );
 }
 
-const MovieTile = React.memo(function MovieTile({
+export const MovieTile = React.memo(function MovieTile({
   movie,
   rank,
+  isContinueWatching = false,
   onOpen,
   onHover,
   onHoverEnd
 }: {
   movie: MovieCardDto;
   rank?: number;
+  isContinueWatching?: boolean;
   onOpen: () => void;
   onHover: (anchor: HTMLElement) => void;
   onHoverEnd: () => void;
 }) {
+  const removeFromWatchHistory = usePlaybackStore((state) => state.removeFromWatchHistory);
+
   return (
     <motion.article
       whileHover={{ y: -2, scale: 1.01 }}
@@ -241,6 +247,21 @@ const MovieTile = React.memo(function MovieTile({
         <span className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/85 to-transparent" />
         <span className="absolute bottom-2 left-2 line-clamp-1 pr-2 text-xs font-bold text-white md:text-sm">{movie.title}</span>
       </button>
+      
+      {isContinueWatching && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            removeFromWatchHistory(movie.id);
+          }}
+          className="absolute top-2 right-2 z-20 grid h-8 w-8 md:h-6 md:w-6 place-items-center rounded-full bg-black/60 text-white/70 border border-white/10 hover:text-white hover:bg-black/90 hover:scale-105 active:scale-95 transition cursor-pointer md:opacity-0 md:group-hover:opacity-100 shadow-lg"
+          title="Xóa khỏi danh sách xem tiếp"
+          aria-label="Remove from Continue Watching"
+        >
+          <X className="h-4 w-4 md:h-3 md:w-3" />
+        </button>
+      )}
     </motion.article>
   );
 });
@@ -248,12 +269,14 @@ const MovieTile = React.memo(function MovieTile({
 const HoverPreview = React.memo(function HoverPreview({
   movie,
   rect,
+  isContinueWatching = false,
   onOpen,
   onMouseEnter,
   onMouseLeave
 }: {
   movie: MovieCardDto;
   rect: DOMRect;
+  isContinueWatching?: boolean;
   onOpen: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
@@ -261,7 +284,7 @@ const HoverPreview = React.memo(function HoverPreview({
   const width = Math.min(430, Math.max(rect.width + 180, rect.width * 1.82));
   const left = Math.min(window.innerWidth - width - 16, Math.max(16, rect.left + rect.width / 2 - width / 2));
   const top = Math.max(72, rect.top - 48);
-  const { myList, toggleMyList } = usePlaybackStore();
+  const { myList, toggleMyList, openDetailModal, removeFromWatchHistory } = usePlaybackStore();
   const inMyList = myList.some((item) => item.id === movie.id);
 
   return (
@@ -279,16 +302,32 @@ const HoverPreview = React.memo(function HoverPreview({
         className="overflow-hidden rounded-md bg-[#181818] text-white shadow-[0_22px_64px_rgba(0,0,0,.78)] will-change-transform"
         style={{ transformOrigin: "center top" }}
       >
-        <button onClick={onOpen} className="relative block w-full overflow-hidden bg-zinc-950 text-left" aria-label={`Open ${movie.title} preview`}>
-          <motion.img layoutId={`card-${movie.id}`} src={movie.backdropUrl || movie.posterUrl} alt={movie.title} className="aspect-video w-full object-cover" />
-          {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
-            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-zinc-700 z-10">
-              <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />
-            </div>
+        <div className="relative w-full overflow-hidden bg-zinc-950 text-left">
+          <button onClick={onOpen} className="block w-full text-left relative" aria-label={`Open ${movie.title} preview`}>
+            <motion.img layoutId={`card-${movie.id}`} src={movie.backdropUrl || movie.posterUrl} alt={movie.title} className="aspect-video w-full object-cover" />
+            {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
+              <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-zinc-700 z-10">
+                <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#181818] via-transparent to-transparent" />
+            <h3 className="absolute bottom-3 left-3 right-3 line-clamp-1 text-xl font-black text-white">{movie.title}</h3>
+          </button>
+          {isContinueWatching && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                removeFromWatchHistory(movie.id);
+              }}
+              className="absolute top-3 right-3 z-[90] grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white/70 border border-white/10 hover:text-white hover:bg-black/90 hover:scale-105 active:scale-95 transition cursor-pointer"
+              title="Xóa khỏi danh sách xem tiếp"
+              aria-label="Remove from Continue Watching"
+            >
+              <X size={15} />
+            </button>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#181818] via-transparent to-transparent" />
-          <h3 className="absolute bottom-3 left-3 right-3 line-clamp-1 text-xl font-black text-white">{movie.title}</h3>
-        </button>
+        </div>
         <div className="space-y-3 p-3">
           <div className="flex items-center gap-2">
             <button
@@ -313,7 +352,10 @@ const HoverPreview = React.memo(function HoverPreview({
               {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
             </Button>
             <Button variant="ghost" className="nf-icon h-10 w-10 rounded-full border border-white/25 bg-[#2a2a2a] p-0 hover:border-white hover:bg-[#333]" aria-label="Like"><ThumbsUp size={17} /></Button>
-            <button onClick={onOpen} className="nf-icon ml-auto grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-[#2a2a2a] text-white transition hover:border-white hover:bg-[#333]" aria-label="Episodes and info"><ChevronDown size={20} /></button>
+            <button onClick={(e) => {
+              e.stopPropagation();
+              openDetailModal(movie as NormalizedMovie, `card-${movie.id}`);
+            }} className="nf-icon ml-auto grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-[#2a2a2a] text-white transition hover:border-white hover:bg-[#333]" aria-label="Episodes and info"><ChevronDown size={20} /></button>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm text-white/75">
             <span className="font-bold text-[#46d369]">{Math.min(99, Math.round(movie.averageRating * 10 + 10))}% Match</span>

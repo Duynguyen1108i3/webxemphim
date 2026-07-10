@@ -58,7 +58,7 @@ export function AddonsPage() {
       if (inst) {
         setInstalled(JSON.parse(inst));
       } else {
-        const defaults: string[] = [];
+        const defaults = addonsData.map(a => a.id);
         setInstalled(defaults);
         localStorage.setItem("streamforge:addons:installed", JSON.stringify(defaults));
       }

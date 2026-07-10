@@ -1,5 +1,5 @@
 import Hls from "hls.js";
-import { Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Download, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@streamforge/ui";
 import type { PlaybackSourceDto } from "@streamforge/shared-types";
@@ -8,6 +8,9 @@ import { useAuthStore } from "../store/auth";
 function isEmbedUrl(url: string): boolean {
   if (!url) return false;
   const lower = url.toLowerCase();
+  if (lower.includes("dramahay.xyz") || lower.includes("phim4k.dpdns.org") || lower.includes("/stream/hls")) {
+    return false;
+  }
   return (
     lower.includes("embed") ||
     lower.includes("share") ||
@@ -64,6 +67,8 @@ export function VideoPlayer({
       return () => clearTimeout(timer);
     }
   }, [isEmbed, onPlayStarted]);
+
+
 
   // early return for iframe embeds moved below all hooks to satisfy react rules
 
@@ -138,10 +143,10 @@ export function VideoPlayer({
   }, []);
 
   useEffect(() => {
-    if (!source) return;
+    if (!source || !activeUrl) return;
     const video = videoRef.current;
     if (!video) return;
-    const isHls = source.hlsUrl.includes(".m3u8");
+    const isHls = activeUrl.includes(".m3u8");
     
     let hls: Hls | null = null;
 
@@ -177,14 +182,14 @@ export function VideoPlayer({
 
     if (isHls && Hls.isSupported()) {
       hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-      hls.loadSource(source.hlsUrl);
+      hls.loadSource(activeUrl);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         restorePosition();
         startPlayback();
       });
     } else {
-      video.src = source.hlsUrl;
+      video.src = activeUrl;
       const handleCanPlay = () => {
         restorePosition();
         startPlayback();
@@ -197,8 +202,15 @@ export function VideoPlayer({
       if (hls) {
         hls.destroy();
       }
+      try {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      } catch (err) {
+        console.error("Video player unmount cleanup error:", err);
+      }
     };
-  }, [source?.hlsUrl, onPlayStarted]);
+  }, [activeUrl, onPlayStarted]);
 
   useEffect(() => {
     if (!source) return;
@@ -355,6 +367,42 @@ export function VideoPlayer({
     return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   }
 
+  const currentAlternative = source?.alternateSources?.find((s: any) => s.url === activeUrl);
+  const infoHash = currentAlternative?.infoHash;
+  const fileIdx = currentAlternative?.fileIdx ?? 0;
+
+  let parsedInfoHash = infoHash;
+  if (!parsedInfoHash && activeUrl?.startsWith("magnet:")) {
+    const match = activeUrl.match(/urn:btih:([a-fA-F0-9]{40})/);
+    if (match) {
+      parsedInfoHash = match[1].toLowerCase();
+    }
+  }
+
+  const [isStremioOnline, setIsStremioOnline] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!activeUrl || !activeUrl.startsWith("magnet:")) {
+      setIsStremioOnline(null);
+      return;
+    }
+    
+    const checkStremio = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:11470/status", { mode: "cors" });
+        if (res.ok) {
+          setIsStremioOnline(true);
+        } else {
+          setIsStremioOnline(false);
+        }
+      } catch {
+        setIsStremioOnline(false);
+      }
+    };
+    
+    checkStremio();
+  }, [activeUrl]);
+
   // ─── Instant Embed Player (no probing delay) ───
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [serverIndex, setServerIndex] = useState(0);
@@ -392,7 +440,11 @@ export function VideoPlayer({
       }
     }
 
-    const currentServer = embedSources[serverIndex] || { name: activeUrl.split("/")[2] || "Player", quality: "HD" };
+    // Resolve current server metadata dynamically from all sources to show the correct name (e.g., Torrentio, Embed.su)
+    const currentServer = allSources.find((s: any) => s.url === activeUrl) || { 
+      name: activeUrl.startsWith("magnet:") ? "Torrentio" : (activeUrl.split("/")[2] || "Player"), 
+      quality: "1080p" 
+    };
 
     return (
       <div ref={containerRef} className="relative h-full w-full bg-black flex flex-col items-center justify-center">
@@ -411,33 +463,11 @@ export function VideoPlayer({
             <span className="text-[11px] font-bold text-white/70 truncate max-w-[120px] sm:max-w-none">{currentServer.name}</span>
           </div>
 
-          {/* Quick server switch */}
-          <div className="flex items-center gap-2">
-            {embedSources.length > 1 && (
-              <>
-                <button
-                  onClick={handleNextServer}
-                  className="text-[10px] font-bold text-white/50 hover:text-white bg-white/5 hover:bg-white/15 px-2.5 py-1 rounded transition cursor-pointer"
-                >
-                  Server tiếp →
-                </button>
-                <select
-                  value={serverIndex}
-                  onChange={(e) => handleServerSwitch(Number(e.target.value))}
-                  className="bg-black/50 border border-white/10 text-[11px] font-bold text-white rounded px-1.5 py-1 outline-none cursor-pointer max-w-[140px]"
-                >
-                  {embedSources.map((src: any, idx: number) => (
-                    <option key={idx} value={idx} className="bg-[#141414] text-white">
-                      {src.name} ({src.quality})
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
-          </div>
+          {/* Clean Top Right */}
+          <div className="flex items-center gap-2" />
         </div>
 
-        {/* ── Iframe Player — loads IMMEDIATELY, no blocking overlay ── */}
+        {/* ── Direct Video Embed Player ── */}
         <iframe
           ref={iframeRef}
           src={embedSrc}

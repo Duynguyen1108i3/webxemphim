@@ -15,10 +15,11 @@ import type { MovieCardDto } from "@streamforge/shared-types";
 import { useAuthStore } from "../store/auth";
 
 export function AppShell() {
-  const { activeMovieDetail, activePlayback, watchHistory } = usePlaybackStore();
-  const { user, profileId, setProfileId, logout, initialize } = useAuthStore();
+  const { activeMovieDetail, activePlayback, activeEpisodeId, watchHistory } = usePlaybackStore();
+  const { user, profileId, initialized, setProfileId, logout, initialize } = useAuthStore();
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isRestoringState, setIsRestoringState] = useState(false);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -32,12 +33,128 @@ export function AppShell() {
 
   // Auth Guard: redirect unauthenticated users to login
   useEffect(() => {
+    if (!initialized) return;
     if (!user && location.pathname !== "/login" && location.pathname !== "/register") {
       navigate("/login");
     } else if (user && (location.pathname === "/login" || location.pathname === "/register")) {
       navigate("/");
     }
-  }, [user, location.pathname, navigate]);
+  }, [initialized, user, location.pathname, navigate]);
+
+  // Restore modal and playback states from URL parameters on mount or query change
+  useEffect(() => {
+    if (!initialized || !user) return;
+
+    const searchParams = new URLSearchParams(location.search);
+    const movieDetailSlug = searchParams.get("m");
+    const watchSlug = searchParams.get("v");
+    const watchEpisodeId = searchParams.get("ep");
+
+    if (!movieDetailSlug && !watchSlug) {
+      const currentDetail = usePlaybackStore.getState().activeMovieDetail;
+      const currentPlayback = usePlaybackStore.getState().activePlayback;
+      if (currentDetail) usePlaybackStore.getState().closeDetailModal();
+      if (currentPlayback) usePlaybackStore.getState().closePlayback();
+      setIsRestoringState(false);
+      return;
+    }
+
+    setIsRestoringState(true);
+    let p1: Promise<any> = Promise.resolve();
+    let p2: Promise<any> = Promise.resolve();
+
+    if (movieDetailSlug) {
+      const currentDetail = usePlaybackStore.getState().activeMovieDetail;
+      if (!currentDetail || currentDetail.slug !== movieDetailSlug) {
+        p1 = movieApi.getMovieDetail(movieDetailSlug)
+          .then((detail) => {
+            if (detail?.movie) {
+              usePlaybackStore.getState().openDetailModal(detail.movie, "url-restore");
+            }
+          })
+          .catch((err) => console.error("Error restoring detail modal:", err));
+      }
+    } else {
+      const currentDetail = usePlaybackStore.getState().activeMovieDetail;
+      if (currentDetail) {
+        usePlaybackStore.getState().closeDetailModal();
+      }
+    }
+
+    if (watchSlug) {
+      const currentPlayback = usePlaybackStore.getState().activePlayback;
+      const currentEpId = usePlaybackStore.getState().activeEpisodeId;
+      if (!currentPlayback || currentPlayback.slug !== watchSlug || currentEpId !== watchEpisodeId) {
+        p2 = movieApi.getMovieDetail(watchSlug)
+          .then((detail) => {
+            if (detail?.movie) {
+              usePlaybackStore.getState().openPlayback(detail.movie, "url-restore", watchEpisodeId || undefined);
+            }
+          })
+          .catch((err) => console.error("Error restoring playback overlay:", err));
+      }
+    } else {
+      const currentPlayback = usePlaybackStore.getState().activePlayback;
+      if (currentPlayback) {
+        usePlaybackStore.getState().closePlayback();
+      }
+    }
+
+    Promise.allSettled([p1, p2]).finally(() => {
+      setIsRestoringState(false);
+    });
+  }, [initialized, user, location.search]);
+
+  // Sync URL parameters when modal/playback store state changes
+  useEffect(() => {
+    if (!initialized || !user) return;
+    
+    const searchParams = new URLSearchParams(location.search);
+    let changed = false;
+
+    if (activeMovieDetail) {
+      if (searchParams.get("m") !== activeMovieDetail.slug) {
+        searchParams.set("m", activeMovieDetail.slug);
+        changed = true;
+      }
+    } else {
+      if (searchParams.has("m")) {
+        searchParams.delete("m");
+        changed = true;
+      }
+    }
+
+    if (activePlayback) {
+      if (searchParams.get("v") !== activePlayback.slug) {
+        searchParams.set("v", activePlayback.slug);
+        changed = true;
+      }
+      if (activeEpisodeId) {
+        if (searchParams.get("ep") !== activeEpisodeId) {
+          searchParams.set("ep", activeEpisodeId);
+          changed = true;
+        }
+      } else {
+        if (searchParams.has("ep")) {
+          searchParams.delete("ep");
+          changed = true;
+        }
+      }
+    } else {
+      if (searchParams.has("v")) {
+        searchParams.delete("v");
+        changed = true;
+      }
+      if (searchParams.has("ep")) {
+        searchParams.delete("ep");
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      navigate({ search: searchParams.toString() }, { replace: true });
+    }
+  }, [initialized, user, activeMovieDetail, activePlayback, activeEpisodeId, navigate, location.search]);
 
 
 
@@ -149,8 +266,17 @@ export function AppShell() {
     };
   }, [isMobileMenuOpen]);
 
-  if (!user) {
+  if (!initialized || !user) {
     return <div className="min-h-screen bg-[#141414]" />;
+  }
+
+  if (isRestoringState) {
+    return (
+      <div className="min-h-screen bg-[#141414] flex flex-col items-center justify-center text-white">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#e50914] border-t-transparent" />
+        <p className="mt-4 text-xs font-semibold text-white/50 tracking-wider uppercase animate-pulse">Đang tải...</p>
+      </div>
+    );
   }
 
   return (
@@ -329,9 +455,7 @@ export function AppShell() {
                   Quản lý hồ sơ
                 </NavLink>
                 
-                <NavLink to="/addons" className="flex items-center gap-2.5 px-4 py-1.5 hover:bg-white/10 transition text-xs font-semibold text-white/70 hover:text-white">
-                  Addons của tôi
-                </NavLink>
+
 
                 <hr className="border-white/10 my-1.5" />
 
@@ -428,10 +552,7 @@ export function AppShell() {
                     <span>Chuyển hồ sơ ({profileId || "Main"})</span>
                   </button>
                   
-                  <NavLink to="/addons" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 text-sm font-semibold text-white/60 hover:text-white">
-                    <span className="grid h-6 w-6 place-items-center rounded bg-[#e50914] text-[10px] font-black text-white">A</span>
-                    <span>Addons của tôi</span>
-                  </NavLink>
+
 
                   <button 
                     onClick={() => {

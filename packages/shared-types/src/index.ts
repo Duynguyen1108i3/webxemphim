@@ -41,7 +41,8 @@ export interface PlaybackSourceDto {
   introStartSeconds?: number;
   introEndSeconds?: number;
   recapEndSeconds?: number;
-  alternateSources?: Array<{ name: string; url: string; quality: string; addon?: string; size?: string; seeders?: number; streamType?: "http" | "torrent" | "external" | "embed" }>;
+  alternateSources?: Array<{ name: string; url: string; quality: string; addon?: string; size?: string; seeders?: number; streamType?: "http" | "torrent" | "external" | "embed"; fileIdx?: number; infoHash?: string }>;
+  stremioUrl?: string;
 }
 
 export interface RecommendationDto extends MovieCardDto {

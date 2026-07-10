@@ -10,6 +10,7 @@ export interface AuthUser {
 interface AuthState {
   user: AuthUser | null;
   profileId: string | null;
+  initialized: boolean;
   setUser: (user: AuthUser | null) => void;
   setProfileId: (profileId: string | null) => void;
   initialize: () => void;
@@ -68,6 +69,7 @@ const getInitialProfileId = (): string | null => {
 export const useAuthStore = create<AuthState>((set) => ({
   user: getInitialUser(),
   profileId: getInitialProfileId(),
+  initialized: false,
   setUser: (user) => {
     if (user) {
       localStorage.setItem("streamforge:auth:user", JSON.stringify(user));
@@ -97,6 +99,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.removeItem("streamforge:auth:user");
       localStorage.removeItem("streamforge:auth:profileId");
     }
+    set({ initialized: true });
     usePlaybackStore.getState().loadUserData();
   },
   logout: () => {

@@ -107,8 +107,10 @@ export const movieApi = {
       const data = await fetchTmdb<any>(`/trending/all/day?page=${page}`);
       return normalizeList(data?.results || []);
     } else {
-      const data = await fetchCinemeta<any>("/catalog/movie/top.json");
-      return normalizeCinemetaList(data?.metas || []);
+      const res = await fetch(`https://free1.phim4k.lol/danh-sach/phim-moi-cap-nhat-v3?page=${page}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return normalizePhim4kList(data?.items || []);
     }
   },
 
@@ -136,19 +138,21 @@ export const movieApi = {
       return normalizeList(data?.results || []);
     } else {
       const genreMap: Record<string, string> = {
-        "hanh-dong": "Action",
-        "vien-tuong": "Sci-Fi",
-        "kinh-di": "Horror",
-        "hai-huoc": "Comedy",
-        "tinh-cam": "Romance",
-        "phieu-luu": "Adventure",
-        "hoat-hinh": "Animation",
-        "hinh-su": "Crime",
-        "tai-lieu": "Documentary"
+        "hanh-dong": "hanh-dong",
+        "vien-tuong": "vien-tuong",
+        "kinh-di": "kinh-di",
+        "hai-huoc": "hai-huoc",
+        "tinh-cam": "tinh-cam",
+        "phieu-luu": "phieu-luu",
+        "hoat-hinh": "hoat-hinh",
+        "hinh-su": "hinh-su",
+        "tai-lieu": "tai-lieu"
       };
-      const genre = genreMap[slug] || "Action";
-      const data = await fetchCinemeta<any>(`/catalog/movie/top/genre=${genre}.json`);
-      return normalizeCinemetaList(data?.metas || []);
+      const category = genreMap[slug] || "hanh-dong";
+      const res = await fetch(`https://free1.phim4k.lol/v1/api/the-loai/${category}?page=${page}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return normalizePhim4kList(data?.data?.items || []);
     }
   },
 
@@ -168,9 +172,21 @@ export const movieApi = {
       const data = await fetchTmdb<any>(`/discover/movie?with_origin_country=${region}&sort_by=popularity.desc&page=${page}`);
       return normalizeList(data?.results || []);
     } else {
-      // Cinemeta fallback
-      const data = await fetchCinemeta<any>("/catalog/movie/top.json");
-      return normalizeCinemetaList(data?.metas || []);
+      const countryMap: Record<string, string> = {
+        "au-my": "au-my",
+        "han-quoc": "han-quoc",
+        "trung-quoc": "trung-quoc",
+        "nhat-ban": "nhat-ban",
+        "thai-lan": "thai-lan",
+        "hong-kong": "hong-kong",
+        "dai-loan": "dai-loan",
+        "viet-nam": "viet-nam"
+      };
+      const region = countryMap[slug] || "au-my";
+      const res = await fetch(`https://free1.phim4k.lol/v1/api/quoc-gia/${region}?page=${page}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return normalizePhim4kList(data?.data?.items || []);
     }
   },
 
@@ -179,8 +195,10 @@ export const movieApi = {
       const data = await fetchTmdb<any>(`/discover/movie?primary_release_year=${year}&sort_by=popularity.desc&page=${page}`);
       return normalizeList(data?.results || []);
     } else {
-      const data = await fetchCinemeta<any>("/catalog/movie/top.json");
-      return normalizeCinemetaList(data?.metas || []);
+      const res = await fetch(`https://free1.phim4k.lol/danh-sach/phim-moi-cap-nhat-v3?page=${page}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return normalizePhim4kList(data?.items || []);
     }
   },
 
@@ -202,18 +220,29 @@ export const movieApi = {
       const data = await fetchTmdb<any>(`/trending/all/day?page=${page}`);
       return normalizeList(data?.results || []);
     } else {
+      let listName = "phim-moi-cap-nhat-v3";
+      let isV1 = true;
       if (type === "phim-bo" || type === "tv-shows") {
-        const data = await fetchCinemeta<any>("/catalog/series/top.json");
-        return normalizeCinemetaList(data?.metas || []);
+        listName = "phim-bo";
       } else if (type === "phim-le") {
-        const data = await fetchCinemeta<any>("/catalog/movie/top.json");
-        return normalizeCinemetaList(data?.metas || []);
+        listName = "phim-le";
       } else if (type === "hoat-hinh") {
-        const data = await fetchCinemeta<any>("/catalog/series/top/genre=Animation.json");
-        return normalizeCinemetaList(data?.metas || []);
+        listName = "hoat-hinh";
+      } else {
+        isV1 = false;
       }
-      const data = await fetchCinemeta<any>("/catalog/movie/top.json");
-      return normalizeCinemetaList(data?.metas || []);
+
+      if (isV1) {
+        const res = await fetch(`https://free1.phim4k.lol/v1/api/danh-sach/${listName}?page=${page}`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return normalizePhim4kList(data?.data?.items || []);
+      } else {
+        const res = await fetch(`https://free1.phim4k.lol/danh-sach/phim-moi-cap-nhat-v3?page=${page}`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        return normalizePhim4kList(data?.items || []);
+      }
     }
   },
 
@@ -222,14 +251,10 @@ export const movieApi = {
       const data = await fetchTmdb<any>(`/search/multi?query=${encodeURIComponent(keyword)}`);
       return normalizeList(data?.results || []);
     } else {
-      // Query movie and series search catalogs in parallel
-      const [movieSearch, seriesSearch] = await Promise.allSettled([
-        fetchCinemeta<any>(`/catalog/movie/top/search=${encodeURIComponent(keyword)}.json`),
-        fetchCinemeta<any>(`/catalog/series/top/search=${encodeURIComponent(keyword)}.json`)
-      ]);
-      const movies = movieSearch.status === "fulfilled" ? (movieSearch.value?.metas || []) : [];
-      const series = seriesSearch.status === "fulfilled" ? (seriesSearch.value?.metas || []) : [];
-      return normalizeCinemetaList([...movies, ...series]);
+      const res = await fetch(`https://free1.phim4k.lol/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return normalizePhim4kList(data?.data?.items || []);
     }
   },
 
@@ -268,31 +293,24 @@ export const movieApi = {
         episodes: seasonsList
       };
     } else {
-      // Fetch details from Cinemeta using IMDB ID
-      let rawMovie: any = null;
-      try {
-        const movieRes = await fetchCinemeta<any>(`/meta/movie/${slug}.json`);
-        rawMovie = movieRes?.meta;
-      } catch {
-        try {
-          const tvRes = await fetchCinemeta<any>(`/meta/series/${slug}.json`);
-          rawMovie = tvRes?.meta;
-        } catch {
-          throw new Error(`Failed to load Cinemeta metadata for: ${slug}`);
-        }
-      }
-      if (!rawMovie) throw new Error("Metadata is empty");
-      
-      const movie = normalizeCinemetaMovie(rawMovie);
+      const res = await fetch(`https://free1.phim4k.lol/phim/${slug}`);
+      if (!res.ok) throw new Error(`Phim4K details failed for: ${slug}`);
+      const data = await res.json();
+      if (!data || !data.movie) throw new Error("Metadata is empty");
+
+      const movieObj = { ...data.movie, episodes: data.episodes };
+      const movie = normalizePhim4kMovie(movieObj, true);
       return {
         movie,
-        episodes: movie.seasons || []
+        episodes: data.episodes || []
       };
     }
   },
 
+
+
   async getPlayback(slug: string, episodeId?: string | null): Promise<PlaybackSourceDto & { title?: string; currentEpisodeId?: string; episodesList?: any[] }> {
-    const { movie } = await this.getMovieDetail(slug);
+    const { movie, episodes } = await this.getMovieDetail(slug);
     const mediaType = movie.mediaType || "movie";
     const tmdbId = movie.tmdbId || movie.id;
     const imdbId = movie.imdbId || movie.id || "";
@@ -330,144 +348,9 @@ export const movieApi = {
     let selectedStreamUrl = "";
     let streamTitle = `${movie.title}${episodeTitle}`;
     
-    // ── Fetch ALL streams from ALL installed addons in parallel ──
-    const allAddonStreams: { name: string; url: string; quality: string; addon: string; title: string; size?: string; seeders?: number; behaviorHints?: any; streamType: "http" | "torrent" | "external" }[] = [];
+    const alternateSources: { name: string; url: string; quality: string; addon?: string; size?: string; seeders?: number; streamType?: "http" | "torrent" | "external" | "embed"; fileIdx?: number; infoHash?: string }[] = [];
     
-    try {
-      const installedStr = localStorage.getItem("streamforge:addons:installed");
-      const installedAddonsList = installedStr ? JSON.parse(installedStr) : [];
-      
-      const streamAddons = (addonsData as any[]).filter(addon => 
-        installedAddonsList.includes(addon.id) && 
-        (addon.category === "Torrent" || addon.category === "Movies" || addon.category === "Debrid" || addon.category === "Anime" || addon.category === "TV")
-      );
-
-      const queryId = mediaType === "movie" ? imdbId : `${imdbId}:${selectedSeason}:${selectedEpisode}`;
-      
-      if (queryId && streamAddons.length > 0) {
-        // Fetch from all addons in parallel with a 6-second timeout
-        const fetchPromises = streamAddons.map(async (addon) => {
-          const rootUrl = addon.manifestUrl.replace("/manifest.json", "");
-          const streamEndpoint = `${rootUrl}/stream/${mediaType}/${encodeURIComponent(queryId)}.json`;
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 6000);
-            const res = await fetch(streamEndpoint, { signal: controller.signal });
-            clearTimeout(timeoutId);
-            if (res.ok) {
-              const resData = await res.json();
-              const streamsList = resData?.streams || [];
-              for (const s of streamsList) {
-                // Determine stream URL and type
-                let streamUrl = "";
-                let streamType: "http" | "torrent" | "external" = "http";
-                
-                if (s.url && s.url.startsWith("http")) {
-                  streamUrl = s.url;
-                  streamType = "http";
-                } else if (s.externalUrl) {
-                  streamUrl = s.externalUrl;
-                  streamType = "external";
-                } else if (s.infoHash) {
-                  // Build magnet URI from infoHash + trackers
-                  const trackers = (s.sources || [])
-                    .filter((src: string) => src.startsWith("tracker:"))
-                    .map((src: string) => src.replace("tracker:", ""))
-                    .slice(0, 5); // Limit trackers to keep URL reasonable
-                  const filename = s.behaviorHints?.filename || s.title?.split("\n")[0] || "";
-                  streamUrl = `magnet:?xt=urn:btih:${s.infoHash}`;
-                  if (filename) streamUrl += `&dn=${encodeURIComponent(filename)}`;
-                  for (const tr of trackers) {
-                    streamUrl += `&tr=${encodeURIComponent(tr)}`;
-                  }
-                  streamType = "torrent";
-                }
-                
-                if (!streamUrl) continue;
-                
-                // Parse quality from name/title (e.g. "4K HDR", "1080p", "720p", "480p")
-                const fullText = `${s.name || ""} ${s.title || ""}`;
-                let quality = "HD";
-                if (/2160p|4k|uhd/i.test(fullText)) quality = "4K";
-                else if (/1080p/i.test(fullText)) quality = "1080p";
-                else if (/720p/i.test(fullText)) quality = "720p";
-                else if (/480p/i.test(fullText)) quality = "480p";
-                if (/hdr|dolby.?vision|dv/i.test(fullText)) quality += " HDR";
-                
-                // Parse size (e.g. "💾 18.2 GB" or "18.2 GB")
-                const titleStr = (s.title || "").toString();
-                const sizeMatch = titleStr.match(/💾?\s*([\d.]+)\s*(GB|MB|TB)/i);
-                const size = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[2].toUpperCase()}` : undefined;
-                
-                // Parse seeders (e.g. "👤 67")
-                const seederMatch = titleStr.match(/👤\s*(\d+)/);
-                const seeders = seederMatch ? parseInt(seederMatch[1]) : undefined;
-                
-                // Parse source tracker (e.g. "⚙️ NyaaSi", "⚙️ ThePirateBay")
-                const sourceMatch = titleStr.match(/⚙️\s*(\S+)/);
-                const trackerName = sourceMatch ? sourceMatch[1] : undefined;
-                
-                // Build display name from first line of title
-                const displayTitle = titleStr.split("\n")[0].trim().substring(0, 100) || addon.name;
-                
-                allAddonStreams.push({
-                  name: displayTitle,
-                  url: streamUrl,
-                  quality,
-                  addon: addon.name,
-                  title: titleStr,
-                  size,
-                  seeders,
-                  behaviorHints: s.behaviorHints,
-                  streamType
-                });
-              }
-            }
-          } catch {
-            // Addon stream fetch failed (CORS, timeout, etc.) — skip silently
-          }
-        });
-
-        await Promise.allSettled(fetchPromises);
-      }
-    } catch (e) {
-      console.error("Addon stream resolve failed:", e);
-    }
-
-    // Sort addon streams: lighter quality first (1080p -> 720p -> 4K)
-    const qualityOrder: Record<string, number> = { 
-      "1080p": 0, 
-      "720p": 1, 
-      "HD": 2, 
-      "1080p HDR": 3, 
-      "4K": 4, 
-      "4K HDR": 5, 
-      "480p": 6 
-    };
-    allAddonStreams.sort((a, b) => {
-      const qa = qualityOrder[a.quality] ?? 7;
-      const qb = qualityOrder[b.quality] ?? 7;
-      if (qa !== qb) return qa - qb;
-      return (b.seeders || 0) - (a.seeders || 0);
-    });
-
-    // Build alternateSources: addon streams first, then embed fallbacks
-    const alternateSources: { name: string; url: string; quality: string; addon?: string; size?: string; seeders?: number; streamType?: "http" | "torrent" | "external" | "embed" }[] = [];
-    
-    // Add all addon streams
-    for (const s of allAddonStreams) {
-      alternateSources.push({
-        name: s.name,
-        url: s.url,
-        quality: s.quality,
-        addon: s.addon,
-        size: s.size,
-        seeders: s.seeders,
-        streamType: s.streamType
-      });
-    }
-
-    // Add embed servers FIRST — prioritize lightweight/fast ones (1080p/720p) over 4K VidLink
+    // Add embed servers FIRST as fallbacks
     const playId = imdbId || tmdbId;
     const embedSources: typeof alternateSources = [];
     if (mediaType === "movie") {
@@ -492,22 +375,48 @@ export const movieApi = {
       embedSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
     }
 
-    // Final order: Embeds first (instant play) → HTTP addon streams → Torrents
-    const httpAddonStreams = alternateSources.filter(s => s.streamType === "http" || s.streamType === "external");
-    const torrentAddonStreams = alternateSources.filter(s => s.streamType === "torrent");
-    const finalSources = [...embedSources, ...httpAddonStreams, ...torrentAddonStreams];
-    // Clear and rebuild alternateSources
-    alternateSources.length = 0;
+    // Extract Phim4K direct streams inline from pre-fetched detail episodes
+    const phim4kStreams: any[] = [];
+    const rawEpisodes = episodes || [];
+    
+    for (const server of rawEpisodes) {
+      const serverName = server.server_name || "Vietsub";
+      const serverData = server.server_data || [];
+      
+      let matchedEpisode: any = null;
+      if (mediaType === "movie") {
+        matchedEpisode = serverData.find((ep: any) => ep.slug === "full" || ep.name?.toLowerCase().includes("full")) || serverData[0];
+      } else {
+        const targetEpStr = String(selectedEpisode).padStart(2, "0");
+        matchedEpisode = serverData.find((ep: any) => {
+          const epNameClean = (ep.name || "").replace(/\D/g, "");
+          return epNameClean === targetEpStr || epNameClean === String(selectedEpisode) || ep.slug === `tap-${targetEpStr}`;
+        });
+      }
+      
+      if (matchedEpisode && matchedEpisode.link) {
+        phim4kStreams.push({
+          name: `Phim4K Thuyết Minh / Vietsub (${serverName})`,
+          url: matchedEpisode.link,
+          quality: movie.quality || "FHD",
+          addon: "Phim4K API",
+          streamType: "http"
+        });
+      }
+    }
+
+    // Final order: Phim4K streams first (direct play) -> Embed fallbacks
+    const finalSources = [...phim4kStreams, ...embedSources];
     finalSources.forEach(s => alternateSources.push(s));
 
-    // Always use first embed as primary URL — instant playback, no waiting
-    selectedStreamUrl = embedSources[0]?.url || alternateSources[0]?.url || "";
+    // Choose first working stream as primary (prefer Direct HLS from Phim4K if available)
+    selectedStreamUrl = phim4kStreams[0]?.url || embedSources[0]?.url || alternateSources[0]?.url || "";
 
     // ── Fetch subtitles from subtitle addons ──
     const subtitlesList: any[] = [];
     try {
       const installedStr = localStorage.getItem("streamforge:addons:installed");
-      const installedAddonsList = installedStr ? JSON.parse(installedStr) : [];
+      const installedAddonsList = installedStr ? JSON.parse(installedStr) : addonsData.map(a => a.id);
       const subtitleAddons = (addonsData as any[]).filter(addon => 
         installedAddonsList.includes(addon.id) && addon.category === "Subtitle"
       );
@@ -543,6 +452,10 @@ export const movieApi = {
       // Ignore
     }
 
+    const stremioUrl = imdbId 
+      ? `stremio:///detail/${mediaType === "tv" ? "series" : "movie"}/${imdbId}${mediaType === "tv" ? `/${imdbId}:${selectedSeason}:${selectedEpisode}` : `/${imdbId}`}`
+      : "";
+
     return {
       movieId: movie.id,
       title: streamTitle,
@@ -555,7 +468,8 @@ export const movieApi = {
       recapEndSeconds: 0,
       currentEpisodeId: selectedEpisodeId,
       episodesList: allEpisodes,
-      alternateSources
+      alternateSources,
+      stremioUrl
     };
   },
 
@@ -749,13 +663,100 @@ function normalizeCinemetaEpisodes(videos: any[], movieSlug: string, synopsis: s
   });
 }
 
+function proxyImageUrl(url: string): string {
+  if (!url) return "";
+  if (url.startsWith("data:")) return url;
+  return `https://wsrv.nl/?url=${encodeURIComponent(url)}&default=${encodeURIComponent(url)}`;
+}
+
+function normalizePhim4kList(items: any[]): NormalizedMovie[] {
+  if (!Array.isArray(items)) return [];
+  return items.map(item => normalizePhim4kMovie(item, false)).filter(Boolean) as NormalizedMovie[];
+}
+
+function normalizePhim4kMovie(item: any, isDetail = false): NormalizedMovie {
+  if (!item) return null as any;
+  const title = item.name || item.origin_name || "Untitled";
+  const slug = item.slug || "";
+  const posterUrl = (isDetail && item.poster_url) ? proxyImageUrl(item.poster_url) : createFallbackImage(title);
+  const backdropUrl = (isDetail && item.thumb_url) ? proxyImageUrl(item.thumb_url) : posterUrl;
+  const year = item.year || new Date().getFullYear();
+  const rating = item.imdb?.vote_average ? parseFloat(item.imdb.vote_average) : 8.0;
+
+  let seasons: any[] = [];
+  if (Array.isArray(item.episodes)) {
+    const seasonsMap: Record<number, any[]> = {};
+    item.episodes.forEach((server: any) => {
+      const serverData = server.server_data || [];
+      serverData.forEach((ep: any, idx: number) => {
+        const season = 1;
+        if (!seasonsMap[season]) seasonsMap[season] = [];
+        if (!seasonsMap[season].some(existing => existing.episodeNumber === idx + 1)) {
+          seasonsMap[season].push({
+            id: ep.slug || `${slug}-ep-${idx + 1}`,
+            title: ep.name || `Tập ${idx + 1}`,
+            synopsis: item.content || item.description || "Xem phim online chất lượng cao.",
+            runtimeMinutes: 45,
+            posterUrl: backdropUrl,
+            seasonNumber: season,
+            episodeNumber: idx + 1
+          });
+        }
+      });
+    });
+
+    seasons = Object.keys(seasonsMap).map((seasonNumStr) => {
+      const seasonNum = parseInt(seasonNumStr);
+      return {
+        id: `${slug}-season-${seasonNum}`,
+        title: `Mùa ${seasonNum}`,
+        episodes: seasonsMap[seasonNum].sort((a, b) => a.episodeNumber - b.episodeNumber)
+      };
+    });
+  }
+
+  return {
+    id: slug,
+    slug: slug,
+    title,
+    synopsis: item.content || item.description || "Xem phim online chất lượng cao.",
+    posterUrl,
+    backdropUrl,
+    trailerUrl: null,
+    releaseYear: year,
+    runtimeMinutes: 45,
+    maturityRating: "PG_13",
+    averageRating: rating,
+    genres: Array.isArray(item.category) ? item.category.map((g: any) => ({ id: g.slug || g.name, name: g.name, slug: g.slug })) : [],
+    name: item.name || title,
+    origin_name: item.origin_name || title,
+    poster: posterUrl,
+    thumb: backdropUrl,
+    year,
+    quality: item.quality || "FHD",
+    lang: item.lang || "Vietsub",
+    episode_current: item.episode_current || "",
+    category: Array.isArray(item.category) ? item.category : [],
+    country: Array.isArray(item.country) ? item.country : [],
+    description: item.content || item.description || "Xem phim online chất lượng cao.",
+    cast: [],
+    director: "",
+    tags: Array.isArray(item.category) ? item.category.map((g: any) => g.name) : [],
+    match: Math.round(rating * 10),
+    reviews: [],
+    seasons,
+    imdbId: item.imdb?.id || "",
+    tmdbId: item.tmdb?.id || "",
+    mediaType: item.type === "series" ? "tv" : "movie"
+  };
+}
+
 function rowFrom(title: string, result: PromiseSettledResult<NormalizedMovie[]>, ranked = false) {
   return { title, ranked, items: result.status === "fulfilled" ? result.value : [] };
 }
 
 function createFallbackImage(title: string) {
-  const safeTitle = escapeXml(title).slice(0, 38);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#1f1f1f"/><stop offset=".55" stop-color="#111"/><stop offset="1" stop-color="#2a0d10"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><rect width="1280" height="720" fill="#000" opacity=".22"/><text x="64" y="590" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="54" font-weight="800">${safeTitle}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#1f1f1f"/><stop offset=".55" stop-color="#111"/><stop offset="1" stop-color="#2a0d10"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><rect width="1280" height="720" fill="#000" opacity=".22"/></svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 

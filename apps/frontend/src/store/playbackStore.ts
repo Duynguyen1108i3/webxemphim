@@ -31,6 +31,7 @@ interface PlaybackState {
   toggleMyList: (movie: NormalizedMovie) => void;
   watchHistory: WatchHistoryItem[];
   updateWatchHistory: (movie: NormalizedMovie, currentTime: number, duration: number, episodeId?: string, episodeTitle?: string) => void;
+  removeFromWatchHistory: (movieId: string) => void;
   loadUserData: () => void;
 }
 
@@ -207,6 +208,16 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
 
       // Put at the beginning
       const updated = [newItem, ...filtered].slice(0, 12);
+      localStorage.setItem(historyKey, JSON.stringify(updated));
+      return { watchHistory: updated };
+    });
+  },
+
+  removeFromWatchHistory: (movieId) => {
+    set((state) => {
+      const user = useAuthStore.getState().user;
+      const historyKey = user?.email ? `streamforge:${user.email}:watchhistory` : "streamforge:watchhistory";
+      const updated = state.watchHistory.filter((item) => item.id !== movieId);
       localStorage.setItem(historyKey, JSON.stringify(updated));
       return { watchHistory: updated };
     });
