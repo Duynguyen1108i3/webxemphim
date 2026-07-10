@@ -7,6 +7,39 @@ import { formatRuntime } from "@streamforge/utils";
 import type { NormalizedMovie } from "../lib/movieApi";
 import { usePlaybackStore } from "../store/playbackStore";
 
+function createFallbackImage(title: string) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#1f1f1f"/><stop offset=".55" stop-color="#111"/><stop offset="1" stop-color="#2a0d10"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><rect width="1280" height="720" fill="#000" opacity=".22"/></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+function fallbackImageSource(src: string, title: string) {
+  if (!src || src.startsWith("data:")) return createFallbackImage(title);
+
+  try {
+    const url = new URL(src);
+    if (url.hostname === "wsrv.nl") {
+      const original = url.searchParams.get("url");
+      if (original && original !== src) return original;
+    }
+  } catch {
+    // Fall through to generated fallback.
+  }
+
+  if (/^https?:\/\//i.test(src)) {
+    return `https://wsrv.nl/?url=${encodeURIComponent(src)}&default=${encodeURIComponent(createFallbackImage(title))}`;
+  }
+
+  return createFallbackImage(title);
+}
+
+function handleImageError(event: React.SyntheticEvent<HTMLImageElement>, title: string) {
+  const img = event.currentTarget;
+  const nextSrc = fallbackImageSource(img.currentSrc || img.src || img.getAttribute("src") || "", title);
+  if (img.dataset.fallbackSrc === nextSrc) return;
+  img.dataset.fallbackSrc = nextSrc;
+  img.src = nextSrc;
+}
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -237,7 +270,7 @@ export const MovieTile = React.memo(function MovieTile({
       onBlur={onHoverEnd}
     >
       <button onClick={onOpen} className="relative block w-full overflow-hidden rounded-md bg-zinc-900 text-left focus:outline-none focus:ring-2 focus:ring-white/70" aria-label={`Open ${movie.title}`}>
-        <motion.img layoutId={`card-${movie.id}`} src={movie.backdropUrl || movie.posterUrl} alt={movie.title} loading="lazy" className="aspect-video w-full object-cover transition duration-500 group-hover:brightness-90" />
+        <motion.img layoutId={`card-${movie.id}`} src={movie.backdropUrl || movie.posterUrl} alt={movie.title} loading="lazy" onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover transition duration-500 group-hover:brightness-90" />
         {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700 z-10">
             <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />
@@ -304,7 +337,7 @@ const HoverPreview = React.memo(function HoverPreview({
       >
         <div className="relative w-full overflow-hidden bg-zinc-950 text-left">
           <button onClick={onOpen} className="block w-full text-left relative" aria-label={`Open ${movie.title} preview`}>
-            <motion.img layoutId={`card-${movie.id}`} src={movie.backdropUrl || movie.posterUrl} alt={movie.title} className="aspect-video w-full object-cover" />
+            <motion.img layoutId={`card-${movie.id}`} src={movie.backdropUrl || movie.posterUrl} alt={movie.title} onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover" />
             {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
               <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-zinc-700 z-10">
                 <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />

@@ -1,5 +1,5 @@
 import type { GenreDto, MovieCardDto, PlaybackSourceDto } from "@streamforge/shared-types";
-import { MOVIE_API_CACHE_TTL_MS, MOVIE_API_TIMEOUT_MS } from "./movieApiConfig";
+import { APP_DOMAIN_CDN_IMAGE, MOVIE_API_CACHE_TTL_MS, MOVIE_API_TIMEOUT_MS } from "./movieApiConfig";
 
 const getTmdbApiKey = () => {
   return localStorage.getItem("streamforge:settings:tmdb_key") || import.meta.env.VITE_TMDB_API_KEY || "";
@@ -669,6 +669,28 @@ function proxyImageUrl(url: string): string {
   return `https://wsrv.nl/?url=${encodeURIComponent(url)}&default=${encodeURIComponent(url)}`;
 }
 
+function absolutePhim4kImageUrl(url: unknown): string {
+  if (typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("data:")) return trimmed;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  const normalizedPath = trimmed
+    .replace(/^\/+/, "")
+    .replace(/^uploads\/movies\//i, "")
+    .replace(/^upload\/movies\//i, "");
+
+  return `${APP_DOMAIN_CDN_IMAGE}/${normalizedPath}`;
+}
+
+function normalizePhim4kImageUrl(url: unknown): string {
+  const absoluteUrl = absolutePhim4kImageUrl(url);
+  if (!absoluteUrl) return "";
+  return proxyImageUrl(absoluteUrl);
+}
+
 function normalizePhim4kList(items: any[]): NormalizedMovie[] {
   if (!Array.isArray(items)) return [];
   return items.map(item => normalizePhim4kMovie(item, false)).filter(Boolean) as NormalizedMovie[];
@@ -678,8 +700,9 @@ function normalizePhim4kMovie(item: any, isDetail = false): NormalizedMovie {
   if (!item) return null as any;
   const title = item.name || item.origin_name || "Untitled";
   const slug = item.slug || "";
-  const posterUrl = (isDetail && item.poster_url) ? proxyImageUrl(item.poster_url) : createFallbackImage(title);
-  const backdropUrl = (isDetail && item.thumb_url) ? proxyImageUrl(item.thumb_url) : posterUrl;
+  const posterUrl = normalizePhim4kImageUrl(item.poster_url || item.poster || item.image) || createFallbackImage(title);
+  const thumbUrl = normalizePhim4kImageUrl(item.thumb_url || item.backdrop_url || item.backdrop);
+  const backdropUrl = isDetail ? thumbUrl || posterUrl : posterUrl;
   const year = item.year || new Date().getFullYear();
   const rating = item.imdb?.vote_average ? parseFloat(item.imdb.vote_average) : 8.0;
 
