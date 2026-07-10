@@ -472,6 +472,8 @@ export const movieApi = {
     const embedSources: typeof alternateSources = [];
     if (mediaType === "movie") {
       embedSources.push({ name: "Embed.su", url: `https://embed.su/embed/movie/${playId}`, quality: "1080p", streamType: "embed" });
+      embedSources.push({ name: "Vidsrc.cc", url: `https://vidsrc.cc/v2/embed/movie/${playId}`, quality: "1080p", streamType: "embed" });
+      embedSources.push({ name: "SuperEmbed", url: `https://multiembed.mov/?video_id=${playId}${imdbId ? "" : "&tmdb=1"}`, quality: "1080p", streamType: "embed" });
       if (imdbId) {
         embedSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/movie/${imdbId}`, quality: "1080p", streamType: "embed" });
       }
@@ -480,6 +482,8 @@ export const movieApi = {
       embedSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
     } else {
       embedSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
+      embedSources.push({ name: "Vidsrc.cc", url: `https://vidsrc.cc/v2/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
+      embedSources.push({ name: "SuperEmbed", url: `https://multiembed.mov/?video_id=${playId}${imdbId ? "" : "&tmdb=1"}&s=${selectedSeason}&e=${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       if (imdbId) {
         embedSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/tv/${imdbId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       }

@@ -363,6 +363,12 @@ export function VideoPlayer({
   const allSources: any[] = isEmbed ? ((source as any)?.alternateSources || []) : [];
   const embedSources = allSources.filter((s: any) => !s.url?.startsWith("magnet:") && s.streamType !== "torrent");
 
+  useEffect(() => {
+    if (isEmbed && onPlayStarted) {
+      onPlayStarted();
+    }
+  }, [isEmbed, onPlayStarted]);
+
   const handleServerSwitch = (idx: number) => {
     setServerIndex(idx);
     if (embedSources[idx]) {
