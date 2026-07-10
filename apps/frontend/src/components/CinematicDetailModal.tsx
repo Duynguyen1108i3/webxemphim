@@ -310,60 +310,118 @@ export function CinematicDetailModal() {
           </motion.div>
         </motion.div>
 
-        {/* Streaming Sources Section */}
+        {/* Streaming Sources Section — Stremio-style */}
         <section className="px-6 pb-6 md:px-8 border-t border-white/5 pt-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h4 className="text-xl font-black md:text-2xl flex items-center gap-2">
-                <span>Nguồn Phát & Server</span>
+                <span>Nguồn Phát</span>
                 <span className="text-[10px] uppercase tracking-wider bg-[#e50914] px-2 py-0.5 rounded font-black text-white animate-pulse">LIVE</span>
               </h4>
-              <p className="text-xs text-white/50 mt-1">Chọn server để phát phim ngay lập tức. Nếu bị chặn, hãy thử server khác.</p>
+              <p className="text-xs text-white/50 mt-1">Chọn nguồn phát bất kỳ. Nguồn từ Addon được xếp theo chất lượng (4K → 720p).</p>
             </div>
             {playbackData?.alternateSources && playbackData.alternateSources.length > 0 && (
               <span className="text-[10px] font-bold text-white/30 bg-white/5 px-2 py-1 rounded shrink-0">
-                {playbackData.alternateSources.length} SERVER
+                {playbackData.alternateSources.length} NGUỒN
               </span>
             )}
           </div>
           
           {playbackLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-20 rounded-lg bg-white/5 animate-pulse" />
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-16 rounded-lg bg-white/5 animate-pulse" />
               ))}
+              <p className="text-[10px] text-white/30 text-center mt-2 animate-pulse">Đang tải nguồn phát từ các Addon đã cài đặt...</p>
             </div>
-          ) : playbackData?.alternateSources && playbackData.alternateSources.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {playbackData.alternateSources.map((src: any, idx: number) => {
-                const quality = src.name.toLowerCase().includes("embed") ? "1080p" 
-                  : src.name.toLowerCase().includes("vidsrc") ? "HD" 
-                  : src.name.toLowerCase().includes("vidlink") ? "4K" 
-                  : "HD";
-                return (
-                  <button
-                    key={src.url}
-                    onClick={() => openPlayback(displayMovie, "hero", src.url)}
-                    className="flex items-center gap-3 bg-gradient-to-br from-white/[.04] to-white/[.02] hover:from-[#e50914]/20 hover:to-[#e50914]/5 hover:border-[#e50914]/30 transition-all duration-300 border border-white/8 rounded-xl px-4 py-3.5 text-left cursor-pointer group shadow-lg active:scale-[0.97]"
-                  >
-                    <span className="grid place-items-center h-10 w-10 rounded-xl bg-white/8 text-white group-hover:bg-[#e50914]/30 group-hover:text-white transition-all duration-300 shrink-0">
-                      <Play size={16} fill="currentColor" />
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-xs font-bold truncate text-white/90 group-hover:text-white">{src.name}</p>
-                        <span className="text-[8px] font-black tracking-wider bg-white/10 group-hover:bg-[#e50914] text-white/60 group-hover:text-white px-1.5 py-0.5 rounded transition-all duration-300 shrink-0">{quality}</span>
-                      </div>
-                      <p className="text-[10px] text-white/35 group-hover:text-white/70 mt-0.5 transition">Server {idx + 1} • Click để phát</p>
+          ) : playbackData?.alternateSources && playbackData.alternateSources.length > 0 ? (() => {
+            // Separate addon streams from embed fallbacks
+            const addonStreams = playbackData.alternateSources.filter((s: any) => s.addon);
+            const embedStreams = playbackData.alternateSources.filter((s: any) => !s.addon);
+            
+            return (
+              <div className="space-y-4">
+                {/* Addon Streams (like Stremio) */}
+                {addonStreams.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-white/30 font-bold mb-2">Từ Addon ({addonStreams.length} nguồn)</p>
+                    <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin">
+                      {addonStreams.map((src: any, idx: number) => (
+                        <button
+                          key={`addon-${idx}-${src.url}`}
+                          onClick={() => openPlayback(displayMovie, "hero", src.url)}
+                          className="w-full flex items-center gap-3 bg-gradient-to-r from-white/[.03] to-transparent hover:from-[#e50914]/15 hover:to-[#e50914]/5 hover:border-[#e50914]/30 transition-all duration-300 border border-white/5 rounded-lg px-4 py-3 text-left cursor-pointer group active:scale-[0.99]"
+                        >
+                          {/* Play icon */}
+                          <span className="grid place-items-center h-9 w-9 rounded-lg bg-white/5 text-white/70 group-hover:bg-[#e50914]/30 group-hover:text-white transition-all duration-300 shrink-0">
+                            <Play size={14} fill="currentColor" />
+                          </span>
+                          
+                          {/* Stream info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {/* Quality badge */}
+                              <span className={`text-[8px] font-black tracking-wider px-1.5 py-0.5 rounded uppercase shrink-0 ${
+                                src.quality?.includes("4K") ? "bg-purple-600/30 text-purple-300 border border-purple-500/20" :
+                                src.quality?.includes("1080p") ? "bg-blue-600/30 text-blue-300 border border-blue-500/20" :
+                                src.quality?.includes("720p") ? "bg-zinc-600/30 text-zinc-300 border border-zinc-500/20" :
+                                "bg-white/10 text-white/50"
+                              }`}>{src.quality}</span>
+                              {/* Stream name */}
+                              <p className="text-[11px] font-semibold truncate text-white/80 group-hover:text-white">{src.name}</p>
+                            </div>
+                            {/* Metadata: addon, size, seeders */}
+                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-white/30">
+                              <span className="font-semibold text-white/40">{src.addon}</span>
+                              {src.size && (
+                                <>
+                                  <span>•</span>
+                                  <span>📦 {src.size}</span>
+                                </>
+                              )}
+                              {src.seeders !== undefined && src.seeders > 0 && (
+                                <>
+                                  <span>•</span>
+                                  <span className={src.seeders > 20 ? "text-green-400" : src.seeders > 5 ? "text-amber-400" : "text-red-400"}>👤 {src.seeders}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
+                  </div>
+                )}
+
+                {/* Embed Fallback Servers */}
+                {embedStreams.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-white/30 font-bold mb-2">Server Embed Dự Phòng ({embedStreams.length})</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {embedStreams.map((src: any, idx: number) => (
+                        <button
+                          key={`embed-${idx}-${src.url}`}
+                          onClick={() => openPlayback(displayMovie, "hero", src.url)}
+                          className="flex items-center gap-2 bg-white/[.03] hover:bg-[#e50914]/10 hover:border-[#e50914]/20 transition-all duration-300 border border-white/5 rounded-lg px-3 py-2.5 text-left cursor-pointer group"
+                        >
+                          <Play size={12} className="text-white/40 group-hover:text-white shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-bold truncate text-white/70 group-hover:text-white">{src.name}</p>
+                            <span className={`text-[8px] font-black tracking-wider ${
+                              src.quality === "4K" ? "text-purple-400" : src.quality === "1080p" ? "text-blue-400" : "text-zinc-400"
+                            }`}>{src.quality}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })() : (
             <div className="p-6 rounded-xl bg-white/[.03] border border-dashed border-white/10 text-center">
               <p className="text-sm text-white/40 font-semibold">Không có nguồn phát nào khả dụng</p>
-              <p className="text-xs text-white/25 mt-1">Hãy cài đặt thêm Addon trong mục Addons để mở khóa nguồn phát.</p>
+              <p className="text-xs text-white/25 mt-1">Hãy cài đặt Addon (Torrentio, MediaFusion...) trong mục Addons để lấy nguồn phát.</p>
             </div>
           )}
         </section>

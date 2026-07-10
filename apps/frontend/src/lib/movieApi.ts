@@ -330,54 +330,117 @@ export const movieApi = {
     let selectedStreamUrl = "";
     let streamTitle = `${movie.title}${episodeTitle}`;
     
+    // ── Fetch ALL streams from ALL installed addons in parallel ──
+    const allAddonStreams: { name: string; url: string; quality: string; addon: string; title: string; size?: string; seeders?: number; behaviorHints?: any }[] = [];
+    
     try {
       const installedStr = localStorage.getItem("streamforge:addons:installed");
       const installedAddonsList = installedStr ? JSON.parse(installedStr) : [];
       
       const streamAddons = (addonsData as any[]).filter(addon => 
         installedAddonsList.includes(addon.id) && 
-        (addon.category === "Torrent" || addon.category === "Movies" || addon.category === "Debrid")
+        (addon.category === "Torrent" || addon.category === "Movies" || addon.category === "Debrid" || addon.category === "Anime" || addon.category === "TV")
       );
 
-      for (const addon of streamAddons) {
-        const rootUrl = addon.manifestUrl.replace("/manifest.json", "");
-        const queryId = mediaType === "movie" ? imdbId : `${imdbId}:${selectedSeason}:${selectedEpisode}`;
-        
-        if (queryId) {
+      const queryId = mediaType === "movie" ? imdbId : `${imdbId}:${selectedSeason}:${selectedEpisode}`;
+      
+      if (queryId && streamAddons.length > 0) {
+        // Fetch from all addons in parallel with a 6-second timeout
+        const fetchPromises = streamAddons.map(async (addon) => {
+          const rootUrl = addon.manifestUrl.replace("/manifest.json", "");
           const streamEndpoint = `${rootUrl}/stream/${mediaType}/${encodeURIComponent(queryId)}.json`;
           try {
-            const res = await fetch(streamEndpoint);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(streamEndpoint, { signal: controller.signal });
+            clearTimeout(timeoutId);
             if (res.ok) {
               const resData = await res.json();
               const streamsList = resData?.streams || [];
-              const cleanHttpStream = streamsList.find((s: any) => s.url && s.url.startsWith("http") && !s.url.includes(".mkv"));
-              if (cleanHttpStream) {
-                selectedStreamUrl = cleanHttpStream.url;
-                if (cleanHttpStream.title) {
-                  streamTitle = `${movie.title} [${addon.name}] - ${cleanHttpStream.title.split("\n")[0]}`;
-                }
-                break;
+              for (const s of streamsList) {
+                const streamUrl = s.url || s.externalUrl || "";
+                if (!streamUrl) continue;
+                
+                // Parse quality from title (e.g. "4K HDR", "1080p", "720p", "480p")
+                const titleStr = (s.title || s.name || "").toString();
+                let quality = "HD";
+                if (/2160p|4k|uhd/i.test(titleStr)) quality = "4K";
+                else if (/1080p/i.test(titleStr)) quality = "1080p";
+                else if (/720p/i.test(titleStr)) quality = "720p";
+                else if (/480p/i.test(titleStr)) quality = "480p";
+                if (/hdr|dolby.?vision|dv/i.test(titleStr)) quality += " HDR";
+                
+                // Parse size (e.g. "18.2 GB", "2.84 GB")
+                const sizeMatch = titleStr.match(/([\d.]+)\s*(GB|MB|TB)/i);
+                const size = sizeMatch ? `${sizeMatch[1]} ${sizeMatch[2].toUpperCase()}` : undefined;
+                
+                // Parse seeders (e.g. "👤 67")
+                const seederMatch = titleStr.match(/👤\s*(\d+)/);
+                const seeders = seederMatch ? parseInt(seederMatch[1]) : undefined;
+                
+                // Build display name from first line of title
+                const displayTitle = titleStr.split("\n")[0].trim().substring(0, 100) || addon.name;
+                
+                allAddonStreams.push({
+                  name: displayTitle,
+                  url: streamUrl,
+                  quality,
+                  addon: addon.name,
+                  title: titleStr,
+                  size,
+                  seeders,
+                  behaviorHints: s.behaviorHints
+                });
               }
             }
           } catch {
-            // Ignore
+            // Addon stream fetch failed (CORS, timeout, etc.) — skip silently
           }
-        }
+        });
+
+        await Promise.allSettled(fetchPromises);
       }
     } catch (e) {
       console.error("Addon stream resolve failed:", e);
     }
 
-    // Build alternate embed servers ordered by quality: best → worst
-    const alternateSources: { name: string; url: string; quality: string }[] = [];
-    const playId = imdbId || tmdbId;
+    // Sort addon streams: highest quality first, then by seeders
+    const qualityOrder: Record<string, number> = { "4K HDR": 0, "4K": 1, "1080p HDR": 2, "1080p": 3, "720p": 4, "480p": 5, "HD": 3.5 };
+    allAddonStreams.sort((a, b) => {
+      const qa = qualityOrder[a.quality] ?? 6;
+      const qb = qualityOrder[b.quality] ?? 6;
+      if (qa !== qb) return qa - qb;
+      return (b.seeders || 0) - (a.seeders || 0);
+    });
 
-    if (selectedStreamUrl && !selectedStreamUrl.includes("embed") && !selectedStreamUrl.includes("vidsrc") && !selectedStreamUrl.includes("vidlink")) {
-      alternateSources.push({ name: "Addon Stream (Direct)", url: selectedStreamUrl, quality: "Source" });
+    // Build alternateSources: addon streams first, then embed fallbacks
+    const alternateSources: { name: string; url: string; quality: string; addon?: string; size?: string; seeders?: number }[] = [];
+    
+    // Add all addon streams
+    for (const s of allAddonStreams) {
+      alternateSources.push({
+        name: s.name,
+        url: s.url,
+        quality: s.quality,
+        addon: s.addon,
+        size: s.size,
+        seeders: s.seeders
+      });
     }
 
+    // Pick best addon stream as primary
+    if (allAddonStreams.length > 0) {
+      const best = allAddonStreams.find(s => s.url.startsWith("http") && !s.url.includes(".torrent") && !s.url.startsWith("magnet:"));
+      if (best) {
+        selectedStreamUrl = best.url;
+        streamTitle = `${movie.title} [${best.addon}] - ${best.name.split("\n")[0]}`;
+      }
+    }
+    
+    // Add embed fallback servers at the end
+    const playId = imdbId || tmdbId;
     if (mediaType === "movie") {
-      alternateSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/movie/${playId}`, quality: "4K" });
+      alternateSources.push({ name: "VidLink (Embed)", url: `https://vidlink.pro/embed/movie/${playId}`, quality: "4K" });
       alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/movie/${playId}`, quality: "1080p" });
       if (imdbId) {
         alternateSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/movie/${imdbId}`, quality: "1080p" });
@@ -385,7 +448,7 @@ export const movieApi = {
       alternateSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/movie/${playId}`, quality: "720p" });
       alternateSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/movie/${playId}`, quality: "720p" });
     } else {
-      alternateSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "4K" });
+      alternateSources.push({ name: "VidLink (Embed)", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "4K" });
       alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p" });
       if (imdbId) {
         alternateSources.push({ name: "Vidsrc.to", url: `https://vidsrc.to/embed/tv/${imdbId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p" });
@@ -398,6 +461,7 @@ export const movieApi = {
       selectedStreamUrl = alternateSources[0].url;
     }
 
+    // ── Fetch subtitles from subtitle addons ──
     const subtitlesList: any[] = [];
     try {
       const installedStr = localStorage.getItem("streamforge:addons:installed");
@@ -406,13 +470,16 @@ export const movieApi = {
         installedAddonsList.includes(addon.id) && addon.category === "Subtitle"
       );
 
-      for (const addon of subtitleAddons) {
-        const rootUrl = addon.manifestUrl.replace("/manifest.json", "");
-        const queryId = mediaType === "movie" ? imdbId : `${imdbId}:${selectedSeason}:${selectedEpisode}`;
-        if (queryId) {
+      const queryId = mediaType === "movie" ? imdbId : `${imdbId}:${selectedSeason}:${selectedEpisode}`;
+      if (queryId) {
+        const subPromises = subtitleAddons.map(async (addon) => {
+          const rootUrl = addon.manifestUrl.replace("/manifest.json", "");
           const subEndpoint = `${rootUrl}/subtitles/${mediaType}/${encodeURIComponent(queryId)}.json`;
           try {
-            const res = await fetch(subEndpoint);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const res = await fetch(subEndpoint, { signal: controller.signal });
+            clearTimeout(timeoutId);
             if (res.ok) {
               const resData = await res.json();
               const subs = resData?.subtitles || [];
@@ -427,7 +494,8 @@ export const movieApi = {
           } catch {
             // Ignore
           }
-        }
+        });
+        await Promise.allSettled(subPromises);
       }
     } catch {
       // Ignore
