@@ -14,6 +14,7 @@ export function CinematicDetailModal() {
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
   const [isInitiallyOpening, setIsInitiallyOpening] = useState(true);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>("");
   const modalContainerRef = useRef<HTMLDivElement>(null);
 
   const movie = activeMovieDetail;
@@ -86,6 +87,17 @@ export function CinematicDetailModal() {
     return () => clearTimeout(timer);
   }, [activeMovieId, activeTrailerUrl]);
 
+  const displayMovieId = data?.movie?.id ?? movie?.id;
+  const seasonsList = data?.movie?.seasons ?? movie?.seasons ?? [];
+
+  useEffect(() => {
+    if (seasonsList.length) {
+      setSelectedSeasonId(seasonsList[0].id);
+    } else {
+      setSelectedSeasonId("");
+    }
+  }, [displayMovieId, seasonsList.length]);
+
   // Early return if no movie is selected
   if (!movie) return null;
 
@@ -95,8 +107,17 @@ export function CinematicDetailModal() {
   const similarTitles = (similarData ?? [])
     .filter((item) => item.id !== displayMovie.id)
     .slice(0, 6);
-  const realEpisodes = getEpisodes(displayMovie);
-  const episodes = realEpisodes.length > 0 ? realEpisodes : [
+  
+  const activeSeason = displayMovie.seasons?.find((s) => s.id === selectedSeasonId) || displayMovie.seasons?.[0];
+  const activeEpisodes = activeSeason?.episodes || [];
+
+  const episodes = activeEpisodes.length > 0 ? activeEpisodes.map((ep: any) => ({
+    id: String(ep.id),
+    title: String(ep.title),
+    synopsis: String(ep.synopsis ?? ep.description ?? displayMovie.synopsis),
+    runtimeMinutes: Number(ep.runtimeMinutes ?? ep.runtime_minutes ?? Math.min(displayMovie.runtimeMinutes || 45, 48)),
+    posterUrl: String(ep.posterUrl ?? ep.thumbnailUrl ?? (displayMovie.backdropUrl || displayMovie.posterUrl))
+  })) : [
     {
       id: `${displayMovie.id}-movie-ep`,
       title: displayMovie.title,
@@ -314,11 +335,35 @@ export function CinematicDetailModal() {
 
         {/* Episodes Section */}
         <section className="px-6 pb-6 md:px-8 border-t border-white/5 pt-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h4 className="text-xl font-black md:text-2xl">Episodes</h4>
-            <span className="text-sm font-semibold text-white/50">
-              {episodes.length ? `${episodes.length} Episodes` : ""}
-            </span>
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-1">
+              <h4 className="text-xl font-black md:text-2xl">Episodes</h4>
+              {displayMovie.seasons && displayMovie.seasons.length > 0 && (
+                <p className="text-xs text-white/60">
+                  {displayMovie.seasons.find((s: any) => s.id === selectedSeasonId)?.title || "Mùa 1"}: 
+                  <span className="ml-1.5 px-1 py-0.5 border border-white/20 rounded bg-white/5 text-white/80 font-bold">{displayMovie.maturityRating || "T13"}</span>
+                  <span className="ml-1.5">{episodes.length} Episodes</span>
+                </p>
+              )}
+            </div>
+            {displayMovie.seasons && displayMovie.seasons.length > 1 && (
+              <div className="relative shrink-0">
+                <select
+                  value={selectedSeasonId}
+                  onChange={(e) => setSelectedSeasonId(e.target.value)}
+                  className="appearance-none bg-[#242424] text-white border border-white/10 rounded px-4 py-2 pr-10 text-sm font-semibold outline-none focus:border-white/40 focus:bg-[#2c2c2c] transition duration-200 cursor-pointer min-w-[140px]"
+                >
+                  {displayMovie.seasons.map((season: any) => (
+                    <option key={season.id} value={season.id}>
+                      {season.title}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-white/60">
+                  <ChevronDown size={16} />
+                </div>
+              </div>
+            )}
           </div>
           <div className="divide-y divide-white/5 overflow-hidden rounded-md bg-[#202020] border border-white/5">
             {episodes.length ? (

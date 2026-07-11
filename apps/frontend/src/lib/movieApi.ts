@@ -308,23 +308,51 @@ export const movieApi = {
         const epData = await epRes.json();
         const rawEpisodes = epData.result || [];
 
-        const seasons = [{
-          id: `${slug}-season-1`,
-          title: "Season 1",
-          episodes: rawEpisodes.map((ep: any) => {
-            const epNum = ep.episodeNumber;
-            const customEpId = `${slug}-ep-1-${epNum}__${ep.episodeId}__${ep.server}`;
-            return {
-              id: customEpId,
-              title: `Tập ${epNum}`,
-              synopsis: `Tập phim ${epNum} phát nguồn từ ${ep.server}`,
-              runtimeMinutes: rawAnime.unitDurationMin || 24,
-              posterUrl: rawAnime.images?.bannerUrl || rawAnime.images?.coverLg,
-              seasonNumber: 1,
-              episodeNumber: parseFloat(epNum) || 1
-            };
-          })
-        }];
+        const seasons = [];
+        const chunkSize = 50;
+        if (rawEpisodes.length > chunkSize) {
+          for (let i = 0; i < rawEpisodes.length; i += chunkSize) {
+            const chunk = rawEpisodes.slice(i, i + chunkSize);
+            const chunkStart = i + 1;
+            const chunkEnd = Math.min(i + chunkSize, rawEpisodes.length);
+            const seasonNum = Math.floor(i / chunkSize) + 1;
+            seasons.push({
+              id: `${slug}-season-${seasonNum}`,
+              title: `Tập ${chunkStart} - ${chunkEnd}`,
+              episodes: chunk.map((ep: any) => {
+                const epNum = ep.episodeNumber;
+                const customEpId = `${slug}-ep-${seasonNum}-${epNum}__${ep.episodeId}__${ep.server}`;
+                return {
+                  id: customEpId,
+                  title: `Tập ${epNum}`,
+                  synopsis: `Tập phim ${epNum} phát nguồn từ ${ep.server}`,
+                  runtimeMinutes: rawAnime.unitDurationMin || 24,
+                  posterUrl: rawAnime.images?.bannerUrl || rawAnime.images?.coverLg,
+                  seasonNumber: seasonNum,
+                  episodeNumber: parseFloat(epNum) || 1
+                };
+              })
+            });
+          }
+        } else {
+          seasons.push({
+            id: `${slug}-season-1`,
+            title: "Mùa 1",
+            episodes: rawEpisodes.map((ep: any) => {
+              const epNum = ep.episodeNumber;
+              const customEpId = `${slug}-ep-1-${epNum}__${ep.episodeId}__${ep.server}`;
+              return {
+                id: customEpId,
+                title: `Tập ${epNum}`,
+                synopsis: `Tập phim ${epNum} phát nguồn từ ${ep.server}`,
+                runtimeMinutes: rawAnime.unitDurationMin || 24,
+                posterUrl: rawAnime.images?.bannerUrl || rawAnime.images?.coverLg,
+                seasonNumber: 1,
+                episodeNumber: parseFloat(epNum) || 1
+              };
+            })
+          });
+        }
 
         const animeObj = normalizeAniMapperMovie(rawAnime, true);
         animeObj.seasons = seasons;
