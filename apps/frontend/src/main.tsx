@@ -22,6 +22,7 @@ const router = createBrowserRouter([
       { path: "/", element: <HomePage /> },
       { path: "/tv-shows", element: <HomePage type="tv-shows" /> },
       { path: "/movies", element: <HomePage type="movies" /> },
+      { path: "/anime", element: <HomePage type="anime" /> },
       { path: "/new-popular", element: <HomePage type="new-popular" /> },
       { path: "/movie/:slug", element: <React.Suspense fallback={<div className="pt-28">Loading...</div>}><MovieDetailPage /></React.Suspense> },
       { path: "/search", element: <React.Suspense fallback={null}><SearchPage /></React.Suspense> },

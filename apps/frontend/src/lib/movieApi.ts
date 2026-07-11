@@ -152,7 +152,7 @@ export const movieApi = {
       const res = await fetch(`https://free1.phim4k.lol/v1/api/the-loai/${category}?page=${page}`);
       if (!res.ok) return [];
       const data = await res.json();
-      return normalizePhim4kList(data?.data?.items || []);
+      return normalizePhim4kList(data?.data?.items || [], data?.data?.APP_DOMAIN_CDN_IMAGE);
     }
   },
 
@@ -186,7 +186,7 @@ export const movieApi = {
       const res = await fetch(`https://free1.phim4k.lol/v1/api/quoc-gia/${region}?page=${page}`);
       if (!res.ok) return [];
       const data = await res.json();
-      return normalizePhim4kList(data?.data?.items || []);
+      return normalizePhim4kList(data?.data?.items || [], data?.data?.APP_DOMAIN_CDN_IMAGE);
     }
   },
 
@@ -236,7 +236,7 @@ export const movieApi = {
         const res = await fetch(`https://free1.phim4k.lol/v1/api/danh-sach/${listName}?page=${page}`);
         if (!res.ok) return [];
         const data = await res.json();
-        return normalizePhim4kList(data?.data?.items || []);
+        return normalizePhim4kList(data?.data?.items || [], data?.data?.APP_DOMAIN_CDN_IMAGE);
       } else {
         const res = await fetch(`https://free1.phim4k.lol/danh-sach/phim-moi-cap-nhat-v3?page=${page}`);
         if (!res.ok) return [];
@@ -254,7 +254,7 @@ export const movieApi = {
       const res = await fetch(`https://free1.phim4k.lol/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`);
       if (!res.ok) return [];
       const data = await res.json();
-      return normalizePhim4kList(data?.data?.items || []);
+      return normalizePhim4kList(data?.data?.items || [], data?.data?.APP_DOMAIN_CDN_IMAGE);
     }
   },
 
@@ -293,6 +293,49 @@ export const movieApi = {
         episodes: seasonsList
       };
     } else {
+      if (/^\d+$/.test(slug)) {
+        const res = await fetch(`https://api.animapper.net/api/v1/metadata?id=${slug}`);
+        if (!res.ok) throw new Error(`AniMapper metadata failed for: ${slug}`);
+        const data = await res.json();
+        if (!data || !data.result) throw new Error("Metadata is empty");
+
+        const rawAnime = data.result;
+        const providers = Object.keys(rawAnime.streamingProviders || {});
+        const provider = providers.includes("ANIMEVIETSUB") ? "ANIMEVIETSUB" : providers[0] || "ANIMEVIETSUB";
+
+        const epRes = await fetch(`https://api.animapper.net/api/v1/stream/episodes?id=${slug}&provider=${provider}`);
+        if (!epRes.ok) throw new Error(`AniMapper episodes failed for: ${slug}`);
+        const epData = await epRes.json();
+        const rawEpisodes = epData.result || [];
+
+        const seasons = [{
+          id: `${slug}-season-1`,
+          title: "Season 1",
+          episodes: rawEpisodes.map((ep: any) => {
+            const epNum = ep.episodeNumber;
+            const customEpId = `${slug}-ep-1-${epNum}__${ep.episodeId}__${ep.server}`;
+            return {
+              id: customEpId,
+              title: `Tập ${epNum}`,
+              synopsis: `Tập phim ${epNum} phát nguồn từ ${ep.server}`,
+              runtimeMinutes: rawAnime.unitDurationMin || 24,
+              posterUrl: rawAnime.images?.bannerUrl || rawAnime.images?.coverLg,
+              seasonNumber: 1,
+              episodeNumber: parseFloat(epNum) || 1
+            };
+          })
+        }];
+
+        const animeObj = normalizeAniMapperMovie(rawAnime, true);
+        animeObj.seasons = seasons;
+        (animeObj as any)._rawProviders = rawAnime.streamingProviders;
+
+        return {
+          movie: animeObj,
+          episodes: rawEpisodes
+        };
+      }
+
       const res = await fetch(`https://free1.phim4k.lol/phim/${slug}`);
       if (!res.ok) throw new Error(`Phim4K details failed for: ${slug}`);
       const data = await res.json();
@@ -310,6 +353,88 @@ export const movieApi = {
 
 
   async getPlayback(slug: string, episodeId?: string | null): Promise<PlaybackSourceDto & { title?: string; currentEpisodeId?: string; episodesList?: any[] }> {
+    if (/^\d+$/.test(slug)) {
+      const { movie, episodes } = await this.getMovieDetail(slug);
+      
+      let realEpisodeId = "";
+      let serverName = "";
+      
+      if (episodeId && episodeId.includes("__")) {
+        const parts = episodeId.split("__");
+        realEpisodeId = parts[1];
+        serverName = parts[2];
+      } else {
+        const firstEp = movie.seasons?.[0]?.episodes?.[0];
+        if (firstEp && firstEp.id.includes("__")) {
+          const parts = firstEp.id.split("__");
+          realEpisodeId = parts[1];
+          serverName = parts[2];
+        }
+      }
+      
+      let streamUrl = "";
+      let quality = "1080p";
+      
+      if (realEpisodeId && serverName) {
+        try {
+          const providers = Object.keys((movie as any)._rawProviders || { "ANIMEVIETSUB": true });
+          const provider = providers.includes("ANIMEVIETSUB") ? "ANIMEVIETSUB" : providers[0] || "ANIMEVIETSUB";
+          
+          const sourceUrl = `https://api.animapper.net/api/v1/stream/source?episodeData=${encodeURIComponent(realEpisodeId)}&provider=${provider}&server=${serverName}`;
+          const res = await fetch(sourceUrl);
+          const sourceData = await res.json();
+          if (sourceData.success && sourceData.result?.sources?.length > 0) {
+            streamUrl = sourceData.result.sources[0].url;
+            quality = sourceData.result.sources[0].quality || "1080p";
+          }
+        } catch (e) {
+          console.error("Failed to fetch stream source:", e);
+        }
+      }
+      
+      const alternateSources: any[] = [];
+      if (streamUrl) {
+        alternateSources.push({
+          name: `AniMapper HLS (ANIMEVIETSUB - ${serverName})`,
+          url: streamUrl,
+          quality,
+          addon: "AniMapper API",
+          streamType: "http" as const
+        });
+      }
+      
+      const playId = movie.tmdbId || movie.id;
+      const selectedSeason = 1;
+      const selectedEpisode = 1;
+      alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" as const });
+      alternateSources.push({ name: "Vidsrc.cc", url: `https://vidsrc.cc/v2/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" as const });
+      
+      const finalUrl = streamUrl || alternateSources[0]?.url || "";
+      
+      const mappedEpisodes = episodes.map((ep: any) => ({
+        id: `${slug}-ep-1-${ep.episodeNumber}__${ep.episodeId}__${ep.server}`,
+        title: `Tập ${ep.episodeNumber}`,
+        synopsis: `Tập phim ${ep.episodeNumber} phát nguồn từ ${ep.server}`,
+        runtimeMinutes: movie.runtimeMinutes || 24,
+        posterUrl: movie.backdropUrl,
+        seasonNumber: 1,
+        episodeNumber: parseFloat(ep.episodeNumber) || 1
+      }));
+
+      return {
+        movieId: movie.id,
+        title: `${movie.title} - Tập ${episodeId ? (episodeId.split("__")[0].split("-").pop() || "1") : "1"}`,
+        hlsUrl: finalUrl,
+        dashUrl: "",
+        subtitles: [],
+        audioTracks: [{ language: "ja", label: "Japanese" }],
+        episodesList: mappedEpisodes,
+        alternateSources,
+        stremioUrl: "",
+        currentEpisodeId: episodeId || movie.seasons?.[0]?.episodes?.[0]?.id
+      };
+    }
+
     const { movie, episodes } = await this.getMovieDetail(slug);
     const mediaType = movie.mediaType || "movie";
     const tmdbId = movie.tmdbId || movie.id;
@@ -496,6 +621,53 @@ export const movieApi = {
         rowFrom(hasKey ? "Phim bộ Hàn Quốc (K-Dramas)" : "Korean Dramas (K-Dramas)", korea)
       ].filter((row) => row.items.length > 0)
     };
+  },
+
+  async getAnimeRows(page = 1): Promise<MovieRowsResponse> {
+    try {
+      const cacheKey = `streamforge:anime-rows:p${page}`;
+      const cached = readCache<MovieRowsResponse>(cacheKey, MOVIE_API_CACHE_TTL_MS);
+      if (cached) return cached;
+
+      // 1. Fetch latest anime list
+      const listRes = await fetch(`https://api.animapper.net/api/v1/search?title=&mediaType=ANIME&limit=40&offset=${(page - 1) * 40}`);
+      if (!listRes.ok) throw new Error("AniMapper list query failed");
+      const listData = await listRes.json();
+      const rawList = listData.results || [];
+      
+      const normalizedAll = rawList.map((item: any) => normalizeAniMapperMovie(item)).filter(Boolean);
+      
+      const series = normalizedAll.filter((item: NormalizedMovie) => item.episode_current !== "MOVIE");
+      const movies = normalizedAll.filter((item: NormalizedMovie) => item.episode_current === "MOVIE");
+      
+      // 2. Fetch popular curated list
+      const popularTitles = ["One Piece", "Kimetsu no Yaiba", "Conan", "Spy x Family", "Naruto", "Jujutsu Kaisen", "Frieren", "Chainsaw Man"];
+      const popularPromises = popularTitles.map(title => 
+        fetch(`https://api.animapper.net/api/v1/search?title=${encodeURIComponent(title)}&mediaType=ANIME&limit=1`)
+          .then(res => res.json())
+          .then(data => data.results?.[0] || null)
+          .catch(() => null)
+      );
+      const popularResults = await Promise.all(popularPromises);
+      const popularNormalized = popularResults
+        .filter(Boolean)
+        .map(item => normalizeAniMapperMovie(item))
+        .filter(Boolean);
+        
+      const response: MovieRowsResponse = {
+        rows: [
+          { title: "Anime Đang Thịnh Hành", items: popularNormalized },
+          { title: "Phim Bộ Anime Mới Cập Nhật", items: series },
+          { title: "Phim Lẻ Anime Đặc Sắc", items: movies }
+        ].filter(r => r.items.length > 0)
+      };
+      
+      writeCache(cacheKey, response);
+      return response;
+    } catch (e) {
+      console.error("Failed to load anime rows:", e);
+      return { rows: [] };
+    }
   }
 };
 
@@ -669,7 +841,7 @@ function proxyImageUrl(url: string): string {
   return `https://wsrv.nl/?url=${encodeURIComponent(url)}&default=${encodeURIComponent(url)}`;
 }
 
-function absolutePhim4kImageUrl(url: unknown): string {
+function absolutePhim4kImageUrl(url: unknown, imageCdnUrl?: unknown): string {
   if (typeof url !== "string") return "";
   const trimmed = url.trim();
   if (!trimmed) return "";
@@ -677,31 +849,84 @@ function absolutePhim4kImageUrl(url: unknown): string {
   if (trimmed.startsWith("//")) return `https:${trimmed}`;
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
 
-  const normalizedPath = trimmed
-    .replace(/^\/+/, "")
-    .replace(/^uploads\/movies\//i, "")
-    .replace(/^upload\/movies\//i, "");
+  const normalizedPath = trimmed.replace(/^\/+/, "");
+  const cdnBase = typeof imageCdnUrl === "string" && /^https?:\/\//i.test(imageCdnUrl)
+    ? imageCdnUrl.replace(/\/+$/, "")
+    : APP_DOMAIN_CDN_IMAGE;
 
-  return `${APP_DOMAIN_CDN_IMAGE}/${normalizedPath}`;
+  return `${cdnBase}/${normalizedPath}`;
 }
 
-function normalizePhim4kImageUrl(url: unknown): string {
-  const absoluteUrl = absolutePhim4kImageUrl(url);
+function normalizePhim4kImageUrl(url: unknown, imageCdnUrl?: unknown): string {
+  const absoluteUrl = absolutePhim4kImageUrl(url, imageCdnUrl);
   if (!absoluteUrl) return "";
   return proxyImageUrl(absoluteUrl);
 }
 
-function normalizePhim4kList(items: any[]): NormalizedMovie[] {
-  if (!Array.isArray(items)) return [];
-  return items.map(item => normalizePhim4kMovie(item, false)).filter(Boolean) as NormalizedMovie[];
+function normalizeAniMapperMovie(item: any, isDetail = false): NormalizedMovie {
+  if (!item) return null as any;
+  
+  const title = item.titles?.en || item.titles?.["ja-ro"] || item.titles?.ja || "Untitled Anime";
+  const originName = item.titles?.ja || title;
+  const id = String(item.id || "");
+  
+  const rawPoster = item.images?.coverXl || item.images?.coverLg || item.images?.coverMd || "";
+  const rawBackdrop = item.images?.bannerUrl || rawPoster;
+  const posterUrl = rawPoster ? proxyImageUrl(rawPoster) : createFallbackImage(title);
+  const backdropUrl = rawBackdrop ? proxyImageUrl(rawBackdrop) : posterUrl;
+  
+  const year = item.seasonYear || new Date().getFullYear();
+  const rating = 8.5;
+
+  return {
+    id,
+    slug: id,
+    title,
+    synopsis: item.descriptions?.en || "",
+    posterUrl,
+    backdropUrl,
+    trailerUrl: item.trailer?.trailerId ? `https://www.youtube.com/watch?v=${item.trailer.trailerId}` : null,
+    releaseYear: year,
+    runtimeMinutes: item.unitDurationMin || 24,
+    maturityRating: "PG_13",
+    averageRating: rating,
+    genres: Array.isArray(item.genres) 
+      ? item.genres.map((g: any) => ({ id: String(g.id || g.name), name: g.name, slug: slugify(g.name) }))
+      : [],
+    name: title,
+    origin_name: originName,
+    poster: posterUrl,
+    thumb: backdropUrl,
+    year,
+    quality: "HD",
+    lang: "ja",
+    episode_current: item.format || "TV",
+    category: [],
+    country: [{ id: "JP", name: "Japan", slug: "japan" }],
+    description: item.descriptions?.en || "",
+    cast: [],
+    director: "",
+    tags: [],
+    match: 95,
+    reviews: [],
+    seasons: [],
+    imdbId: "",
+    tmdbId: id,
+    mediaType: "tv"
+  };
 }
 
-function normalizePhim4kMovie(item: any, isDetail = false): NormalizedMovie {
+function normalizePhim4kList(items: any[], imageCdnUrl?: unknown): NormalizedMovie[] {
+  if (!Array.isArray(items)) return [];
+  return items.map(item => normalizePhim4kMovie(item, false, imageCdnUrl)).filter(Boolean) as NormalizedMovie[];
+}
+
+function normalizePhim4kMovie(item: any, isDetail = false, imageCdnUrl?: unknown): NormalizedMovie {
   if (!item) return null as any;
   const title = item.name || item.origin_name || "Untitled";
   const slug = item.slug || "";
-  const posterUrl = normalizePhim4kImageUrl(item.poster_url || item.poster || item.image) || createFallbackImage(title);
-  const thumbUrl = normalizePhim4kImageUrl(item.thumb_url || item.backdrop_url || item.backdrop);
+  const posterUrl = normalizePhim4kImageUrl(item.poster_url || item.poster || item.image, imageCdnUrl) || createFallbackImage(title);
+  const thumbUrl = normalizePhim4kImageUrl(item.thumb_url || item.backdrop_url || item.backdrop, imageCdnUrl);
   const backdropUrl = isDetail ? thumbUrl || posterUrl : posterUrl;
   const year = item.year || new Date().getFullYear();
   const rating = item.imdb?.vote_average ? parseFloat(item.imdb.vote_average) : 8.0;

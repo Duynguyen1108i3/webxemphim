@@ -9,13 +9,17 @@ import type { MovieCardDto } from "@streamforge/shared-types";
 import { movieApi, type MovieRowsResponse, type NormalizedMovie } from "../lib/movieApi";
 import { usePlaybackStore } from "../store/playbackStore";
 
-export function HomePage({ type }: { type?: "tv-shows" | "movies" | "new-popular" }) {
+export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "new-popular" }) {
   const { openDetailModal, openPlayback } = usePlaybackStore();
   const { data, isLoading } = useQuery<MovieRowsResponse>({
     queryKey: ["home-rows", type || "all"],
     staleTime: 30_000,
     retry: false,
     queryFn: async () => {
+      if (type === "anime") {
+        return movieApi.getAnimeRows();
+      }
+
       const fullData = await movieApi.getHomeRows();
       if (!type) return fullData;
       
@@ -87,6 +91,16 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "new-popular
           </motion.div>
   <motion.p variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="synopsis mt-5 line-clamp-3 max-w-2xl text-base leading-7 text-white/90 md:text-xl">{hero?.synopsis}</motion.p>
           <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-7 flex flex-wrap gap-3">
+            {type === "anime" && (
+              <a
+                href="https://animevietsub.id/"
+                target="_blank"
+                rel="noreferrer"
+                className="nf-button inline-flex h-12 items-center justify-center rounded border border-white/30 bg-black/35 px-5 text-sm font-bold text-white transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/70"
+              >
+                Nguồn AnimeVietsub
+              </a>
+            )}
             {hero && (
               <button
                 onClick={() => openPlayback(hero as NormalizedMovie, "hero")}
