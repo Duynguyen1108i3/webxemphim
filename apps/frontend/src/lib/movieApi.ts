@@ -300,67 +300,97 @@ export const movieApi = {
         if (!data || !data.result) throw new Error("Metadata is empty");
 
         const rawAnime = data.result;
+        const mainTitle = rawAnime.titles.en || rawAnime.titles.ja || "";
+        const rootTitle = getAnimeRootTitle(mainTitle);
+
+        // Fetch related franchise entries from AniMapper search
+        let relatedSeasons: any[] = [];
+        try {
+          const searchRes = await fetch(`https://api.animapper.net/api/v1/search?title=${encodeURIComponent(rootTitle)}&mediaType=ANIME&limit=25`);
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const excludeKeywords = ["junior high", "chibi", "parody", "recap", "summary", "character", "drama", "pv", "promo", "picture drama", "wings of freedom", "crimson bow"];
+            
+            relatedSeasons = (searchData.results || []).filter((item: any) => {
+              const titleEn = (item.titles?.en || "").toLowerCase();
+              const titleJa = (item.titles?.ja || "").toLowerCase();
+              const titleRo = (item.titles?.["ja-ro"] || "").toLowerCase();
+              const rootLower = rootTitle.toLowerCase();
+              
+              const isMatch = titleEn.includes(rootLower) || titleJa.includes(rootLower) || titleRo.includes(rootLower);
+              const isTv = item.format === "TV" || item.format === "ONA";
+              const isExcluded = excludeKeywords.some(keyword => {
+                return titleEn.includes(keyword) || titleJa.includes(keyword) || titleRo.includes(keyword);
+              });
+              
+              return isMatch && isTv && !isExcluded;
+            });
+            
+            // Sort by release year
+            relatedSeasons.sort((a, b) => {
+              const yearA = a.seasonYear || 0;
+              const yearB = b.seasonYear || 0;
+              if (yearA !== yearB) return yearA - yearB;
+              return a.id - b.id;
+            });
+          }
+        } catch (e) {
+          console.error("Failed to query related franchise seasons:", e);
+        }
+
+        // Fallback to only the current anime if search did not yield results
+        if (relatedSeasons.length === 0) {
+          relatedSeasons = [rawAnime];
+        }
+
+        // Fetch episodes for all seasons in parallel
         const providers = Object.keys(rawAnime.streamingProviders || {});
         const provider = providers.includes("ANIMEVIETSUB") ? "ANIMEVIETSUB" : providers[0] || "ANIMEVIETSUB";
 
-        const epRes = await fetch(`https://api.animapper.net/api/v1/stream/episodes?id=${slug}&provider=${provider}`);
-        if (!epRes.ok) throw new Error(`AniMapper episodes failed for: ${slug}`);
-        const epData = await epRes.json();
-        const rawEpisodes = epData.result || [];
-
-        const seasons = [];
-        const chunkSize = 50;
-        if (rawEpisodes.length > chunkSize) {
-          for (let i = 0; i < rawEpisodes.length; i += chunkSize) {
-            const chunk = rawEpisodes.slice(i, i + chunkSize);
-            const chunkStart = i + 1;
-            const chunkEnd = Math.min(i + chunkSize, rawEpisodes.length);
-            const seasonNum = Math.floor(i / chunkSize) + 1;
-            seasons.push({
-              id: `${slug}-season-${seasonNum}`,
-              title: `Tập ${chunkStart} - ${chunkEnd}`,
-              episodes: chunk.map((ep: any) => {
-                const epNum = ep.episodeNumber;
-                const customEpId = `${slug}-ep-${seasonNum}-${epNum}__${ep.episodeId}__${ep.server}`;
-                return {
-                  id: customEpId,
-                  title: `Tập ${epNum}`,
-                  synopsis: `Tập phim ${epNum} phát nguồn từ ${ep.server}`,
-                  runtimeMinutes: rawAnime.unitDurationMin || 24,
-                  posterUrl: rawAnime.images?.bannerUrl || rawAnime.images?.coverLg,
-                  seasonNumber: seasonNum,
-                  episodeNumber: parseFloat(epNum) || 1
-                };
-              })
-            });
+        const seasons = await Promise.all(relatedSeasons.map(async (seasonItem: any, index: number) => {
+          const seasonId = String(seasonItem.id);
+          const seasonName = cleanSeasonTitle(seasonItem.titles.en || seasonItem.titles.ja || "Season", rootTitle, index);
+          
+          let episodesList: any[] = [];
+          try {
+            const epRes = await fetch(`https://api.animapper.net/api/v1/stream/episodes?id=${seasonId}&provider=${provider}`);
+            if (epRes.ok) {
+              const epData = await epRes.json();
+              episodesList = epData.result || [];
+            }
+          } catch (e) {
+            console.error(`Failed to fetch episodes for season ID ${seasonId}:`, e);
           }
-        } else {
-          seasons.push({
-            id: `${slug}-season-1`,
-            title: "Mùa 1",
-            episodes: rawEpisodes.map((ep: any) => {
+
+          return {
+            id: `${slug}-season-${index + 1}`,
+            title: seasonName,
+            episodes: episodesList.map((ep: any) => {
               const epNum = ep.episodeNumber;
-              const customEpId = `${slug}-ep-1-${epNum}__${ep.episodeId}__${ep.server}`;
+              const customEpId = `${slug}-ep-${index + 1}-${epNum}__${ep.episodeId}__${ep.server}`;
               return {
                 id: customEpId,
                 title: `Tập ${epNum}`,
                 synopsis: `Tập phim ${epNum} phát nguồn từ ${ep.server}`,
-                runtimeMinutes: rawAnime.unitDurationMin || 24,
-                posterUrl: rawAnime.images?.bannerUrl || rawAnime.images?.coverLg,
-                seasonNumber: 1,
+                runtimeMinutes: seasonItem.unitDurationMin || 24,
+                posterUrl: seasonItem.images?.bannerUrl || seasonItem.images?.coverLg,
+                seasonNumber: index + 1,
                 episodeNumber: parseFloat(epNum) || 1
               };
             })
-          });
-        }
+          };
+        }));
 
         const animeObj = normalizeAniMapperMovie(rawAnime, true);
         animeObj.seasons = seasons;
         (animeObj as any)._rawProviders = rawAnime.streamingProviders;
 
+        // Gather all episodes flat list for playback store initialization
+        const allFlatEpisodes = seasons.flatMap(s => s.episodes);
+
         return {
           movie: animeObj,
-          episodes: rawEpisodes
+          episodes: allFlatEpisodes
         };
       }
 
@@ -439,16 +469,6 @@ export const movieApi = {
       
       const finalUrl = streamUrl || alternateSources[0]?.url || "";
       
-      const mappedEpisodes = episodes.map((ep: any) => ({
-        id: `${slug}-ep-1-${ep.episodeNumber}__${ep.episodeId}__${ep.server}`,
-        title: `Tập ${ep.episodeNumber}`,
-        synopsis: `Tập phim ${ep.episodeNumber} phát nguồn từ ${ep.server}`,
-        runtimeMinutes: movie.runtimeMinutes || 24,
-        posterUrl: movie.backdropUrl,
-        seasonNumber: 1,
-        episodeNumber: parseFloat(ep.episodeNumber) || 1
-      }));
-
       return {
         movieId: movie.id,
         title: `${movie.title} - Tập ${episodeId ? (episodeId.split("__")[0].split("-").pop() || "1") : "1"}`,
@@ -456,7 +476,7 @@ export const movieApi = {
         dashUrl: "",
         subtitles: [],
         audioTracks: [{ language: "ja", label: "Japanese" }],
-        episodesList: mappedEpisodes,
+        episodesList: episodes,
         alternateSources,
         stremioUrl: "",
         currentEpisodeId: episodeId || movie.seasons?.[0]?.episodes?.[0]?.id
@@ -1072,4 +1092,36 @@ function slugify(value: unknown) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)+/g, "");
+}
+
+function getAnimeRootTitle(title: string): string {
+  let cleaned = title
+    .replace(/Season\s+\d+/gi, "")
+    .replace(/Final\s+Season/gi, "")
+    .replace(/Part\s+\d+/gi, "")
+    .replace(/THE\s+FINAL\s+CHAPTERS/gi, "")
+    .replace(/Special\s+\d+/gi, "");
+
+  const parts = cleaned.split(/[:\-\(\)]/);
+  if (parts.length > 0) {
+    const firstPart = parts[0].trim();
+    if (firstPart.length >= 4) {
+      cleaned = firstPart;
+    }
+  }
+
+  return cleaned.replace(/\s+/g, " ").trim();
+}
+
+function cleanSeasonTitle(title: string, rootTitle: string, index: number): string {
+  let cleaned = title
+    .replace(new RegExp(rootTitle, "gi"), "")
+    .replace(/Kimetsu no Yaiba/gi, "")
+    .replace(/[:\-\(\)]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned || cleaned.toLowerCase() === "tv" || cleaned.toLowerCase() === "ona") {
+    return `Season ${index + 1}`;
+  }
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
