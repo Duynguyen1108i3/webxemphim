@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
 export function DashboardPage() {
-  const { data } = useQuery({ queryKey: ["dashboard"], queryFn: async () => (await api.get("/api/admin/dashboard")).data });
+  const { data } = useQuery({ queryKey: ["dashboard"], queryFn: async () => (await api.get("/admin/dashboard")).data });
   const cards = [
     ["Total users", data?.totalUsers ?? 0],
     ["Subscriptions", data?.activeSubscriptions ?? 0],

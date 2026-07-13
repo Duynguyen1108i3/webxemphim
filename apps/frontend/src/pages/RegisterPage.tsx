@@ -38,8 +38,8 @@ export function RegisterPage() {
       const user = await authApi.register(email, username, password);
       setUser(user);
       navigate("/");
-    } catch (err: any) {
-      setError(err.message || "Đăng ký thất bại.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Đăng ký thất bại.");
     } finally {
       setLoading(false);
     }

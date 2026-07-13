@@ -7,15 +7,17 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
 import type { Express, RequestHandler } from "express";
-import { env } from "../config/env.js";
+import { allowedOrigins, env } from "../config/env.js";
 
 const { doubleCsrfProtection } = doubleCsrf({
   getSecret: () => env.COOKIE_SECRET,
-  cookieName: "__Host-streamforge-csrf",
+  // __Host- cookies must always be Secure. Using that prefix in HTTP development
+  // makes browsers silently reject the cookie and every protected request fails.
+  cookieName: "streamforge-csrf",
   cookieOptions: {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.NODE_ENV === "production",
+    sameSite: env.AUTH_COOKIE_SAME_SITE,
+    secure: env.NODE_ENV === "production" || env.AUTH_COOKIE_SAME_SITE === "none",
     path: "/"
   },
   getTokenFromRequest: (req) => req.headers["x-csrf-token"] as string | undefined
@@ -24,7 +26,16 @@ const { doubleCsrfProtection } = doubleCsrf({
 export function applySecurity(app: Express) {
   app.set("trust proxy", 1);
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-  app.use(cors({ origin: [env.FRONTEND_URL, env.ADMIN_URL], credentials: true }));
+  app.use(cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) return callback(null, true);
+      return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    },
+    credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+    optionsSuccessStatus: 204
+  }));
   app.use(express.json({ limit: "1mb" }) as RequestHandler);
   app.use(express.urlencoded({ extended: true, limit: "1mb" }) as RequestHandler);
   app.use(cookieParser(env.COOKIE_SECRET) as RequestHandler);

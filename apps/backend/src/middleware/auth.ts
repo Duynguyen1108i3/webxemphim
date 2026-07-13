@@ -16,8 +16,12 @@ export function signAccessToken(user: { id: string; email: string; role: Role })
   return jwt.sign(user, env.JWT_ACCESS_SECRET, { expiresIn: "15m", audience: "streamforge", issuer: "streamforge-api" });
 }
 
-export function signRefreshToken(session: { id: string; userId: string }) {
+export function signRefreshToken(session: { id: string; userId: string; token: string }) {
   return jwt.sign(session, env.JWT_REFRESH_SECRET, { expiresIn: "30d", audience: "streamforge", issuer: "streamforge-api" });
+}
+
+export function verifyRefreshToken(token: string) {
+  return jwt.verify(token, env.JWT_REFRESH_SECRET, { audience: "streamforge", issuer: "streamforge-api" }) as { id: string; userId: string; token: string };
 }
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {

@@ -16,6 +16,9 @@ Error: `{ "error": { "code": "ACCOUNT_EXISTS", "message": "Email or username is 
 Body: `{ "email": "user@example.com", "password": "StrongPass123!" }`
 Response sets `accessToken` and `refreshToken` HttpOnly cookies.
 
+`POST /auth/refresh`
+Rotates a valid refresh-token session and sets a new pair of HttpOnly cookies. The request requires the CSRF header.
+
 `POST /auth/logout`
 Response: `204 No Content`
 

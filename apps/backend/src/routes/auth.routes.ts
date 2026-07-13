@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { login, register } from "../services/auth.service.js";
+import { login, refreshSession, register, revokeSession } from "../services/auth.service.js";
+import { ApiError } from "../middleware/error.js";
 
 const router = Router();
 const authSchema = z.object({
@@ -33,16 +34,42 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
-router.post("/logout", (_req, res) => {
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
-  res.status(204).send();
+router.post("/logout", async (req, res, next) => {
+  try {
+    await revokeSession(req.cookies?.refreshToken);
+    clearAuthCookies(res);
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/refresh", async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) throw new ApiError(401, "Refresh token is required", "INVALID_REFRESH_TOKEN");
+    const session = await refreshSession(refreshToken);
+    setAuthCookies(res, session.accessToken, session.refreshToken);
+    res.json({ user: session.user });
+  } catch (error) {
+    clearAuthCookies(res);
+    next(error);
+  }
 });
 
 function setAuthCookies(res: import("express").Response, accessToken: string, refreshToken: string) {
-  const secure = process.env.NODE_ENV === "production";
-  res.cookie("accessToken", accessToken, { httpOnly: true, sameSite: "lax", secure, maxAge: 15 * 60 * 1000 });
-  res.cookie("refreshToken", refreshToken, { httpOnly: true, sameSite: "lax", secure, maxAge: 30 * 24 * 60 * 60 * 1000 });
+  const sameSite = process.env.AUTH_COOKIE_SAME_SITE === "none" ? "none" as const : process.env.AUTH_COOKIE_SAME_SITE === "strict" ? "strict" as const : "lax" as const;
+  const secure = process.env.NODE_ENV === "production" || sameSite === "none";
+  const options = { httpOnly: true, sameSite, secure, path: "/" };
+  res.cookie("accessToken", accessToken, { ...options, maxAge: 15 * 60 * 1000 });
+  res.cookie("refreshToken", refreshToken, { ...options, maxAge: 30 * 24 * 60 * 60 * 1000 });
+}
+
+function clearAuthCookies(res: import("express").Response) {
+  const sameSite = process.env.AUTH_COOKIE_SAME_SITE === "none" ? "none" as const : process.env.AUTH_COOKIE_SAME_SITE === "strict" ? "strict" as const : "lax" as const;
+  const options = { httpOnly: true, sameSite, secure: process.env.NODE_ENV === "production" || sameSite === "none", path: "/" };
+  res.clearCookie("accessToken", options);
+  res.clearCookie("refreshToken", options);
 }
 
 export default router;

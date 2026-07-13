@@ -26,8 +26,8 @@ export function LoginPage() {
       const user = await authApi.login(email, password);
       setUser(user);
       navigate("/");
-    } catch (err: any) {
-      setError(err.message || "Đăng nhập thất bại.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Đăng nhập thất bại.");
     } finally {
       setLoading(false);
     }
@@ -106,12 +106,6 @@ export function LoginPage() {
               </Link>
             </p>
             
-            {/* Seed accounts notice box */}
-            <div className="mt-6 rounded border border-white/10 bg-white/5 p-3 text-[11px] leading-relaxed text-zinc-400">
-              <p className="font-bold text-[#e50914] mb-1">Tài khoản quản trị viên thử nghiệm:</p>
-              <p>Email: <span className="text-white">trantxi05@gmail.com</span></p>
-              <p>Mật khẩu: <span className="text-white">Duy@1188</span></p>
-            </div>
           </div>
         </div>
       </main>

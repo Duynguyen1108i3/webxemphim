@@ -12,7 +12,7 @@
     "dev": "npm run dev --workspace @streamforge/backend",
     "dev:frontend": "npm run dev --workspace @streamforge/frontend",
     "dev:admin": "npm run dev --workspace @streamforge/admin",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build --workspace @streamforge/utils && npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "db:generate": "prisma generate",

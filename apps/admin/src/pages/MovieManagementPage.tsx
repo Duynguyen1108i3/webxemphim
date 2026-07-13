@@ -42,7 +42,7 @@ export function MovieManagementPage() {
   }
 
   async function createMovie() {
-    await api.post("/api/admin/movies", {
+    await api.post("/admin/movies", {
       slug: title.toLowerCase().replace(/\W+/g, "-"),
       title,
       synopsis: "A premium catalog title curated by the editorial team.",

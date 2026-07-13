@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { NormalizedMovie } from "../lib/movieApi";
-import { useAuthStore } from "./auth";
+import { authApi, useAuthStore } from "./auth";
 
 export interface WatchHistoryItem {
   id: string;
@@ -47,34 +47,70 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
   loadUserData: () => {
     try {
       const user = useAuthStore.getState().user;
-      const email = user?.email || "";
-      const mylistKey = email ? `streamforge:${email}:mylist` : "streamforge:mylist";
-      const historyKey = email ? `streamforge:${email}:watchhistory` : "streamforge:watchhistory";
+      if (!user) {
+        set({ myList: [], watchHistory: [] });
+        return;
+      }
 
-      const storedList = localStorage.getItem(mylistKey);
+      const profileName = useAuthStore.getState().profileId || user.username;
+      const dbProfileId = user.profiles.find((profile) => profile.name === profileName)?.id ?? user.profiles[0]?.id;
+
+      if (!dbProfileId) return;
+
+      // 1. Fetch My List from PostgreSQL DB via Express backend
+      authApi.request<{ favorites: NormalizedMovie[] }>(`/users/profiles/${dbProfileId}/my-list`)
+        .then((data) => {
+          if (data?.favorites) {
+            set({ myList: data.favorites });
+          }
+        })
+        .catch(() => {
+          const email = user.email || "";
+          const mylistKey = `streamforge:${email}:mylist`;
+          const storedList = localStorage.getItem(mylistKey);
+          set({ myList: storedList ? JSON.parse(storedList) : [] });
+        });
+
+      // 2. Fetch watch history (standard local storage fallback)
+      const email = user.email || "";
+      const historyKey = `streamforge:${email}:watchhistory`;
       const storedHistory = localStorage.getItem(historyKey);
-
-      set({
-        myList: storedList ? JSON.parse(storedList) : [],
-        watchHistory: storedHistory ? JSON.parse(storedHistory) : []
-      });
-    } catch (e) {
-      console.error("Failed to load user-scoped data:", e);
+      set({ watchHistory: storedHistory ? JSON.parse(storedHistory) : [] });
+    } catch {
     }
   },
 
   toggleMyList: (movie) => {
+    const user = useAuthStore.getState().user;
+    if (!user) return;
+
+    const profileName = useAuthStore.getState().profileId || user.username;
+    const dbProfileId = user.profiles.find((profile) => profile.name === profileName)?.id ?? user.profiles[0]?.id;
+    if (!dbProfileId) return;
+
     set((state) => {
       const exists = state.myList.some((item) => item.id === movie.id);
       let updated;
       if (exists) {
         updated = state.myList.filter((item) => item.id !== movie.id);
+
+        // Async delete from PostgreSQL DB
+        void authApi.request(`/users/profiles/${dbProfileId}/my-list/${movie.id}`, { method: "DELETE" }).catch(() => undefined);
       } else {
         updated = [...state.myList, movie];
+
+        // Async add to PostgreSQL DB
+        void authApi.request(`/users/profiles/${dbProfileId}/my-list`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(movie)
+        }).catch(() => undefined);
       }
       
-      const user = useAuthStore.getState().user;
-      const mylistKey = user?.email ? `streamforge:${user.email}:mylist` : "streamforge:mylist";
+      const email = user.email || "";
+      const mylistKey = `streamforge:${email}:mylist`;
       localStorage.setItem(mylistKey, JSON.stringify(updated));
       return { myList: updated };
     });
@@ -138,8 +174,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         if (item && item.episodeId) {
           episodeId = item.episodeId;
         }
-      } catch (e) {
-        console.error("Failed to read watch history:", e);
+      } catch {
       }
     }
 

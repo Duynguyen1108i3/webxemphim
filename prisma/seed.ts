@@ -1,5 +1,4 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 import { slugify } from "@streamforge/utils";
 
 const prisma = new PrismaClient();
@@ -7,18 +6,6 @@ const genres = ["Action", "Horror", "Anime", "Comedy", "Romance", "Sci-Fi", "Doc
 
 async function main() {
   await prisma.genre.createMany({ data: genres.map((name) => ({ name, slug: slugify(name) })), skipDuplicates: true });
-  const adminHash = await bcrypt.hash("AdminPass123!", 12);
-  await prisma.user.upsert({
-    where: { email: "admin@streamforge.local" },
-    update: {},
-    create: { email: "admin@streamforge.local", username: "admin", passwordHash: adminHash, role: "SUPER_ADMIN", emailVerifiedAt: new Date(), profiles: { create: { name: "Admin" } } }
-  });
-  const userHash = await bcrypt.hash("Duy@1188", 12);
-  await prisma.user.upsert({
-    where: { email: "trantxi05@gmail.com" },
-    update: { passwordHash: userHash, role: "SUPER_ADMIN" },
-    create: { email: "trantxi05@gmail.com", username: "trantxi05", passwordHash: userHash, role: "SUPER_ADMIN", emailVerifiedAt: new Date(), profiles: { create: { name: "Celine" } } }
-  });
   const allGenres = await prisma.genre.findMany();
   for (let i = 1; i <= 28; i++) {
     const title = `Signal Horizon ${i}`;

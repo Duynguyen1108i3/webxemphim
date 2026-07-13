@@ -1,11 +1,17 @@
 import { create } from "zustand";
+import { ApiError, apiRequest } from "../lib/http";
+import { usePlaybackStore } from "./playbackStore";
 
 export interface AuthUser {
   id: string;
   email: string;
   username: string;
-  role: "USER" | "ADMIN" | "SUPER_ADMIN";
+  role: "USER" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN";
+  profiles: Array<{ id: string; name: string; type: "ADULT" | "KIDS" }>;
 }
+
+type CurrentUserResponse = { user: AuthUser };
+type CsrfResponse = { csrfToken: string };
 
 interface AuthState {
   user: AuthUser | null;
@@ -13,62 +19,68 @@ interface AuthState {
   initialized: boolean;
   setUser: (user: AuthUser | null) => void;
   setProfileId: (profileId: string | null) => void;
-  initialize: () => void;
-  logout: () => void;
+  initialize: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
-// Retrieve pre-existing users from local storage
-const getUsersDb = (): Array<{ email: string; username: string; passwordHash: string; role: string }> => {
+let csrfToken: string | null = null;
+let refreshInFlight: Promise<AuthUser | null> | null = null;
+
+async function ensureCsrfToken(force = false) {
+  if (!force && csrfToken) return csrfToken;
+  const data = await apiRequest<CsrfResponse>("/auth/csrf");
+  csrfToken = data.csrfToken;
+  return csrfToken;
+}
+
+async function protectedRequest<T>(path: string, options: RequestInit = {}, allowRefresh = true): Promise<T> {
+  const token = await ensureCsrfToken();
   try {
-    const stored = localStorage.getItem("streamforge:users_db");
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-};
-
-// Save users to local storage
-const saveUsersDb = (users: any[]) => {
-  localStorage.setItem("streamforge:users_db", JSON.stringify(users));
-};
-
-// Seed default admin account if not exists
-const seedDefaultAdmin = () => {
-  const users = getUsersDb();
-  const adminExists = users.some(u => u.email === "trantxi05@gmail.com");
-  if (!adminExists) {
-    users.push({
-      email: "trantxi05@gmail.com",
-      username: "trantxi05",
-      passwordHash: "Duy@1188", // Store plain or simple match for local mockup
-      role: "SUPER_ADMIN"
+    return await apiRequest<T>(path, {
+      ...options,
+      headers: { ...options.headers, "X-CSRF-Token": token }
     });
-    saveUsersDb(users);
+  } catch (error) {
+    if (allowRefresh && error instanceof ApiError && error.status === 401) {
+      const user = await refreshAccessToken();
+      if (user) return protectedRequest<T>(path, options, false);
+    }
+    throw error;
   }
-};
+}
 
-import { usePlaybackStore } from "./playbackStore";
-
-const getInitialUser = (): AuthUser | null => {
-  try {
-    const userStr = localStorage.getItem("streamforge:auth:user");
-    return userStr ? JSON.parse(userStr) : null;
-  } catch {
-    return null;
+async function refreshAccessToken(): Promise<AuthUser | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const token = await ensureCsrfToken(true);
+        const data = await apiRequest<{ user: AuthUser }>("/auth/refresh", {
+          method: "POST",
+          headers: { "X-CSRF-Token": token }
+        });
+        return data.user;
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) return null;
+        throw error;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
   }
-};
+  return refreshInFlight;
+}
 
-const getInitialProfileId = (): string | null => {
-  try {
-    return localStorage.getItem("streamforge:auth:profileId");
-  } catch {
-    return null;
-  }
-};
+function resetLocalAuth(set: (state: Partial<AuthState>) => void) {
+  csrfToken = null;
+  localStorage.removeItem("streamforge:auth:user");
+  localStorage.removeItem("streamforge:auth:profileId");
+  set({ user: null, profileId: null });
+  usePlaybackStore.getState().loadUserData();
+}
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: getInitialUser(),
-  profileId: getInitialProfileId(),
+  user: null,
+  profileId: null,
   initialized: false,
   setUser: (user) => {
     if (user) {
@@ -80,70 +92,58 @@ export const useAuthStore = create<AuthState>((set) => ({
     usePlaybackStore.getState().loadUserData();
   },
   setProfileId: (profileId) => {
-    if (profileId) {
-      localStorage.setItem("streamforge:auth:profileId", profileId);
-    } else {
-      localStorage.removeItem("streamforge:auth:profileId");
-    }
+    if (profileId) localStorage.setItem("streamforge:auth:profileId", profileId);
+    else localStorage.removeItem("streamforge:auth:profileId");
     set({ profileId });
+    usePlaybackStore.getState().loadUserData();
   },
-  initialize: () => {
-    seedDefaultAdmin();
+  initialize: async () => {
     try {
-      const userStr = localStorage.getItem("streamforge:auth:user");
-      const profileId = localStorage.getItem("streamforge:auth:profileId");
-      if (userStr) {
-        set({ user: JSON.parse(userStr), profileId });
-      }
+      const user = await authApi.getCurrentUser();
+      const profileId = localStorage.getItem("streamforge:auth:profileId") || user.username;
+      localStorage.setItem("streamforge:auth:user", JSON.stringify(user));
+      set({ user, profileId, initialized: true });
     } catch {
-      localStorage.removeItem("streamforge:auth:user");
-      localStorage.removeItem("streamforge:auth:profileId");
+      resetLocalAuth(set);
+      set({ initialized: true });
     }
-    set({ initialized: true });
     usePlaybackStore.getState().loadUserData();
   },
-  logout: () => {
-    localStorage.removeItem("streamforge:auth:user");
-    localStorage.removeItem("streamforge:auth:profileId");
-    set({ user: null, profileId: null });
-    usePlaybackStore.getState().loadUserData();
+  logout: async () => {
+    try {
+      await protectedRequest<void>("/auth/logout", { method: "POST" }, false);
+    } catch {
+      // Local cleanup is still correct when the server session has already expired.
+    } finally {
+      resetLocalAuth(set);
+    }
   }
 }));
 
-// Export helper to interact with simulated database
 export const authApi = {
-  login: async (email: string, pass: string): Promise<AuthUser> => {
-    seedDefaultAdmin();
-    const users = getUsersDb();
-    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!found || found.passwordHash !== pass) {
-      throw new Error("Email hoặc mật khẩu không chính xác.");
-    }
-    return {
-      id: found.email,
-      email: found.email,
-      username: found.username,
-      role: found.role as any
-    };
+  async login(email: string, password: string): Promise<AuthUser> {
+    const token = await ensureCsrfToken(true);
+    await apiRequest<{ user: AuthUser }>("/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
+      body: JSON.stringify({ email, password })
+    });
+    return this.getCurrentUser();
   },
-  register: async (email: string, username: string, pass: string): Promise<AuthUser> => {
-    const users = getUsersDb();
-    if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-      throw new Error("Email này đã được đăng ký sử dụng.");
-    }
-    const newUser = {
-      email,
-      username,
-      passwordHash: pass,
-      role: "USER"
-    };
-    users.push(newUser);
-    saveUsersDb(users);
-    return {
-      id: email,
-      email: email,
-      username: username,
-      role: "USER"
-    };
+  async register(email: string, username: string, password: string): Promise<AuthUser> {
+    const token = await ensureCsrfToken(true);
+    await apiRequest<{ user: AuthUser }>("/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
+      body: JSON.stringify({ email, username, password })
+    });
+    return this.getCurrentUser();
+  },
+  async getCurrentUser(): Promise<AuthUser> {
+    const data = await protectedRequest<CurrentUserResponse>("/users/me", { method: "GET" });
+    return data.user;
+  },
+  request<T>(path: string, options: RequestInit = {}): Promise<T> {
+    return protectedRequest<T>(path, options);
   }
 };

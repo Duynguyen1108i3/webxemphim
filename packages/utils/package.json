@@ -2,8 +2,11 @@
   "name": "@streamforge/utils",
   "version": "1.0.0",
   "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
   "dependencies": {
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.6.0",
