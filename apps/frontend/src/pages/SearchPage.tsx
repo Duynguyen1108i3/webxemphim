@@ -1,12 +1,33 @@
+import React, { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { movieApi, type NormalizedMovie } from "../lib/movieApi";
+import { usePlaybackStore } from "../store/playbackStore";
+import { MovieTile, HoverPreview } from "../components/MovieRow";
+import type { MovieCardDto } from "@streamforge/shared-types";
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") ?? "";
   const genre = searchParams.get("genre") ?? "";
+  const { openDetailModal, openPlayback } = usePlaybackStore();
+
+  const [hovered, setHovered] = useState<{ movie: MovieCardDto; anchor: HTMLElement; rect: DOMRect } | null>(null);
+
+  const openHoverTimer = useRef<number | null>(null);
+  const closeHoverTimer = useRef<number | null>(null);
+  const hoverFrame = useRef<number | null>(null);
+
+  const clearOpenTimer = () => { if (openHoverTimer.current != null) { window.clearTimeout(openHoverTimer.current); openHoverTimer.current = null; } };
+  const clearCloseTimer = () => { if (closeHoverTimer.current != null) { window.clearTimeout(closeHoverTimer.current); closeHoverTimer.current = null; } };
+
+  function scheduleHoverClose() {
+    clearCloseTimer();
+    clearOpenTimer();
+    closeHoverTimer.current = window.setTimeout(() => setHovered(null), 180);
+  }
   
   const hasTmdb = Boolean(
     localStorage.getItem("streamforge:settings:tmdb_key") || 
@@ -56,6 +77,55 @@ export function SearchPage() {
   
   const results = data?.results ?? [];
   const activeGenreName = genresList.find((g) => g.slug === genre)?.name;
+
+  useEffect(() => {
+    if (!hovered) return;
+
+    const updatePosition = () => {
+      hoverFrame.current = null;
+      const rect = hovered.anchor.getBoundingClientRect();
+      const isOutOfView = rect.bottom < 72 || rect.top > window.innerHeight - 24 || rect.right < 0 || rect.left > window.innerWidth;
+
+      if (isOutOfView) {
+        setHovered(null);
+        return;
+      }
+
+      setHovered((current) => {
+        if (!current || current.anchor !== hovered.anchor) return current;
+        if (
+          Math.abs(current.rect.top - rect.top) < 0.5 &&
+          Math.abs(current.rect.left - rect.left) < 0.5 &&
+          Math.abs(current.rect.width - rect.width) < 0.5
+        ) {
+          return current;
+        }
+        return { ...current, rect };
+      });
+    };
+
+    const requestPosition = () => {
+      if (hoverFrame.current != null) return;
+      hoverFrame.current = window.requestAnimationFrame(updatePosition);
+    };
+
+    window.addEventListener("scroll", requestPosition, { passive: true });
+    window.addEventListener("resize", requestPosition);
+    requestPosition();
+
+    return () => {
+      window.removeEventListener("scroll", requestPosition);
+      window.removeEventListener("resize", requestPosition);
+      if (hoverFrame.current != null) {
+        window.cancelAnimationFrame(hoverFrame.current);
+        hoverFrame.current = null;
+      }
+    };
+  }, [hovered?.anchor]);
+
+  const handleOpen = (movie: MovieCardDto) => {
+    openDetailModal(movie as NormalizedMovie, `search-${movie.id}`);
+  };
 
   return (
     <main className="min-h-screen bg-[#141414] px-4 pt-28 pb-16 sm:px-8 md:px-14 lg:px-16">
@@ -113,16 +183,42 @@ export function SearchPage() {
       {isLoading ? (
         <div className="mt-10 text-center text-white/50">Loading titles...</div>
       ) : (
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6">
+        <div className="mt-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 md:gap-2">
           {results.map((movie: NormalizedMovie) => (
-            <Link key={movie.id} to={`/movie/${movie.slug}`} className="group">
-              <img src={movie.posterUrl || movie.backdropUrl} alt={movie.title} loading="lazy" className="aspect-[2/3] rounded bg-zinc-900 object-cover transition duration-300 group-hover:scale-105 group-hover:brightness-75" />
-              <p className="mt-2 line-clamp-1 font-semibold">{movie.title}</p>
-              <p className="text-sm text-[#46d369]">{movie.match ?? Math.round(movie.averageRating * 10)}% Match</p>
-            </Link>
+            <MovieTile
+              key={movie.id}
+              movie={movie as any}
+              className="group relative w-full cursor-pointer rounded-md transition"
+              onOpen={() => handleOpen(movie as any)}
+              onHover={(anchor) => {
+                clearCloseTimer();
+                clearOpenTimer();
+                openHoverTimer.current = window.setTimeout(() => {
+                  setHovered({ movie: movie as any, anchor, rect: anchor.getBoundingClientRect() });
+                }, 180);
+              }}
+              onHoverEnd={scheduleHoverClose}
+            />
           ))}
         </div>
       )}
+
+      <AnimatePresence>
+        {hovered && (
+          <HoverPreview
+            key={hovered.movie.id}
+            movie={hovered.movie}
+            rect={hovered.rect}
+            onOpen={() => handleOpen(hovered.movie)}
+            onMouseEnter={() => {
+              clearOpenTimer();
+              clearCloseTimer();
+            }}
+            onMouseLeave={scheduleHoverClose}
+          />
+        )}
+      </AnimatePresence>
     </main>
   );
 }
+export default SearchPage;

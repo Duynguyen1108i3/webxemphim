@@ -181,21 +181,45 @@ export function VideoPlayer({
     };
 
     if (isHls && Hls.isSupported()) {
-      hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+      hls = new Hls({ 
+        enableWorker: true, 
+        lowLatencyMode: true,
+        backBufferLength: 90
+      });
       hls.loadSource(activeUrl);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         restorePosition();
         startPlayback();
       });
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.warn("Fatal network error in player, attempting recovery...");
+              hls?.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.warn("Fatal media error in player, recovering media...");
+              hls?.recoverMediaError();
+              break;
+            default:
+              console.error("Fatal unrecoverable player error");
+              break;
+          }
+        }
+      });
     } else {
       video.src = activeUrl;
+      video.load();
       const handleCanPlay = () => {
         restorePosition();
         startPlayback();
         video.removeEventListener("canplay", handleCanPlay);
+        video.removeEventListener("loadedmetadata", handleCanPlay);
       };
       video.addEventListener("canplay", handleCanPlay);
+      video.addEventListener("loadedmetadata", handleCanPlay);
     }
 
     return () => {
@@ -507,7 +531,7 @@ export function VideoPlayer({
 
   return (
     <div className="group relative grid min-h-screen place-items-center overflow-hidden bg-black select-none">
-      <video ref={videoRef} className="h-full max-h-screen w-full object-contain" autoPlay playsInline poster="" crossOrigin="anonymous">
+      <video ref={videoRef} className="h-full max-h-screen w-full object-contain" autoPlay playsInline preload="auto" poster="" crossOrigin="anonymous">
         {source?.subtitles?.map((sub) => <track key={sub.url} kind="subtitles" srcLang={sub.language} label={sub.label} src={sub.url} />)}
       </video>
       <button onClick={toggle} className="absolute inset-0" aria-label={playing ? "Pause video" : "Play video"} />
@@ -613,6 +637,22 @@ export function VideoPlayer({
           </div>
 
           <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
+            {/* Server selection */}
+            {source?.alternateSources && source.alternateSources.length > 1 && (
+              <select 
+                value={activeUrl} 
+                onChange={(e) => setActiveUrl(e.target.value)} 
+                className="rounded bg-white/10 border border-white/10 px-1 py-1 sm:px-2 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-1 focus:ring-white max-w-[100px] sm:max-w-[150px]"
+                aria-label="Select streaming server"
+              >
+                {source.alternateSources.map((altSource: any, idx: number) => (
+                  <option key={idx} value={altSource.url} className="bg-zinc-900">
+                    {altSource.name || `Server ${idx + 1}`}
+                  </option>
+                ))}
+              </select>
+            )}
+
             {/* Speed selection */}
             <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} className="rounded bg-white/10 border border-white/10 px-1 py-1 sm:px-2 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-1 focus:ring-white">
               {[0.5, 1, 1.25, 1.5, 2].map((value) => <option key={value} value={value} className="bg-zinc-900">{value}x</option>)}

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, Play, Plus, ThumbsUp, X } from "lucide-react";
 import type { MovieCardDto } from "@streamforge/shared-types";
@@ -245,7 +246,8 @@ export const MovieTile = React.memo(function MovieTile({
   isContinueWatching = false,
   onOpen,
   onHover,
-  onHoverEnd
+  onHoverEnd,
+  className
 }: {
   movie: MovieCardDto;
   rank?: number;
@@ -253,6 +255,7 @@ export const MovieTile = React.memo(function MovieTile({
   onOpen: () => void;
   onHover: (anchor: HTMLElement) => void;
   onHoverEnd: () => void;
+  className?: string;
 }) {
   const removeFromWatchHistory = usePlaybackStore((state) => state.removeFromWatchHistory);
 
@@ -261,7 +264,7 @@ export const MovieTile = React.memo(function MovieTile({
       whileHover={{ y: -2, scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 280, damping: 30, mass: 0.7 }}
-      className="group relative z-10 w-[148px] shrink-0 rounded-md transition sm:w-[180px] md:w-[214px] lg:w-[238px]"
+      className={className || "group relative z-10 w-[148px] shrink-0 rounded-md transition sm:w-[180px] md:w-[214px] lg:w-[238px]"}
       onMouseEnter={(event) => onHover(event.currentTarget)}
       onPointerEnter={(event) => onHover(event.currentTarget)}
       onMouseLeave={onHoverEnd}
@@ -299,7 +302,7 @@ export const MovieTile = React.memo(function MovieTile({
   );
 });
 
-const HoverPreview = React.memo(function HoverPreview({
+export const HoverPreview = React.memo(function HoverPreview({
   movie,
   rect,
   isContinueWatching = false,
@@ -320,9 +323,9 @@ const HoverPreview = React.memo(function HoverPreview({
   const { myList, toggleMyList, openDetailModal, removeFromWatchHistory } = usePlaybackStore();
   const inMyList = myList.some((item) => item.id === movie.id);
 
-  return (
+  return createPortal(
     <div
-      className="fixed left-0 top-0 z-[80] will-change-transform"
+      className="fixed left-0 top-0 z-[100] will-change-transform"
       style={{ width, transform: `translate3d(${left}px, ${top}px, 0)` }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -399,7 +402,8 @@ const HoverPreview = React.memo(function HoverPreview({
           <p className="line-clamp-1 text-sm text-white/85">{movie.genres.slice(0, 3).map((g) => g.name).join(" - ")}</p>
         </div>
       </motion.article>
-    </div>
+    </div>,
+    document.body
   );
 });
 

@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import { Check, ChevronDown, Copy, Download, ExternalLink, Play, Plus, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Check, ChevronDown, Play, Plus, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePlaybackStore } from "../store/playbackStore";
 import { movieApi } from "../lib/movieApi";
 import { Badge, Button } from "@streamforge/ui";
 import { formatRuntime, getEpisodes } from "@streamforge/utils";
+import { MovieTile, HoverPreview } from "./MovieRow";
 
 export function CinematicDetailModal() {
   const { activeMovieDetail, clickedElementId, closeDetailModal, openPlayback, myList, toggleMyList } = usePlaybackStore();
@@ -16,6 +17,71 @@ export function CinematicDetailModal() {
   const [isInitiallyOpening, setIsInitiallyOpening] = useState(true);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>("");
   const modalContainerRef = useRef<HTMLDivElement>(null);
+
+  const [hovered, setHovered] = useState<{ movie: any; anchor: HTMLElement; rect: DOMRect } | null>(null);
+
+  const openHoverTimer = useRef<number | null>(null);
+  const closeHoverTimer = useRef<number | null>(null);
+  const hoverFrame = useRef<number | null>(null);
+
+  const clearOpenTimer = () => { if (openHoverTimer.current != null) { window.clearTimeout(openHoverTimer.current); openHoverTimer.current = null; } };
+  const clearCloseTimer = () => { if (closeHoverTimer.current != null) { window.clearTimeout(closeHoverTimer.current); closeHoverTimer.current = null; } };
+
+  function scheduleHoverClose() {
+    clearCloseTimer();
+    clearOpenTimer();
+    closeHoverTimer.current = window.setTimeout(() => setHovered(null), 180);
+  }
+
+  useEffect(() => {
+    if (!hovered) return;
+
+    const updatePosition = () => {
+      hoverFrame.current = null;
+      const rect = hovered.anchor.getBoundingClientRect();
+      const isOutOfView = rect.bottom < 72 || rect.top > window.innerHeight - 24 || rect.right < 0 || rect.left > window.innerWidth;
+
+      if (isOutOfView) {
+        setHovered(null);
+        return;
+      }
+
+      setHovered((current) => {
+        if (!current || current.anchor !== hovered.anchor) return current;
+        if (
+          Math.abs(current.rect.top - rect.top) < 0.5 &&
+          Math.abs(current.rect.left - rect.left) < 0.5 &&
+          Math.abs(current.rect.width - rect.width) < 0.5
+        ) {
+          return current;
+        }
+        return { ...current, rect };
+      });
+    };
+
+    const requestPosition = () => {
+      if (hoverFrame.current != null) return;
+      hoverFrame.current = window.requestAnimationFrame(updatePosition);
+    };
+
+    const container = modalContainerRef.current;
+    if (container) {
+      container.addEventListener("scroll", requestPosition, { passive: true });
+    }
+    window.addEventListener("resize", requestPosition);
+    requestPosition();
+
+    return () => {
+      if (container) {
+        container.removeEventListener("scroll", requestPosition);
+      }
+      window.removeEventListener("resize", requestPosition);
+      if (hoverFrame.current != null) {
+        window.cancelAnimationFrame(hoverFrame.current);
+        hoverFrame.current = null;
+      }
+    };
+  }, [hovered?.anchor]);
 
   const movie = activeMovieDetail;
 
@@ -42,7 +108,6 @@ export function CinematicDetailModal() {
     queryFn: () => movieApi.getMovieDetail(movie!.slug)
   });
 
-  // Safe genre resolver for hooks
   const activeGenreSlug = data?.movie?.genres?.[0]?.slug ?? movie?.genres?.[0]?.slug;
 
   const { data: similarData } = useQuery({
@@ -53,7 +118,7 @@ export function CinematicDetailModal() {
     queryFn: () => movieApi.getByGenre(activeGenreSlug!, 1)
   });
 
-  const { data: playbackData, isLoading: playbackLoading } = useQuery({
+  const { data: playbackData } = useQuery({
     queryKey: ["movie-playback-servers", movie?.slug || ""],
     enabled: Boolean(movie?.slug),
     staleTime: 5 * 60 * 1000,
@@ -61,7 +126,6 @@ export function CinematicDetailModal() {
     queryFn: () => movieApi.getPlayback(movie!.slug)
   });
 
-  // Keyboard shortcut Esc to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -72,7 +136,6 @@ export function CinematicDetailModal() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [closeDetailModal]);
 
-  // Autoplay trailer after 500ms
   const activeTrailerUrl = data?.movie?.trailerUrl ?? movie?.trailerUrl;
   const activeMovieId = data?.movie?.id ?? movie?.id;
 
@@ -98,10 +161,8 @@ export function CinematicDetailModal() {
     }
   }, [displayMovieId, seasonsList.length]);
 
-  // Early return if no movie is selected
   if (!movie) return null;
 
-  // Non-hook declarations - guaranteed non-null because movie is non-null
   const displayMovie = data?.movie ?? movie;
   const inMyList = displayMovie ? myList.some((item) => item.id === displayMovie.id) : false;
   const similarTitles = (similarData ?? [])
@@ -144,13 +205,6 @@ export function CinematicDetailModal() {
       opacity: 1,
       y: 0,
       transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] }
-    }
-  };
-
-  const handleDragEnd = (_event: any, info: any) => {
-    // If swiped down past 120px, close the modal
-    if (info.offset.y > 120) {
-      closeDetailModal();
     }
   };
 
@@ -331,8 +385,6 @@ export function CinematicDetailModal() {
           </motion.div>
         </motion.div>
 
-
-
         {/* Episodes Section */}
         <section className="px-6 pb-6 md:px-8 border-t border-white/5 pt-6">
           <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -412,84 +464,85 @@ export function CinematicDetailModal() {
         {similarTitles.length > 0 && (
           <section className="px-6 pb-8 md:px-8 border-t border-white/5 pt-6">
             <h4 className="mb-4 text-xl font-black md:text-2xl">More Like This</h4>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:gap-2">
               {similarTitles.map((item) => (
-                <article
+                <MovieTile
                   key={item.id}
-                  onClick={() => {
-                    // Instantly scroll back to top of modal when loading a new title
+                  movie={item as any}
+                  className="group relative w-full cursor-pointer rounded-md transition"
+                  onOpen={() => {
                     if (modalContainerRef.current) {
                       modalContainerRef.current.scrollTop = 0;
                     }
-                    usePlaybackStore.getState().openDetailModal(item, `card-${item.id}`);
+                    usePlaybackStore.getState().openDetailModal(item as any, `card-${item.id}`);
                   }}
-                  className="group flex flex-col overflow-hidden rounded bg-[#2a2a2a] cursor-pointer transition hover:bg-[#333] border border-white/5 shadow-md"
-                >
-                  <div className="relative aspect-video bg-zinc-900">
-                    <img
-                      src={item.backdropUrl || item.posterUrl}
-                      alt={item.title}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                    <span className="absolute right-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold">
-                      {item.maturityRating.replace("_", "-")}
-                    </span>
-                  </div>
-                  <div className="flex flex-1 flex-col justify-between p-3.5 space-y-2">
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs font-semibold text-[#46d369]">
-                        <span>{item.match}% Match</span>
-                        <span className="text-white/60">{item.releaseYear}</span>
-                      </div>
-                      <h5 className="line-clamp-1 font-bold text-white group-hover:text-[#46d369] transition duration-200 text-sm">
-                        {item.title}
-                      </h5>
-                    </div>
-                    <p className="line-clamp-3 text-xs leading-relaxed text-white/60">
-                      {item.synopsis}
-                    </p>
-                  </div>
-                </article>
+                  onHover={(anchor) => {
+                    clearCloseTimer();
+                    clearOpenTimer();
+                    openHoverTimer.current = window.setTimeout(() => {
+                      setHovered({ movie: item as any, anchor, rect: anchor.getBoundingClientRect() });
+                    }, 180);
+                  }}
+                  onHoverEnd={scheduleHoverClose}
+                />
               ))}
             </div>
           </section>
         )}
 
-         {/* About Section (Netflix style metadata summary at the very bottom) */}
-         <section className="px-6 pb-12 md:px-8 border-t border-white/5 pt-6 space-y-4">
-           <h4 className="text-xl font-black md:text-2xl">About <span className="text-[#e50914]">{displayMovie.title}</span></h4>
-           <div className="grid gap-6 md:grid-cols-2 text-sm text-white/70">
-             <div className="space-y-2">
-               <div>
-                 <span className="text-white/40">Director: </span>
-                 <span className="hover:underline cursor-pointer">{displayMovie.director || "Updating"}</span>
-               </div>
-               <div>
-                 <span className="text-white/40">Cast: </span>
-                 <span className="hover:underline cursor-pointer">{displayMovie.cast?.slice(0, 8).join(", ") || "Updating"}</span>
-               </div>
-               <div>
-                 <span className="text-white/40">Maturity Rating: </span>
-                 <Badge className="border-white/30 text-xs ml-1 mr-1">{displayMovie.maturityRating.replace("_", "-")}</Badge>
-                 <span className="text-xs text-white/55">Recommended for ages 14 and up</span>
-               </div>
-             </div>
-             <div className="space-y-2">
-               <div>
-                 <span className="text-white/40">Genres: </span>
-                 <span>{displayMovie.genres.map((g) => g.name).join(", ") || "Updating"}</span>
-               </div>
-               <div>
-                 <span className="text-white/40">This title is: </span>
-                 <span>Cinematic, Immersive, Captivating</span>
-               </div>
-             </div>
-           </div>
-         </section>
-       </motion.div>
+        {/* About Section */}
+        <section className="px-6 pb-12 md:px-8 border-t border-white/5 pt-6 space-y-4">
+          <h4 className="text-xl font-black md:text-2xl">About <span className="text-[#e50914]">{displayMovie.title}</span></h4>
+          <div className="grid gap-6 md:grid-cols-2 text-sm text-white/70">
+            <div className="space-y-2">
+              <div>
+                <span className="text-white/40">Director: </span>
+                <span className="hover:underline cursor-pointer">{displayMovie.director || "Updating"}</span>
+              </div>
+              <div>
+                <span className="text-white/40">Cast: </span>
+                <span className="hover:underline cursor-pointer">{displayMovie.cast?.slice(0, 8).join(", ") || "Updating"}</span>
+              </div>
+              <div>
+                <span className="text-white/40">Maturity Rating: </span>
+                <Badge className="border-white/30 text-xs ml-1 mr-1">{displayMovie.maturityRating.replace("_", "-")}</Badge>
+                <span className="text-xs text-white/55">Recommended for ages 14 and up</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <span className="text-white/40">Genres: </span>
+                <span>{displayMovie.genres.map((g) => g.name).join(", ") || "Updating"}</span>
+              </div>
+              <div>
+                <span className="text-white/40">This title is: </span>
+                <span>Cinematic, Immersive, Captivating</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </motion.div>
+
+      <AnimatePresence>
+        {hovered && (
+          <HoverPreview
+            key={hovered.movie.id}
+            movie={hovered.movie}
+            rect={hovered.rect}
+            onOpen={() => {
+              if (modalContainerRef.current) {
+                modalContainerRef.current.scrollTop = 0;
+              }
+              usePlaybackStore.getState().openDetailModal(hovered.movie, `card-${hovered.movie.id}`);
+            }}
+            onMouseEnter={() => {
+              clearOpenTimer();
+              clearCloseTimer();
+            }}
+            onMouseLeave={scheduleHoverClose}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-
-// Helper getEpisodes is now imported from @streamforge/utils

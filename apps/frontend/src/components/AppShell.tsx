@@ -59,45 +59,42 @@ export function AppShell() {
       return;
     }
 
+    const currentDetail = usePlaybackStore.getState().activeMovieDetail;
+    const currentPlayback = usePlaybackStore.getState().activePlayback;
+    const currentEpId = usePlaybackStore.getState().activeEpisodeId;
+
+    const needsDetailFetch = movieDetailSlug && (!currentDetail || currentDetail.slug !== movieDetailSlug);
+    const needsPlaybackFetch = watchSlug && (!currentPlayback || currentPlayback.slug !== watchSlug || currentEpId !== watchEpisodeId);
+
+    if (!needsDetailFetch && !needsPlaybackFetch) {
+      if (!movieDetailSlug && currentDetail) usePlaybackStore.getState().closeDetailModal();
+      if (!watchSlug && currentPlayback) usePlaybackStore.getState().closePlayback();
+      setIsRestoringState(false);
+      return;
+    }
+
     setIsRestoringState(true);
     let p1: Promise<any> = Promise.resolve();
     let p2: Promise<any> = Promise.resolve();
 
-    if (movieDetailSlug) {
-      const currentDetail = usePlaybackStore.getState().activeMovieDetail;
-      if (!currentDetail || currentDetail.slug !== movieDetailSlug) {
-        p1 = movieApi.getMovieDetail(movieDetailSlug)
-          .then((detail) => {
-            if (detail?.movie) {
-              usePlaybackStore.getState().openDetailModal(detail.movie, "url-restore");
-            }
-          })
-          .catch((err) => console.error("Error restoring detail modal:", err));
-      }
-    } else {
-      const currentDetail = usePlaybackStore.getState().activeMovieDetail;
-      if (currentDetail) {
-        usePlaybackStore.getState().closeDetailModal();
-      }
+    if (needsDetailFetch && movieDetailSlug) {
+      p1 = movieApi.getMovieDetail(movieDetailSlug)
+        .then((detail) => {
+          if (detail?.movie) {
+            usePlaybackStore.getState().openDetailModal(detail.movie, "url-restore");
+          }
+        })
+        .catch((err) => console.error("Error restoring detail modal:", err));
     }
 
-    if (watchSlug) {
-      const currentPlayback = usePlaybackStore.getState().activePlayback;
-      const currentEpId = usePlaybackStore.getState().activeEpisodeId;
-      if (!currentPlayback || currentPlayback.slug !== watchSlug || currentEpId !== watchEpisodeId) {
-        p2 = movieApi.getMovieDetail(watchSlug)
-          .then((detail) => {
-            if (detail?.movie) {
-              usePlaybackStore.getState().openPlayback(detail.movie, "url-restore", watchEpisodeId || undefined);
-            }
-          })
-          .catch((err) => console.error("Error restoring playback overlay:", err));
-      }
-    } else {
-      const currentPlayback = usePlaybackStore.getState().activePlayback;
-      if (currentPlayback) {
-        usePlaybackStore.getState().closePlayback();
-      }
+    if (needsPlaybackFetch && watchSlug) {
+      p2 = movieApi.getMovieDetail(watchSlug)
+        .then((detail) => {
+          if (detail?.movie) {
+            usePlaybackStore.getState().openPlayback(detail.movie, "url-restore", watchEpisodeId || undefined);
+          }
+        })
+        .catch((err) => console.error("Error restoring playback overlay:", err));
     }
 
     Promise.allSettled([p1, p2]).finally(() => {
@@ -174,6 +171,35 @@ export function AppShell() {
   }, [location.search]);
 
   const q = new URLSearchParams(location.search).get("q") ?? "";
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  // Click outside detection to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (profileRef.current && !profileRef.current.contains(target)) {
+        setIsProfileOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(target)) {
+        setNotificationOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsProfileOpen(false);
+        setNotificationOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   const [localQ, setLocalQ] = useState(q);
   const [hasNotification, setHasNotification] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -282,11 +308,11 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-[#141414] text-white">
       {location.pathname === "/profile" ? (
-        <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center px-4 sm:px-8 md:px-14 lg:px-16 bg-gradient-to-b from-black/60 to-transparent">
-          <span className="brand-logo text-lg font-black tracking-tight text-[#e50914] sm:text-2xl md:text-3xl select-none">STREAMFORGE</span>
+        <header className="fixed inset-x-0 top-0 z-50 flex h-[68px] items-center px-4 sm:px-8 md:px-14 lg:px-16 bg-gradient-to-b from-black/60 to-transparent">
+          <span className="brand-logo text-base font-black tracking-tight text-[#e50914] sm:text-xl md:text-2xl select-none">STREAMFORGE</span>
         </header>
       ) : (
-        <header className={`fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between px-4 transition-all duration-300 sm:px-8 md:px-14 lg:px-16 ${scrolled ? "bg-[#141414]/95 shadow-lg shadow-black/20 backdrop-blur-md" : "bg-gradient-to-b from-black/80 via-black/35 to-transparent"}`}>
+        <header className={`fixed inset-x-0 top-0 z-50 flex h-[68px] items-center justify-between px-4 transition-colors duration-500 ease-out sm:px-8 md:px-14 lg:px-16 ${scrolled ? "bg-[#141414] shadow-lg shadow-black/30" : "bg-gradient-to-b from-black/90 via-black/40 to-transparent"}`}>
           <div className="flex items-center gap-2 sm:gap-7">
             {/* Hamburger menu button for mobile */}
             <button
@@ -297,7 +323,7 @@ export function AppShell() {
               <Menu size={22} />
             </button>
             
-            <NavLink to="/" className={`brand-logo text-lg font-black tracking-tight text-[#e50914] sm:text-2xl md:text-3xl ${searchExpanded ? "hidden md:block" : ""}`}>STREAMFORGE</NavLink>
+            <NavLink to="/" className={`brand-logo text-base font-black tracking-tight text-[#e50914] sm:text-xl md:text-2xl ${searchExpanded ? "hidden md:block" : ""}`}>STREAMFORGE</NavLink>
             <nav className="hidden items-center gap-5 text-sm font-medium text-white/75 md:flex">
               <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Home</NavLink>
               <NavLink to="/tv-shows" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Shows</NavLink>
@@ -354,7 +380,7 @@ export function AppShell() {
             <NavLink to="/search" className="hidden lg:block text-sm font-semibold hover:underline">Kids</NavLink>
 
             {/* Live Updates Notification Bell Icon */}
-            <div className="relative">
+            <div ref={notificationRef} className="relative">
               <button
                 onClick={toggleNotification}
                 className="nf-icon relative rounded-full p-1.5 hover:bg-white/10"
@@ -366,46 +392,61 @@ export function AppShell() {
                 )}
               </button>
               
-              {notificationOpen && (
-                <div className="absolute right-0 mt-3 w-80 rounded border border-white/10 bg-black/95 py-2 shadow-2xl z-50 backdrop-blur-md">
-                  <div className="px-4 py-2 border-b border-white/10 text-xs font-bold text-white/50 uppercase tracking-wider">
-                    Phim Mới Cập Nhật
-                  </div>
-                  {latestMovies.length > 0 ? (
-                    <div className="max-h-80 overflow-y-auto">
-                      {latestMovies.map((movie) => (
-                        <button
-                          key={movie.slug}
-                          onClick={() => {
-                            setNotificationOpen(false);
-                            usePlaybackStore.getState().openDetailModal(movie, `notif-${movie.id}`);
-                          }}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-white/5 transition text-left cursor-pointer focus:outline-none"
-                        >
-                          <img
-                            src={movie.posterUrl || movie.backdropUrl}
-                            className="h-12 aspect-[2/3] object-cover rounded border border-white/10 shadow-md shrink-0"
-                            alt=""
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold text-white truncate">{movie.title}</p>
-                            <p className="text-xs text-white/40 mt-0.5 truncate">{movie.description || "Danh mục phim mới cập nhật."}</p>
-                          </div>
-                        </button>
-                      ))}
+              <AnimatePresence>
+                {notificationOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute right-0 mt-3 w-80 rounded border border-white/10 bg-black/95 py-2 shadow-2xl z-50 backdrop-blur-md"
+                  >
+                    <div className="px-4 py-2 border-b border-white/10 text-xs font-bold text-white/50 uppercase tracking-wider">
+                      Phim Mới Cập Nhật
                     </div>
-                  ) : (
-                    <div className="px-4 py-6 text-center text-xs text-white/40">
-                      Không có thông báo mới.
-                    </div>
-                  )}
-                </div>
-              )}
+                    {latestMovies.length > 0 ? (
+                      <div className="max-h-80 overflow-y-auto">
+                        {latestMovies.map((movie) => (
+                          <button
+                            key={movie.slug}
+                            onClick={() => {
+                              setNotificationOpen(false);
+                              usePlaybackStore.getState().openDetailModal(movie, `notif-${movie.id}`);
+                            }}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-white/5 transition text-left cursor-pointer focus:outline-none"
+                          >
+                            <img
+                              src={movie.posterUrl || movie.backdropUrl}
+                              className="h-12 aspect-[2/3] object-cover rounded border border-white/10 shadow-md shrink-0"
+                              alt=""
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold text-white truncate">{movie.title}</p>
+                              <p className="text-xs text-white/40 mt-0.5 truncate">{movie.description || "Danh mục phim mới cập nhật."}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-4 py-6 text-center text-xs text-white/40">
+                        Không có thông báo mới.
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Profile Dropdown */}
-            <div className="relative group/profile py-2">
-              <button className="flex items-center gap-1.5 focus:outline-none cursor-pointer" aria-label="Profile Menu">
+            <div ref={profileRef} className="relative py-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsProfileOpen(!isProfileOpen);
+                }}
+                className="flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                aria-label="Profile Menu"
+              >
                 <span className={`grid h-8 w-8 place-items-center rounded bg-gradient-to-br ${
                   profileId === "Kids" ? "from-yellow-400 to-orange-500" :
                   profileId === "Guest" ? "from-purple-500 to-pink-500" :
@@ -414,62 +455,71 @@ export function AppShell() {
                 }`}>
                   {profileId === "Private" ? <Lock size={14} className="text-white/80" /> : <span className="text-sm font-black text-white">{profileId ? profileId[0].toUpperCase() : (user?.username ? user.username[0].toUpperCase() : "M")}</span>}
                 </span>
-                <span className="border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 group-hover/profile:rotate-180" />
+                <span className={`border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 ${isProfileOpen ? "rotate-180" : ""}`} />
               </button>
 
-              {/* Dropdown Menu (fades & slides in on hover) */}
-              <div className="absolute right-0 top-full mt-1 w-52 origin-top-right rounded border border-white/10 bg-black/95 py-2 shadow-2xl backdrop-blur-md opacity-0 scale-95 pointer-events-none group-hover/profile:opacity-100 group-hover/profile:scale-100 group-hover/profile:pointer-events-auto transition-all duration-200 z-[120]">
-                {/* Profile List */}
-                <div className="flex flex-col gap-1 px-2 py-1">
-                  {[
-                    [user?.username || "Main", "from-blue-500 to-cyan-300"],
-                    ["Kids", "from-yellow-400 to-orange-500"],
-                    ["Guest", "from-purple-500 to-pink-500"],
-                    ["Private", "from-zinc-600 to-zinc-900"]
-                  ].filter(([name]) => name !== profileId).map(([name, color]) => (
+              <AnimatePresence>
+                {isProfileOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute right-0 top-full mt-1 w-52 origin-top-right rounded border border-white/10 bg-black/95 py-2 shadow-2xl backdrop-blur-md z-[120]"
+                  >
+                    {/* Profile List */}
+                    <div className="flex flex-col gap-1 px-2 py-1">
+                      {[
+                        [user?.username || "Main", "from-blue-500 to-cyan-300"],
+                        ["Kids", "from-yellow-400 to-orange-500"],
+                        ["Guest", "from-purple-500 to-pink-500"],
+                        ["Private", "from-zinc-600 to-zinc-900"]
+                      ].filter(([name]) => name !== profileId).map(([name, color]) => (
+                        <button
+                          key={name}
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            if (name === "Private") {
+                              const pin = prompt("Nhập mã PIN bảo mật cho hồ sơ riêng tư (mặc định: 1234):");
+                              if (pin !== "1234") {
+                                alert("Mã PIN không chính xác!");
+                                return;
+                              }
+                            }
+                            setProfileId(name);
+                            navigate("/");
+                          }}
+                          className="flex items-center gap-2.5 w-full rounded px-2.5 py-1.5 hover:bg-white/10 transition text-left text-xs font-semibold cursor-pointer text-white/80 hover:text-white"
+                        >
+                          <span className={`grid h-6 w-6 place-items-center rounded bg-gradient-to-br ${color}`}>
+                            {name === "Private" ? <Lock size={10} className="text-white/80" /> : <span className="text-[10px] font-black text-white">{name[0]}</span>}
+                          </span>
+                          <span>{name}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <hr className="border-white/10 my-1.5" />
+
+                    <NavLink to="/profile" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2.5 px-4 py-1.5 hover:bg-white/10 transition text-xs font-semibold text-white/70 hover:text-white">
+                      Quản lý hồ sơ
+                    </NavLink>
+                    
+                    <hr className="border-white/10 my-1.5" />
+
                     <button
-                      key={name}
                       onClick={() => {
-                        if (name === "Private") {
-                          const pin = prompt("Nhập mã PIN bảo mật cho hồ sơ riêng tư (mặc định: 1234):");
-                          if (pin !== "1234") {
-                            alert("Mã PIN không chính xác!");
-                            return;
-                          }
-                        }
-                        setProfileId(name);
-                        navigate("/");
+                        setIsProfileOpen(false);
+                        logout();
+                        navigate("/login");
                       }}
-                      className="flex items-center gap-2.5 w-full rounded px-2.5 py-1.5 hover:bg-white/10 transition text-left text-xs font-semibold cursor-pointer text-white/80 hover:text-white"
+                      className="flex items-center gap-2.5 w-full px-4 py-1.5 hover:bg-white/10 transition text-xs font-bold text-[#e50914] text-left cursor-pointer"
                     >
-                      <span className={`grid h-6 w-6 place-items-center rounded bg-gradient-to-br ${color}`}>
-                        {name === "Private" ? <Lock size={10} className="text-white/80" /> : <span className="text-[10px] font-black text-white">{name[0]}</span>}
-                      </span>
-                      <span>{name}</span>
+                      Đăng xuất khỏi StreamForge
                     </button>
-                  ))}
-                </div>
-
-                <hr className="border-white/10 my-1.5" />
-
-                <NavLink to="/profile" className="flex items-center gap-2.5 px-4 py-1.5 hover:bg-white/10 transition text-xs font-semibold text-white/70 hover:text-white">
-                  Quản lý hồ sơ
-                </NavLink>
-                
-
-
-                <hr className="border-white/10 my-1.5" />
-
-                <button
-                  onClick={() => {
-                    logout();
-                    navigate("/login");
-                  }}
-                  className="flex items-center gap-2.5 w-full px-4 py-1.5 hover:bg-white/10 transition text-xs font-bold text-[#e50914] text-left cursor-pointer"
-                >
-                  Đăng xuất khỏi StreamForge
-                </button>
-              </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </nav>
         </header>
