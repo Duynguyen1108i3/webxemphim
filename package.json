@@ -4,6 +4,10 @@
   "version": "1.0.0",
   "description": "Enterprise streaming platform monorepo with React, Express, Prisma, PostgreSQL, Redis, Docker and monitoring.",
   "packageManager": "npm@10.8.2",
+  "engines": {
+    "node": "22.x",
+    "npm": ">=10 <12"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
