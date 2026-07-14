@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build --workspace @streamforge/frontend"
+  command = "npm run build --workspace @streamforge/utils && npm run build --workspace @streamforge/frontend"
   publish = "apps/frontend/dist"
 
 [build.environment]
