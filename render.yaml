@@ -6,7 +6,6 @@ services:
     plan: free
     dockerfilePath: infrastructure/docker/Dockerfile.backend
     dockerContext: .
-    dockerCommand: sh -c "npx prisma migrate deploy && node apps/backend/dist/server.js"
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
