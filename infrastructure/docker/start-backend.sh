@@ -1,5 +1,5 @@
 #!/bin/sh
 set -e
 
-./node_modules/.bin/prisma migrate deploy
+npx prisma db push --skip-generate
 exec node apps/backend/dist/server.js
