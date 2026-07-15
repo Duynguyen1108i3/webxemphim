@@ -60,7 +60,21 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, tim
     }
 
     if (response.status === 204) return undefined as T;
-    return response.json() as Promise<T>;
+
+    // A SPA host can return index.html with a 200 status for an unproxied
+    // /api request. Parse the body explicitly so that users get an actionable
+    // API error instead of the browser's raw "Unexpected token '<'" message.
+    const body = await response.text();
+    try {
+      return JSON.parse(body) as T;
+    } catch {
+      throw new ApiError(
+        "REQUEST_FAILED",
+        "M\u00e1y ch\u1ee7 API tr\u1ea3 v\u1ec1 d\u1eef li\u1ec7u kh\u00f4ng h\u1ee3p l\u1ec7. Vui l\u00f2ng ki\u1ec3m tra VITE_API_URL v\u00e0 m\u00e1y ch\u1ee7 backend.",
+        response.status,
+        response.status >= 500
+      );
+    }
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (controller.signal.aborted) throw new ApiError("TIMEOUT", "Máy chủ phản hồi quá chậm. Vui lòng thử lại.", undefined, true);

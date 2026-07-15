@@ -1,0 +1,47 @@
+services:
+  - type: web
+    runtime: docker
+    name: streamforge-api
+    region: singapore
+    plan: free
+    dockerfilePath: infrastructure/docker/Dockerfile.backend
+    dockerContext: .
+    dockerCommand: sh -c "npx prisma migrate deploy && node apps/backend/dist/server.js"
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: streamforge-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: streamforge-cache
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: AUTH_COOKIE_SAME_SITE
+        value: none
+      - key: CORS_ORIGINS
+        sync: false
+
+  - type: keyvalue
+    name: streamforge-cache
+    region: singapore
+    plan: free
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: streamforge-db
+    databaseName: streamforge
+    user: streamforge
+    region: singapore
+    plan: free
