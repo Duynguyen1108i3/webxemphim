@@ -39,7 +39,12 @@ export function RegisterPage() {
       setUser(user);
       navigate("/");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Đăng ký thất bại.");
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("Failed to fetch") || msg.toLowerCase().includes("network error") || msg.includes("fetch failed")) {
+        setError("Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng hoặc liên hệ hỗ trợ.");
+      } else {
+        setError(msg || "Đăng ký thất bại.");
+      }
     } finally {
       setLoading(false);
     }

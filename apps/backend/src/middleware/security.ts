@@ -28,8 +28,11 @@ export function applySecurity(app: Express) {
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) return callback(null, true);
-      return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+        return callback(null, true);
+      }
+      console.warn(`[CORS Blocked] Origin: "${origin}". Allowed origins in config: ${allowedOrigins.join(", ")}`);
+      return callback(null, false);
     },
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

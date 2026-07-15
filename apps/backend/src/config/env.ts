@@ -13,7 +13,7 @@ const schema = z.object({
   FRONTEND_URL: z.string().url().default("http://localhost:5173"),
   ADMIN_URL: z.string().url().default("http://localhost:5174"),
   CORS_ORIGINS: z.string().optional(),
-  AUTH_COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default("lax"),
+  AUTH_COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default(process.env.NODE_ENV === "production" ? "none" : "lax"),
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1).default("redis://localhost:6379"),
   JWT_ACCESS_SECRET: z.string().min(24),
