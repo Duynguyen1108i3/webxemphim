@@ -39,11 +39,27 @@ export function RegisterPage() {
       setUser(user);
       navigate("/");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("Failed to fetch") || msg.toLowerCase().includes("network error") || msg.includes("fetch failed")) {
-        setError("Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng hoặc liên hệ hỗ trợ.");
-      } else {
+      if (err instanceof Error) {
+        const msg = err.message;
+        if (msg.includes("Failed to fetch") || msg.toLowerCase().includes("network") || msg.includes("fetch failed") || msg.includes("kết nối")) {
+          setError("Không thể kết nối tới máy chủ. Hệ thống sẽ tạo tài khoản offline để xem phim.");
+          // Auto-fallback after a brief delay so user sees the message
+          setTimeout(async () => {
+            try {
+              const user = await authApi.register(email, username, password);
+              setUser(user);
+              navigate("/");
+            } catch {
+              setError("Không thể đăng ký. Vui lòng thử lại.");
+            } finally {
+              setLoading(false);
+            }
+          }, 1500);
+          return;
+        }
         setError(msg || "Đăng ký thất bại.");
+      } else {
+        setError("Đăng ký thất bại.");
       }
     } finally {
       setLoading(false);

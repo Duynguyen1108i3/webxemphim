@@ -42,7 +42,7 @@ const messageForStatus = (status: number, apiCode?: string) => {
   return new ApiError("REQUEST_FAILED", "Không thể xử lý yêu cầu. Vui lòng kiểm tra thông tin và thử lại.", status);
 };
 
-export async function apiRequest<T>(path: string, options: RequestInit = {}, timeoutMs = 15_000): Promise<T> {
+export async function apiRequest<T>(path: string, options: RequestInit = {}, timeoutMs = 10_000): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 

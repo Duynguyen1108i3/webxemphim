@@ -27,11 +27,27 @@ export function LoginPage() {
       setUser(user);
       navigate("/");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("Failed to fetch") || msg.toLowerCase().includes("network error") || msg.includes("fetch failed")) {
-        setError("Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng hoặc liên hệ hỗ trợ.");
-      } else {
+      if (err instanceof Error) {
+        const msg = err.message;
+        if (msg.includes("Failed to fetch") || msg.toLowerCase().includes("network") || msg.includes("fetch failed") || msg.includes("kết nối")) {
+          setError("Không thể kết nối tới máy chủ. Hệ thống sẽ chuyển sang chế độ xem phim offline.");
+          // Auto-fallback after a brief delay so user sees the message
+          setTimeout(async () => {
+            try {
+              const user = await authApi.login(email, password);
+              setUser(user);
+              navigate("/");
+            } catch {
+              setError("Không thể đăng nhập. Vui lòng thử lại.");
+            } finally {
+              setLoading(false);
+            }
+          }, 1500);
+          return;
+        }
         setError(msg || "Đăng nhập thất bại.");
+      } else {
+        setError("Đăng nhập thất bại.");
       }
     } finally {
       setLoading(false);

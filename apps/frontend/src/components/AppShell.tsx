@@ -292,7 +292,25 @@ export function AppShell() {
     };
   }, [isMobileMenuOpen]);
 
-  if (!initialized || !user) {
+  if (!initialized) {
+    return (
+      <div className="min-h-screen bg-[#141414] flex flex-col items-center justify-center select-none">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col items-center gap-6"
+        >
+          <span className="brand-logo text-3xl font-black text-[#e50914] tracking-tighter sm:text-4xl">STREAMFORGE</span>
+          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#e50914]/20 border-t-[#e50914]" />
+          <p className="text-xs font-semibold text-white/35 tracking-[0.15em] uppercase animate-pulse">Đang kết nối...</p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    // Not authenticated — render nothing; the useEffect redirect to /login will fire
     return <div className="min-h-screen bg-[#141414]" />;
   }
 
