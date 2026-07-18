@@ -2,9 +2,55 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { promises as dnsPromises } from "node:dns";
 import fs from "node:fs";
+import nodemailer from "nodemailer";
 import { prisma } from "../lib/prisma.js";
 import { ApiError } from "../middleware/error.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../middleware/auth.js";
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.gmail.com",
+  port: parseInt(process.env.SMTP_PORT || "587"),
+  secure: process.env.SMTP_SECURE === "true", // true for port 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset") {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new ApiError(
+      500,
+      "Chưa cấu hình thông tin gửi Email (SMTP_USER, SMTP_PASS) trong file .env của backend để gửi email thực.",
+      "SMTP_NOT_CONFIGURED"
+    );
+  }
+
+  const subject = type === "signup" ? "[StreamForge] Mã xác thực đăng ký tài khoản" : "[StreamForge] Mã khôi phục mật khẩu";
+  const mailOptions = {
+    from: `"StreamForge" <${process.env.SMTP_USER}>`,
+    to: email,
+    subject,
+    text: type === "signup"
+      ? `Mã xác thực đăng ký StreamForge của bạn là: ${otp}`
+      : `Mã khôi phục mật khẩu StreamForge của bạn là: ${otp}`,
+    html: `<div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px; background-color: #ffffff; color: #333333;">
+      <h2 style="color: #e50914; margin-top: 0; font-weight: 800; letter-spacing: -0.05em;">STREAMFORGE</h2>
+      <p style="font-size: 15px; line-height: 1.5;">Chào bạn,</p>
+      <p style="font-size: 15px; line-height: 1.5;">
+        ${type === "signup" ? "Cảm ơn bạn đã lựa chọn StreamForge. Mã xác thực đăng ký tài khoản của bạn là:" : "Bạn đã yêu cầu đặt lại mật khẩu. Mã khôi phục tài khoản của bạn là:"}
+      </p>
+      <div style="background-color: #f4f4f5; padding: 16px; text-align: center; font-size: 26px; font-weight: 800; letter-spacing: 6px; color: #111111; border-radius: 6px; margin: 24px 0; border: 1px solid #e4e4e7;">
+        ${otp}
+      </div>
+      <p style="font-size: 13px; color: #71717a; line-height: 1.4;">Mã này có hiệu lực trong vòng 5 phút. Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>
+      <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;" />
+      <p style="font-size: 12px; color: #a1a1aa; text-align: center;">Đây là email tự động từ StreamForge. Vui lòng không phản hồi.</p>
+    </div>`,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
 
 export const otpMap = new Map<string, { code: string, username: string, passwordHash: string, expires: number }>();
 
@@ -37,6 +83,9 @@ export async function sendSignupOtp(email: string) {
   } catch (err) {
     console.error("Failed to write OTP code file", err);
   }
+
+  // Send real email OTP
+  await sendEmailOtp(email, otpCode, "signup");
 
   return { success: true, message: "Mã xác thực đăng ký đã được gửi." };
 }
@@ -263,6 +312,9 @@ export async function sendResetCode(email: string) {
   } catch (err) {
     console.error("Failed to write reset code file", err);
   }
+
+  // Send real email OTP
+  await sendEmailOtp(email, code, "reset");
 
   return { success: true, message: "Mã khôi phục đã được gửi." };
 }

@@ -159,7 +159,7 @@ export function RegisterPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* Email Field with inline Send OTP Button */}
             <div className="relative w-full">
-              <div className="relative flex items-center w-full">
+              <div className="flex gap-2 w-full">
                 <input
                   type="email"
                   id="email"
@@ -169,14 +169,14 @@ export function RegisterPage() {
                     if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
                   }}
                   placeholder="Địa chỉ Email"
-                  className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.email ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} pl-5 pr-28 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
+                  className={`flex-1 h-14 rounded bg-zinc-800/80 border ${fieldErrors.email ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                   required
                 />
                 <button
                   type="button"
                   onClick={handleSendOtpClick}
                   disabled={loading || !email}
-                  className="absolute right-2 h-10 px-4 rounded bg-[#e50914] text-xs font-bold text-white hover:bg-[#b20710] disabled:opacity-50 transition cursor-pointer select-none"
+                  className="h-14 px-5 rounded bg-[#e50914] text-sm font-bold text-white hover:bg-[#b20710] disabled:opacity-50 transition cursor-pointer select-none whitespace-nowrap"
                 >
                   {otpSent ? "Gửi lại" : "Gửi mã"}
                 </button>
