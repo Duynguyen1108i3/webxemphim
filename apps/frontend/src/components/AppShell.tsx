@@ -292,6 +292,11 @@ export function AppShell() {
     };
   }, [isMobileMenuOpen]);
 
+  // Reset scroll to top on page change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   if (!initialized) {
     return (
       <div className="min-h-screen bg-[#141414] flex flex-col items-center justify-center select-none">
@@ -354,45 +359,80 @@ export function AppShell() {
           </div>
           <nav className={`flex items-center gap-1.5 text-sm font-medium text-white md:gap-5 ${searchExpanded ? "flex-1 justify-end" : ""}`}>
             {/* Inline Expanding Search Bar */}
-            {searchExpanded ? (
-              <div className="flex flex-1 md:flex-initial items-center gap-1.5 border border-white/40 bg-black/75 px-2 py-1 rounded transition-all duration-300 max-w-[180px] sm:max-w-none">
+            <div
+              onMouseEnter={() => {
+                setSearchExpanded(true);
+                setTimeout(() => searchInputRef.current?.focus(), 50);
+              }}
+              onMouseLeave={() => {
+                if (document.activeElement !== searchInputRef.current && !localQ) {
+                  setSearchExpanded(false);
+                }
+              }}
+              className="flex items-center justify-end h-[36px]"
+            >
+              <motion.div
+                initial={false}
+                animate={{
+                  width: searchExpanded ? 220 : 36,
+                  borderColor: searchExpanded ? "rgba(255, 255, 255, 0.4)" : "rgba(255, 255, 255, 0)",
+                  backgroundColor: searchExpanded ? "rgba(0, 0, 0, 0.75)" : "rgba(0, 0, 0, 0)",
+                  paddingLeft: searchExpanded ? 10 : 0,
+                  paddingRight: searchExpanded ? 10 : 0,
+                }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="flex items-center gap-1.5 h-full rounded border select-none overflow-hidden"
+              >
                 <Search
                   size={18}
-                  className="text-white/80 shrink-0 cursor-pointer"
+                  className="text-white/80 shrink-0 cursor-pointer p-0.5 hover:scale-110 active:scale-95 transition-transform"
                   onClick={() => {
-                    setSearchExpanded(false);
-                    const params = new URLSearchParams(location.search);
-                    params.delete("q");
-                    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+                    setSearchExpanded(!searchExpanded);
+                    if (!searchExpanded) {
+                      setTimeout(() => searchInputRef.current?.focus(), 50);
+                    } else {
+                      const params = new URLSearchParams(location.search);
+                      params.delete("q");
+                      setLocalQ("");
+                      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+                    }
                   }}
                 />
-                <input
+                <motion.input
                   ref={searchInputRef}
                   type="text"
                   value={localQ}
                   onChange={(e) => setLocalQ(e.target.value)}
+                  onBlur={() => {
+                    if (!localQ) {
+                      setSearchExpanded(false);
+                    }
+                  }}
+                  animate={{
+                    width: searchExpanded ? "100%" : "0%",
+                    opacity: searchExpanded ? 1 : 0
+                  }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                   placeholder="Titles, people, genres..."
-                  className="w-full bg-transparent text-sm text-white focus:outline-none placeholder-white/50"
+                  className="bg-transparent text-sm text-white focus:outline-none placeholder-white/50 w-full"
                   aria-label="Search movies"
                 />
-                {localQ && (
-                  <button onClick={() => setLocalQ("")} className="text-white/60 hover:text-white p-0.5" aria-label="Clear search text">
+                {searchExpanded && localQ && (
+                  <button
+                    onClick={() => {
+                      setLocalQ("");
+                      const params = new URLSearchParams(location.search);
+                      params.delete("q");
+                      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+                    }}
+                    className="text-white/60 hover:text-white p-0.5 shrink-0"
+                    aria-label="Clear search text"
+                  >
                     <X size={14} />
                   </button>
                 )}
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setSearchExpanded(true);
-                  setTimeout(() => searchInputRef.current?.focus(), 100);
-                }}
-                className="nf-icon rounded-full p-1.5 hover:bg-white/10"
-                aria-label="Search"
-              >
-                <Search size={22} />
-              </button>
-            )}
+              </motion.div>
+            </div>
 
             {/* Kids Mode Link */}
             <NavLink to="/search" className="hidden lg:block text-sm font-semibold hover:underline">Kids</NavLink>
