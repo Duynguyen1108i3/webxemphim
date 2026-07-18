@@ -56,18 +56,22 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
     const responseText = await response.text();
     console.log("=== GMAIL WEBHOOK RESPONSE ===", responseText);
 
+    if (!response.ok) {
+      console.error("=== GMAIL WEBHOOK HTTP ERROR ===", response.status, responseText);
+      throw new ApiError(500, `Gửi email thất bại (${response.status}). Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
+    }
+
+    let result: { success?: boolean; error?: string } | undefined;
     try {
-      const result = JSON.parse(responseText) as { success?: boolean; error?: string };
-      if (result.error) {
-        console.error("=== GMAIL WEBHOOK ERROR ===", result.error);
-        throw new ApiError(500, `Gửi email thất bại. Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
-      }
-    } catch (parseErr) {
+      result = JSON.parse(responseText) as { success?: boolean; error?: string };
+    } catch {
       // If response is not JSON but status is OK, assume success (GAS redirect page)
-      if (!response.ok) {
-        console.error("=== GMAIL WEBHOOK HTTP ERROR ===", response.status, responseText);
-        throw new ApiError(500, `Gửi email thất bại (${response.status}). Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
-      }
+      return;
+    }
+
+    if (result.error || result.success === false) {
+      console.error("=== GMAIL WEBHOOK ERROR ===", result.error || "Webhook reported failure");
+      throw new ApiError(500, "Gửi email thất bại. Vui lòng thử lại.", "EMAIL_SEND_FAILED");
     }
     return;
   }
