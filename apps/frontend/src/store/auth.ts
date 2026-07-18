@@ -191,7 +191,7 @@ export const authApi = {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
       body: JSON.stringify({ email })
-    });
+    }, 30_000);
   },
   async sendResetCode(email: string): Promise<void> {
     const token = await ensureCsrfToken(true);
@@ -199,7 +199,7 @@ export const authApi = {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
       body: JSON.stringify({ email })
-    });
+    }, 30_000);
   },
   async verifyResetCode(email: string, code: string, newPassword: string): Promise<void> {
     const token = await ensureCsrfToken(true);

@@ -157,9 +157,9 @@ export function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* Email Field with inline Send OTP Button */}
+            {/* Email Field with inline Send OTP Text Button */}
             <div className="relative w-full">
-              <div className="flex gap-2 w-full">
+              <div className="relative flex items-center w-full">
                 <input
                   type="email"
                   id="email"
@@ -169,14 +169,14 @@ export function RegisterPage() {
                     if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
                   }}
                   placeholder="Địa chỉ Email"
-                  className={`flex-1 h-14 rounded bg-zinc-800/80 border ${fieldErrors.email ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
+                  className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.email ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} pl-5 pr-20 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                   required
                 />
                 <button
                   type="button"
                   onClick={handleSendOtpClick}
                   disabled={loading || !email}
-                  className="h-14 px-5 rounded bg-[#e50914] text-sm font-bold text-white hover:bg-[#b20710] disabled:opacity-50 transition cursor-pointer select-none whitespace-nowrap"
+                  className="absolute right-4 text-sm font-bold text-[#e50914] hover:text-[#b20710] disabled:opacity-50 transition cursor-pointer select-none whitespace-nowrap bg-transparent border-none"
                 >
                   {otpSent ? "Gửi lại" : "Gửi mã"}
                 </button>
@@ -206,7 +206,7 @@ export function RegisterPage() {
                   <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.otp}</p>
                 )}
                 <p className="mt-1.5 text-[11px] text-zinc-400 leading-normal">
-                  Mã xác thực đã được lưu vào tệp <code className="text-white bg-zinc-800/80 px-1 py-0.5 rounded font-mono">otp_code.txt</code> ở thư mục gốc của dự án.
+                  Mã xác thực 6 chữ số đã được gửi đến email <strong className="text-white">{email}</strong>. Vui lòng kiểm tra hộp thư đến (hoặc thư mục Spam).
                 </p>
               </div>
             )}
