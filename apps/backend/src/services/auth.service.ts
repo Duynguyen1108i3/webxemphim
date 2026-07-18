@@ -36,6 +36,32 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
       <p style="font-size: 12px; color: #a1a1aa; text-align: center;">Đây là email tự động từ StreamForge. Vui lòng không phản hồi.</p>
     </div>`;
 
+  // If BREVO_API_KEY is available, use Brevo HTTP API (never blocked by Render and allows sending to anyone)
+  if (process.env.BREVO_API_KEY) {
+    const senderEmail = process.env.SMTP_USER || "duycute11082005@gmail.com";
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "api-key": process.env.BREVO_API_KEY.trim(),
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        sender: { name: "StreamForge", email: senderEmail },
+        to: [{ email }],
+        subject,
+        textContent,
+        htmlContent
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new ApiError(500, `Brevo API Error: ${errorText}`, "EMAIL_SEND_FAILED");
+    }
+    return;
+  }
+
   if (process.env.RESEND_API_KEY) {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -62,7 +88,7 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     throw new ApiError(
       500,
-      "Chưa cấu hình thông tin gửi Email (RESEND_API_KEY hoặc SMTP_USER/SMTP_PASS) trong file .env.",
+      "Chưa cấu hình thông tin gửi Email (BREVO_API_KEY, RESEND_API_KEY hoặc SMTP_USER/SMTP_PASS) trong file .env.",
       "EMAIL_CONFIG_MISSING"
     );
   }
