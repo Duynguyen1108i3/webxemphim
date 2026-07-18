@@ -1,12 +1,55 @@
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
+import { promises as dnsPromises } from "node:dns";
+import fs from "node:fs";
 import { prisma } from "../lib/prisma.js";
 import { ApiError } from "../middleware/error.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../middleware/auth.js";
 
+export const otpMap = new Map<string, { code: string, username: string, passwordHash: string, expires: number }>();
+
+async function isRealEmail(email: string): Promise<boolean> {
+  const domain = email.split("@")[1];
+  if (!domain) return false;
+
+  // Check common disposable email domains
+  const tempDomains = [
+    "mailinator.com", "yopmail.com", "tempmail.com", "10minutemail.com",
+    "guerrillamail.com", "sharklasers.com", "dispostable.com", "getairmail.com",
+    "maildrop.cc", "temp-mail.org", "fakeinbox.com", "throwawaymail.com"
+  ];
+  if (tempDomains.includes(domain.toLowerCase())) {
+    return false;
+  }
+
+  // Resolve MX records to see if the domain is capable of receiving mail
+  try {
+    const mxRecords = await dnsPromises.resolveMx(domain);
+    return mxRecords && mxRecords.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function register(input: { email: string; username: string; password: string }) {
-  const exists = await prisma.user.findFirst({ where: { OR: [{ email: input.email }, { username: input.username }] } });
-  if (exists) throw new ApiError(409, "Email or username is already registered", "ACCOUNT_EXISTS");
+  // Validate email domain exists and is not temporary
+  const isReal = await isRealEmail(input.email);
+  if (!isReal) {
+    throw new ApiError(400, "Địa chỉ email không tồn tại hoặc là email ảo/tạm thời", "INVALID_EMAIL_DOMAIN");
+  }
+
+  // Check email exists
+  const emailExists = await prisma.user.findFirst({ where: { email: input.email.toLowerCase() } });
+  if (emailExists) {
+    throw new ApiError(409, "Địa chỉ email đã được đăng ký", "EMAIL_EXISTS");
+  }
+
+  // Check username exists
+  const usernameExists = await prisma.user.findFirst({ where: { username: input.username } });
+  if (usernameExists) {
+    throw new ApiError(409, "Tên tài khoản (username) đã tồn tại", "USERNAME_EXISTS");
+  }
+
   const passwordHash = await bcrypt.hash(input.password, 12);
   const userId = crypto.randomUUID();
   const user = await prisma.user.create({
@@ -95,4 +138,135 @@ export async function revokeSession(refreshToken?: string) {
   } catch {
     // Logout must remain idempotent even if the browser already discarded an expired cookie.
   }
+}
+
+export async function sendOtp(input: { email: string; username: string; password: string }) {
+  const isReal = await isRealEmail(input.email);
+  if (!isReal) {
+    throw new ApiError(400, "Địa chỉ email không tồn tại hoặc là email ảo/tạm thời", "INVALID_EMAIL_DOMAIN");
+  }
+
+  const emailExists = await prisma.user.findFirst({ where: { email: input.email.toLowerCase() } });
+  if (emailExists) {
+    throw new ApiError(409, "Địa chỉ email đã được đăng ký", "EMAIL_EXISTS");
+  }
+
+  const usernameExists = await prisma.user.findFirst({ where: { username: input.username } });
+  if (usernameExists) {
+    throw new ApiError(409, "Tên tài khoản (username) đã tồn tại", "USERNAME_EXISTS");
+  }
+
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const passwordHash = await bcrypt.hash(input.password, 12);
+  const expires = Date.now() + 5 * 60 * 1000;
+
+  otpMap.set(input.email.toLowerCase(), {
+    code: otpCode,
+    username: input.username,
+    passwordHash,
+    expires
+  });
+
+  console.log(`\n\n========================================\n[OTP VERIFICATION] code for ${input.email} is: ${otpCode}\n========================================\n\n`);
+
+  try {
+    fs.writeFileSync("otp_code.txt", `Email: ${input.email}\nOTP Code (Signup): ${otpCode}\nGeneratedAt: ${new Date().toISOString()}`);
+  } catch (err) {
+    console.error("Failed to write OTP code file", err);
+  }
+
+  return { success: true, message: "Mã xác thực đăng ký đã được gửi." };
+}
+
+export async function verifyOtp(input: { email: string; otp: string }) {
+  const emailKey = input.email.toLowerCase();
+  const otpData = otpMap.get(emailKey);
+
+  if (!otpData) {
+    throw new ApiError(400, "Không tìm thấy yêu cầu xác thực hoặc đã hết hạn", "OTP_NOT_FOUND");
+  }
+
+  if (Date.now() > otpData.expires) {
+    otpMap.delete(emailKey);
+    throw new ApiError(400, "Mã xác thực đã hết hạn", "OTP_EXPIRED");
+  }
+
+  if (otpData.code !== input.otp) {
+    throw new ApiError(400, "Mã xác thực không chính xác", "OTP_INVALID");
+  }
+
+  const userId = crypto.randomUUID();
+  const user = await prisma.user.create({
+    data: {
+      id: userId,
+      email: emailKey,
+      username: otpData.username,
+      passwordHash: otpData.passwordHash,
+      emailVerifiedAt: new Date(),
+      profiles: {
+        create: [
+          { id: profileId(userId, otpData.username), name: otpData.username, type: "ADULT" },
+          { id: profileId(userId, "Kids"), name: "Kids", type: "KIDS" },
+          { id: profileId(userId, "Guest"), name: "Guest", type: "ADULT" },
+          { id: profileId(userId, "Private"), name: "Private", type: "ADULT" }
+        ]
+      }
+    }
+  });
+
+  otpMap.delete(emailKey);
+
+  return createSession(user.id, user.email, user.username, user.role);
+}
+
+export const resetMap = new Map<string, { code: string, expires: number }>();
+
+export async function sendResetCode(email: string) {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  if (!user) {
+    throw new ApiError(404, "Không tìm thấy tài khoản với email này", "EMAIL_NOT_FOUND");
+  }
+
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expires = Date.now() + 5 * 60 * 1000;
+
+  resetMap.set(email.toLowerCase(), { code, expires });
+
+  console.log(`\n\n========================================\n[RESET PASSWORD OTP] code for ${email} is: ${code}\n========================================\n\n`);
+
+  try {
+    fs.writeFileSync("otp_code.txt", `Email: ${email}\nOTP Code (Reset): ${code}\nGeneratedAt: ${new Date().toISOString()}`);
+  } catch (err) {
+    console.error("Failed to write reset code file", err);
+  }
+
+  return { success: true, message: "Mã khôi phục đã được gửi." };
+}
+
+export async function verifyResetCodeAndChangePassword(input: { email: string, code: string, newPassword: string }) {
+  const emailKey = input.email.toLowerCase();
+  const resetData = resetMap.get(emailKey);
+
+  if (!resetData) {
+    throw new ApiError(400, "Không tìm thấy yêu cầu khôi phục mật khẩu hoặc đã hết hạn", "RESET_NOT_FOUND");
+  }
+
+  if (Date.now() > resetData.expires) {
+    resetMap.delete(emailKey);
+    throw new ApiError(400, "Mã khôi phục đã hết hạn", "RESET_EXPIRED");
+  }
+
+  if (resetData.code !== input.code) {
+    throw new ApiError(400, "Mã khôi phục không chính xác", "RESET_INVALID");
+  }
+
+  const passwordHash = await bcrypt.hash(input.newPassword, 12);
+  await prisma.user.update({
+    where: { email: emailKey },
+    data: { passwordHash }
+  });
+
+  resetMap.delete(emailKey);
+
+  return { success: true };
 }

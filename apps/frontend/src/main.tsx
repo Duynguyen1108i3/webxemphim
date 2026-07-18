@@ -15,6 +15,7 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const MyListPage = lazy(() => import("./pages/MyListPage").then((m) => ({ default: m.MyListPage })));
 const LoginPage = lazy(() => import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import("./pages/RegisterPage").then((m) => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage").then((m) => ({ default: m.ForgotPasswordPage })));
 const router = createBrowserRouter([
   {
     element: <AppShell />,
@@ -38,6 +39,10 @@ const router = createBrowserRouter([
   {
     path: "/register",
     element: <React.Suspense fallback={null}><RegisterPage /></React.Suspense>
+  },
+  {
+    path: "/forgot-password",
+    element: <React.Suspense fallback={null}><ForgotPasswordPage /></React.Suspense>
   },
   {
     path: "/watch/:id",

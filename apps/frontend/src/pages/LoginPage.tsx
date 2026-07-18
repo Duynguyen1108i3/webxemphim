@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { authApi, useAuthStore } from "../store/auth";
 import { Loader2 } from "lucide-react";
 
 export function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const location = useLocation();
+  const state = location.state as { email?: string; password?: string; registeredSuccess?: boolean } | null;
+
+  const [email, setEmail] = useState(state?.email || "");
+  const [password, setPassword] = useState(state?.password || "");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(state?.registeredSuccess ? "Đăng ký thành công! Vui lòng đăng nhập bằng tài khoản vừa tạo." : "");
   const [fieldErrors, setFieldErrors] = useState<{
     email?: string;
     password?: string;
@@ -42,6 +46,7 @@ export function LoginPage() {
     }
 
     setError("");
+    setSuccess("");
     setLoading(true);
 
     try {
@@ -73,6 +78,13 @@ export function LoginPage() {
       <main className="relative z-10 flex min-h-[calc(100vh-92px)] items-center justify-center p-4">
         <div className="w-full max-w-[450px] rounded-md bg-black/75 px-6 py-12 sm:px-16 sm:py-16 backdrop-blur-sm border border-white/5 shadow-2xl">
           <h1 className="text-3xl font-bold text-white mb-7">Đăng Nhập</h1>
+
+          {success && (
+            <div className="mb-4 rounded bg-emerald-600/90 p-3.5 text-sm font-semibold text-white shadow border border-emerald-500/30 flex items-center gap-2">
+              <span className="text-base font-bold">✓</span>
+              <span>{success}</span>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 rounded bg-[#e87c03] p-3.5 text-sm font-medium text-white shadow">
@@ -132,7 +144,7 @@ export function LoginPage() {
               <input type="checkbox" className="accent-[#e50914] h-4 w-4 rounded border-zinc-700" defaultChecked />
               Ghi nhớ tài khoản
             </label>
-            <a href="#" className="hover:underline">Bạn cần trợ giúp?</a>
+            <Link to="/forgot-password" className="hover:underline text-zinc-300 hover:text-white transition">Quên mật khẩu?</Link>
           </div>
 
           {/* Register Redirect info */}

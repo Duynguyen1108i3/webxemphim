@@ -292,10 +292,14 @@ export function AppShell() {
     };
   }, [isMobileMenuOpen]);
 
-  // Reset scroll to top on page change
+  // Reset scroll to top on page change or search/genre query changes
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [location.pathname]);
+  }, [
+    location.pathname,
+    new URLSearchParams(location.search).get("q"),
+    new URLSearchParams(location.search).get("genre")
+  ]);
 
   if (!initialized) {
     return (
@@ -374,18 +378,22 @@ export function AppShell() {
               <motion.div
                 initial={false}
                 animate={{
-                  width: searchExpanded ? 220 : 36,
+                  width: searchExpanded ? 240 : 36,
                   borderColor: searchExpanded ? "rgba(255, 255, 255, 0.4)" : "rgba(255, 255, 255, 0)",
-                  backgroundColor: searchExpanded ? "rgba(0, 0, 0, 0.75)" : "rgba(0, 0, 0, 0)",
-                  paddingLeft: searchExpanded ? 10 : 0,
-                  paddingRight: searchExpanded ? 10 : 0,
+                  backgroundColor: searchExpanded ? "rgba(0, 0, 0, 0.75)" : "rgba(255, 255, 255, 0)",
+                  paddingLeft: searchExpanded ? 10 : 7,
+                  paddingRight: searchExpanded ? 10 : 7,
+                  borderRadius: searchExpanded ? "6px" : "9999px",
+                }}
+                whileHover={{
+                  backgroundColor: searchExpanded ? "rgba(0, 0, 0, 0.85)" : "rgba(255, 255, 255, 0.1)"
                 }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="flex items-center gap-1.5 h-full rounded border select-none overflow-hidden"
+                className="flex items-center gap-1.5 h-full rounded border select-none overflow-hidden cursor-pointer"
               >
                 <Search
-                  size={18}
-                  className="text-white/80 shrink-0 cursor-pointer p-0.5 hover:scale-110 active:scale-95 transition-transform"
+                  size={22}
+                  className="text-white/80 shrink-0 cursor-pointer p-0.5 hover:scale-105 active:scale-95 transition-transform"
                   onClick={() => {
                     setSearchExpanded(!searchExpanded);
                     if (!searchExpanded) {

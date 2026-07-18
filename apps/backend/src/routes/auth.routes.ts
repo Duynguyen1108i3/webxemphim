@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { login, refreshSession, register, revokeSession } from "../services/auth.service.js";
+import { login, refreshSession, register, revokeSession, sendOtp, verifyOtp, sendResetCode, verifyResetCodeAndChangePassword } from "../services/auth.service.js";
 import { ApiError } from "../middleware/error.js";
 
 const router = Router();
@@ -31,6 +31,62 @@ router.post("/register", async (req, res, next) => {
     const session = await register(input);
     setAuthCookies(res, session.accessToken, session.refreshToken);
     res.status(201).json({ user: session.user });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/send-otp", async (req, res, next) => {
+  try {
+    const input = registerSchema.parse(req.body);
+    const result = await sendOtp(input);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/verify-otp", async (req, res, next) => {
+  try {
+    const schema = z.object({
+      email: z.string().email("Định dạng email không hợp lệ"),
+      otp: z.string().length(6, "Mã xác thực phải gồm 6 chữ số")
+    });
+    const input = schema.parse(req.body);
+    const session = await verifyOtp(input);
+    setAuthCookies(res, session.accessToken, session.refreshToken);
+    res.status(201).json({ user: session.user });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/send-reset-code", async (req, res, next) => {
+  try {
+    const schema = z.object({ email: z.string().email("Định dạng email không hợp lệ") });
+    const { email } = schema.parse(req.body);
+    const result = await sendResetCode(email);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/verify-reset-code", async (req, res, next) => {
+  try {
+    const schema = z.object({
+      email: z.string().email("Định dạng email không hợp lệ"),
+      code: z.string().length(6, "Mã khôi phục phải gồm 6 chữ số"),
+      newPassword: z.string()
+        .min(8, "Mật khẩu phải có tối thiểu 8 ký tự")
+        .regex(/[A-Z]/, "Mật khẩu phải chứa ít nhất 1 chữ cái viết hoa")
+        .regex(/[a-z]/, "Mật khẩu phải chứa ít nhất 1 chữ cái viết thường")
+        .regex(/[0-9]/, "Mật khẩu phải chứa ít nhất 1 chữ số")
+        .regex(/[^a-zA-Z0-9]/, "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt")
+    });
+    const input = schema.parse(req.body);
+    const result = await verifyResetCodeAndChangePassword(input);
+    res.json(result);
   } catch (error) {
     next(error);
   }
