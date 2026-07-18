@@ -36,20 +36,7 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
       <p style="font-size: 12px; color: #a1a1aa; text-align: center;">Đây là email tự động từ StreamForge. Vui lòng không phản hồi.</p>
     </div>`;
 
-  // Priority 1: Gmail SMTP (most reliable for Gmail sender accounts)
-  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    const mailOptions = {
-      from: `"StreamForge" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject,
-      text: textContent,
-      html: htmlContent,
-    };
-    await transporter.sendMail(mailOptions);
-    return;
-  }
-
-  // Priority 2: Brevo HTTP API (fallback)
+  // Priority 1: Brevo HTTP API (uses port 443 — works on Render which blocks SMTP ports)
   if (process.env.BREVO_API_KEY) {
     const senderEmail = process.env.SMTP_USER || "duycute11082005@gmail.com";
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
