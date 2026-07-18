@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { login, refreshSession, register, revokeSession, sendOtp, verifyOtp, sendResetCode, verifyResetCodeAndChangePassword } from "../services/auth.service.js";
+import { login, refreshSession, register, revokeSession, sendSignupOtp, sendResetCode, verifyResetCodeAndChangePassword } from "../services/auth.service.js";
 import { ApiError } from "../middleware/error.js";
 
 const router = Router();
@@ -27,7 +27,10 @@ router.get("/csrf", (req, res) => res.json({ csrfToken: (req as typeof req & { c
 
 router.post("/register", async (req, res, next) => {
   try {
-    const input = registerSchema.parse(req.body);
+    const schema = registerSchema.extend({
+      otp: z.string().length(6, "Mã xác thực phải gồm 6 chữ số")
+    });
+    const input = schema.parse(req.body);
     const session = await register(input);
     setAuthCookies(res, session.accessToken, session.refreshToken);
     res.status(201).json({ user: session.user });
@@ -38,24 +41,10 @@ router.post("/register", async (req, res, next) => {
 
 router.post("/send-otp", async (req, res, next) => {
   try {
-    const input = registerSchema.parse(req.body);
-    const result = await sendOtp(input);
+    const schema = z.object({ email: z.string().email("Định dạng email không hợp lệ") });
+    const { email } = schema.parse(req.body);
+    const result = await sendSignupOtp(email);
     res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post("/verify-otp", async (req, res, next) => {
-  try {
-    const schema = z.object({
-      email: z.string().email("Định dạng email không hợp lệ"),
-      otp: z.string().length(6, "Mã xác thực phải gồm 6 chữ số")
-    });
-    const input = schema.parse(req.body);
-    const session = await verifyOtp(input);
-    setAuthCookies(res, session.accessToken, session.refreshToken);
-    res.status(201).json({ user: session.user });
   } catch (error) {
     next(error);
   }

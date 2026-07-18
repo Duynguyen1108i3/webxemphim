@@ -167,23 +167,12 @@ export const authApi = {
     useAuthStore.getState().setUser(user);
     return user;
   },
-  async register(email: string, username: string, password: string): Promise<AuthUser> {
+  async register(email: string, username: string, password: string, otp: string): Promise<AuthUser> {
     const token = await ensureCsrfToken(true);
     await apiRequest<{ user: AuthUser }>("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
-      body: JSON.stringify({ email, username, password })
-    });
-    const user = await this.getCurrentUser();
-    useAuthStore.getState().setUser(user);
-    return user;
-  },
-  async registerOnly(email: string, username: string, password: string): Promise<void> {
-    const token = await ensureCsrfToken(true);
-    await apiRequest<{ user: AuthUser }>("/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
-      body: JSON.stringify({ email, username, password })
+      body: JSON.stringify({ email, username, password, otp })
     });
     // Immediately log out to clear cookies set by the backend register endpoint
     try {
@@ -194,28 +183,15 @@ export const authApi = {
     } catch (e) {
       console.warn("Failed to clear cookie session after registration:", e);
     }
+    return { id: "", email, username, role: "USER", profiles: [] };
   },
-  async sendOtp(email: string, username: string, password: string): Promise<void> {
+  async sendOtp(email: string): Promise<void> {
     const token = await ensureCsrfToken(true);
     await apiRequest<void>("/auth/send-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
-      body: JSON.stringify({ email, username, password })
+      body: JSON.stringify({ email })
     });
-  },
-  async verifyOtpOnly(email: string, otp: string): Promise<void> {
-    const token = await ensureCsrfToken(true);
-    await apiRequest<{ user: AuthUser }>("/auth/verify-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
-      body: JSON.stringify({ email, otp })
-    });
-    try {
-      await apiRequest<void>("/auth/logout", {
-        method: "POST",
-        headers: { "X-CSRF-Token": token }
-      });
-    } catch {}
   },
   async sendResetCode(email: string): Promise<void> {
     const token = await ensureCsrfToken(true);
