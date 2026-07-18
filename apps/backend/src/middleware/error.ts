@@ -18,7 +18,8 @@ export function notFound(req: Request, _res: Response, next: NextFunction) {
 
 export function errorHandler(error: unknown, _req: Request, res: Response, _next: NextFunction) {
   if (error instanceof ZodError) {
-    return res.status(422).json({ error: { code: "VALIDATION_ERROR", message: "Invalid request", details: error.flatten() } });
+    const firstMessage = error.errors[0]?.message || "Invalid request";
+    return res.status(422).json({ error: { code: "VALIDATION_ERROR", message: firstMessage, details: error.flatten() } });
   }
   if (error instanceof ApiError) {
     return res.status(error.status).json({ error: { code: error.code, message: error.message } });
