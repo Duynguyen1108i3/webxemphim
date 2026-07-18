@@ -18,23 +18,11 @@ const transporter = nodemailer.createTransport({
 });
 
 async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset") {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    throw new ApiError(
-      500,
-      "Chưa cấu hình thông tin gửi Email (SMTP_USER, SMTP_PASS) trong file .env của backend để gửi email thực.",
-      "SMTP_NOT_CONFIGURED"
-    );
-  }
-
   const subject = type === "signup" ? "[StreamForge] Mã xác thực đăng ký tài khoản" : "[StreamForge] Mã khôi phục mật khẩu";
-  const mailOptions = {
-    from: `"StreamForge" <${process.env.SMTP_USER}>`,
-    to: email,
-    subject,
-    text: type === "signup"
-      ? `Mã xác thực đăng ký StreamForge của bạn là: ${otp}`
-      : `Mã khôi phục mật khẩu StreamForge của bạn là: ${otp}`,
-    html: `<div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px; background-color: #ffffff; color: #333333;">
+  const textContent = type === "signup"
+    ? `Mã xác thực đăng ký StreamForge của bạn là: ${otp}`
+    : `Mã khôi phục mật khẩu StreamForge của bạn là: ${otp}`;
+  const htmlContent = `<div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px; background-color: #ffffff; color: #333333;">
       <h2 style="color: #e50914; margin-top: 0; font-weight: 800; letter-spacing: -0.05em;">STREAMFORGE</h2>
       <p style="font-size: 15px; line-height: 1.5;">Chào bạn,</p>
       <p style="font-size: 15px; line-height: 1.5;">
@@ -46,7 +34,45 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
       <p style="font-size: 13px; color: #71717a; line-height: 1.4;">Mã này có hiệu lực trong vòng 5 phút. Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>
       <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;" />
       <p style="font-size: 12px; color: #a1a1aa; text-align: center;">Đây là email tự động từ StreamForge. Vui lòng không phản hồi.</p>
-    </div>`,
+    </div>`;
+
+  if (process.env.RESEND_API_KEY) {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.RESEND_API_KEY.trim()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "StreamForge <onboarding@resend.dev>",
+        to: email,
+        subject,
+        text: textContent,
+        html: htmlContent,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new ApiError(500, `Resend API Error: ${errorText}`, "EMAIL_SEND_FAILED");
+    }
+    return;
+  }
+
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new ApiError(
+      500,
+      "Chưa cấu hình thông tin gửi Email (RESEND_API_KEY hoặc SMTP_USER/SMTP_PASS) trong file .env.",
+      "EMAIL_CONFIG_MISSING"
+    );
+  }
+
+  const mailOptions = {
+    from: `"StreamForge" <${process.env.SMTP_USER}>`,
+    to: email,
+    subject,
+    text: textContent,
+    html: htmlContent,
   };
 
   await transporter.sendMail(mailOptions);
