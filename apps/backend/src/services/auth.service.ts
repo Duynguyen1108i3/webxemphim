@@ -36,7 +36,29 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
       <p style="font-size: 12px; color: #a1a1aa; text-align: center;">Đây là email tự động từ StreamForge. Vui lòng không phản hồi.</p>
     </div>`;
 
-  // Priority 1: Brevo HTTP API (uses port 443 — works on Render which blocks SMTP ports)
+  // Priority 1: Google Apps Script webhook (sends from actual Gmail servers — 100% inbox delivery)
+  if (process.env.GMAIL_WEBHOOK_URL) {
+    const response = await fetch(process.env.GMAIL_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        secret: process.env.GMAIL_WEBHOOK_SECRET || "STREAMFORGE_SECRET_2026",
+        to: email,
+        subject,
+        text: textContent,
+        html: htmlContent
+      })
+    });
+
+    const result = await response.json() as { success?: boolean; error?: string };
+    if (result.error) {
+      console.error("=== GMAIL WEBHOOK ERROR ===", result.error);
+      throw new ApiError(500, `Gửi email thất bại. Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
+    }
+    return;
+  }
+
+  // Priority 2: Brevo HTTP API (fallback)
   if (process.env.BREVO_API_KEY) {
     const senderEmail = process.env.SMTP_USER || "duycute11082005@gmail.com";
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
