@@ -38,22 +38,36 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
 
   // Priority 1: Google Apps Script webhook (sends from actual Gmail servers — 100% inbox delivery)
   if (process.env.GMAIL_WEBHOOK_URL) {
-    const response = await fetch(process.env.GMAIL_WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        secret: process.env.GMAIL_WEBHOOK_SECRET || "STREAMFORGE_SECRET_2026",
-        to: email,
-        subject,
-        text: textContent,
-        html: htmlContent
-      })
+    const payload = JSON.stringify({
+      secret: process.env.GMAIL_WEBHOOK_SECRET || "STREAMFORGE_SECRET_2026",
+      to: email,
+      subject,
+      text: textContent,
+      html: htmlContent
     });
 
-    const result = await response.json() as { success?: boolean; error?: string };
-    if (result.error) {
-      console.error("=== GMAIL WEBHOOK ERROR ===", result.error);
-      throw new ApiError(500, `Gửi email thất bại. Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
+    const response = await fetch(process.env.GMAIL_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: payload,
+      redirect: "follow"
+    });
+
+    const responseText = await response.text();
+    console.log("=== GMAIL WEBHOOK RESPONSE ===", responseText);
+
+    try {
+      const result = JSON.parse(responseText) as { success?: boolean; error?: string };
+      if (result.error) {
+        console.error("=== GMAIL WEBHOOK ERROR ===", result.error);
+        throw new ApiError(500, `Gửi email thất bại. Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
+      }
+    } catch (parseErr) {
+      // If response is not JSON but status is OK, assume success (GAS redirect page)
+      if (!response.ok) {
+        console.error("=== GMAIL WEBHOOK HTTP ERROR ===", response.status, responseText);
+        throw new ApiError(500, `Gửi email thất bại (${response.status}). Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
+      }
     }
     return;
   }
