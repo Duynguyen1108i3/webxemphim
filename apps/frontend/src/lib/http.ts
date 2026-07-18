@@ -31,15 +31,21 @@ export class ApiError extends Error {
 
 type ApiErrorPayload = { error?: { code?: string; message?: string } };
 
-const messageForStatus = (status: number, apiCode?: string) => {
-  if (apiCode === "INVALID_CREDENTIALS" || status === 401) return new ApiError("INVALID_CREDENTIALS", "Email hoặc mật khẩu không chính xác.", status);
-  if (apiCode === "ACCOUNT_EXISTS" || status === 409) return new ApiError("ACCOUNT_EXISTS", "Email hoặc tên tài khoản đã được đăng ký.", status);
-  if (apiCode === "ACCOUNT_BANNED") return new ApiError("ACCOUNT_BANNED", "Tài khoản này đã bị khóa.", status);
-  if (apiCode === "ACCOUNT_SUSPENDED") return new ApiError("ACCOUNT_SUSPENDED", "Tài khoản này đang tạm ngưng.", status);
-  if (apiCode === "EBADCSRFTOKEN") return new ApiError("SESSION_EXPIRED", "Phiên làm việc đã hết hạn. Vui lòng thử lại.", status, true);
-  if (status === 429) return new ApiError("RATE_LIMITED", "Bạn đã thử quá nhiều lần. Vui lòng chờ rồi thử lại.", status, true);
+const messageForStatus = (status: number, apiCode?: string, backendMessage?: string) => {
+  if (status === 401) return new ApiError("INVALID_CREDENTIALS", "Email hoặc mật khẩu không chính xác.", status);
+  if (status === 409) return new ApiError("ACCOUNT_EXISTS", "Email đã được sử dụng.", status);
+  if (status === 403) return new ApiError("ACCOUNT_BANNED", "Tài khoản đã bị khóa.", status);
+  if (status === 404) return new ApiError("REQUEST_FAILED", "Không tìm thấy dịch vụ.", status);
+  if (status === 429) return new ApiError("RATE_LIMITED", "Bạn đã thử quá nhiều lần. Vui lòng thử lại sau.", status, true);
+  if (status === 422) return new ApiError("REQUEST_FAILED", backendMessage || "Dữ liệu xác thực không hợp lệ.", status);
+  if (status === 400) {
+    if (backendMessage?.toLowerCase().includes("email")) {
+      return new ApiError("REQUEST_FAILED", "Email không hợp lệ.", status);
+    }
+    return new ApiError("REQUEST_FAILED", "Vui lòng nhập đầy đủ thông tin.", status);
+  }
   if (status >= 500) return new ApiError("SERVER_ERROR", "Máy chủ gặp lỗi. Vui lòng thử lại.", status, true);
-  return new ApiError("REQUEST_FAILED", "Không thể xử lý yêu cầu. Vui lòng kiểm tra thông tin và thử lại.", status);
+  return new ApiError("REQUEST_FAILED", backendMessage || "Không thể xử lý yêu cầu. Vui lòng kiểm tra thông tin và thử lại.", status);
 };
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}, timeoutMs = 10_000): Promise<T> {
@@ -56,7 +62,7 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}, tim
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({} as ApiErrorPayload)) as ApiErrorPayload;
-      throw messageForStatus(response.status, payload.error?.code);
+      throw messageForStatus(response.status, payload.error?.code, payload.error?.message);
     }
 
     if (response.status === 204) return undefined as T;

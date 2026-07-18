@@ -9,25 +9,63 @@ export function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    username?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
 
   const setUser = useAuthStore(state => state.setUser);
   const navigate = useNavigate();
 
+  const validate = (): boolean => {
+    const errors: typeof fieldErrors = {};
+
+    if (!email) {
+      errors.email = "Email không được để trống.";
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
+      errors.email = "Địa chỉ email không hợp lệ.";
+    }
+
+    if (!username) {
+      errors.username = "Tên tài khoản không được để trống.";
+    } else if (username.length < 3 || username.length > 32) {
+      errors.username = "Tên tài khoản phải từ 3 đến 32 ký tự.";
+    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      errors.username = "Tên tài khoản chỉ được chứa chữ cái, chữ số và dấu gạch dưới (_).";
+    }
+
+    if (!password) {
+      errors.password = "Mật khẩu không được để trống.";
+    } else {
+      if (password.length < 8) {
+        errors.password = "Password too weak. Mật khẩu phải chứa ít nhất 8 ký tự.";
+      } else if (!/[A-Z]/.test(password)) {
+        errors.password = "Password too weak. Mật khẩu phải chứa ít nhất 1 chữ cái viết hoa.";
+      } else if (!/[a-z]/.test(password)) {
+        errors.password = "Password too weak. Mật khẩu phải chứa ít nhất 1 chữ cái viết thường.";
+      } else if (!/[0-9]/.test(password)) {
+        errors.password = "Password too weak. Mật khẩu phải chứa ít nhất 1 chữ số.";
+      } else if (!/[^a-zA-Z0-9]/.test(password)) {
+        errors.password = "Password too weak. Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.";
+      }
+    }
+
+    if (!confirmPassword) {
+      errors.confirmPassword = "Vui lòng xác nhận lại mật khẩu.";
+    } else if (password !== confirmPassword) {
+      errors.confirmPassword = "Mật khẩu xác nhận không trùng khớp.";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !username || !password || !confirmPassword) {
-      setError("Vui lòng nhập đầy đủ tất cả thông tin.");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Mật khẩu phải chứa ít nhất 8 ký tự.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không trùng khớp.");
+    if (!validate()) {
       return;
     }
 
@@ -40,26 +78,9 @@ export function RegisterPage() {
       navigate("/");
     } catch (err: unknown) {
       if (err instanceof Error) {
-        const msg = err.message;
-        if (msg.includes("Failed to fetch") || msg.toLowerCase().includes("network") || msg.includes("fetch failed") || msg.includes("kết nối")) {
-          setError("Không thể kết nối tới máy chủ. Hệ thống sẽ tạo tài khoản offline để xem phim.");
-          // Auto-fallback after a brief delay so user sees the message
-          setTimeout(async () => {
-            try {
-              const user = await authApi.register(email, username, password);
-              setUser(user);
-              navigate("/");
-            } catch {
-              setError("Không thể đăng ký. Vui lòng thử lại.");
-            } finally {
-              setLoading(false);
-            }
-          }, 1500);
-          return;
-        }
-        setError(msg || "Đăng ký thất bại.");
+        setError(err.message);
       } else {
-        setError("Đăng ký thất bại.");
+        setError("Máy chủ gặp lỗi. Vui lòng thử lại.");
       }
     } finally {
       setLoading(false);
@@ -93,11 +114,17 @@ export function RegisterPage() {
                 type="email"
                 id="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
+                }}
                 placeholder="Địa chỉ Email"
-                className="w-full h-14 rounded bg-zinc-800/80 border border-zinc-700 px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#e50914]/80 focus:border-transparent transition-all"
+                className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.email ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                 required
               />
+              {fieldErrors.email && (
+                <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div className="relative w-full">
@@ -105,11 +132,17 @@ export function RegisterPage() {
                 type="text"
                 id="username"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (fieldErrors.username) setFieldErrors(prev => ({ ...prev, username: undefined }));
+                }}
                 placeholder="Tên tài khoản (username)"
-                className="w-full h-14 rounded bg-zinc-800/80 border border-zinc-700 px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#e50914]/80 focus:border-transparent transition-all"
+                className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.username ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                 required
               />
+              {fieldErrors.username && (
+                <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.username}</p>
+              )}
             </div>
 
             <div className="relative w-full">
@@ -117,11 +150,17 @@ export function RegisterPage() {
                 type="password"
                 id="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
+                }}
                 placeholder="Mật khẩu (tối thiểu 8 ký tự)"
-                className="w-full h-14 rounded bg-zinc-800/80 border border-zinc-700 px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#e50914]/80 focus:border-transparent transition-all"
+                className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.password ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                 required
               />
+              {fieldErrors.password && (
+                <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.password}</p>
+              )}
             </div>
 
             <div className="relative w-full">
@@ -129,11 +168,17 @@ export function RegisterPage() {
                 type="password"
                 id="confirmPassword"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: undefined }));
+                }}
                 placeholder="Xác nhận mật khẩu"
-                className="w-full h-14 rounded bg-zinc-800/80 border border-zinc-700 px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#e50914]/80 focus:border-transparent transition-all"
+                className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.confirmPassword ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                 required
               />
+              {fieldErrors.confirmPassword && (
+                <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.confirmPassword}</p>
+              )}
             </div>
 
             <button

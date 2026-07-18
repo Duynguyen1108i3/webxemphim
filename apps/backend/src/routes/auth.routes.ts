@@ -4,17 +4,30 @@ import { login, refreshSession, register, revokeSession } from "../services/auth
 import { ApiError } from "../middleware/error.js";
 
 const router = Router();
-const authSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  username: z.string().min(3).max(32).optional()
+const registerSchema = z.object({
+  email: z.string().email("Định dạng email không hợp lệ"),
+  password: z.string()
+    .min(8, "Mật khẩu phải có tối thiểu 8 ký tự")
+    .regex(/[A-Z]/, "Mật khẩu phải chứa ít nhất 1 chữ cái viết hoa")
+    .regex(/[a-z]/, "Mật khẩu phải chứa ít nhất 1 chữ cái viết thường")
+    .regex(/[0-9]/, "Mật khẩu phải chứa ít nhất 1 chữ số")
+    .regex(/[^a-zA-Z0-9]/, "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt"),
+  username: z.string()
+    .min(3, "Tên tài khoản phải có tối thiểu 3 ký tự")
+    .max(32, "Tên tài khoản không được vượt quá 32 ký tự")
+    .regex(/^[a-zA-Z0-9_]+$/, "Tên tài khoản chỉ được phép chứa chữ cái, chữ số và dấu gạch dưới")
+});
+
+const loginSchema = z.object({
+  email: z.string().email("Định dạng email không hợp lệ"),
+  password: z.string().min(1, "Mật khẩu không được để trống")
 });
 
 router.get("/csrf", (req, res) => res.json({ csrfToken: (req as typeof req & { csrfToken: () => string }).csrfToken() }));
 
 router.post("/register", async (req, res, next) => {
   try {
-    const input = authSchema.required({ username: true }).parse(req.body);
+    const input = registerSchema.parse(req.body);
     const session = await register(input);
     setAuthCookies(res, session.accessToken, session.refreshToken);
     res.status(201).json({ user: session.user });
@@ -25,7 +38,7 @@ router.post("/register", async (req, res, next) => {
 
 router.post("/login", async (req, res, next) => {
   try {
-    const input = authSchema.omit({ username: true }).parse(req.body);
+    const input = loginSchema.parse(req.body);
     const session = await login({ ...input, userAgent: req.get("user-agent"), ipAddress: req.ip });
     setAuthCookies(res, session.accessToken, session.refreshToken);
     res.json({ user: session.user });

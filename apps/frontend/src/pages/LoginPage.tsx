@@ -7,15 +7,37 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
   
   const setUser = useAuthStore(state => state.setUser);
   const navigate = useNavigate();
 
+  const validate = (): boolean => {
+    const errors: typeof fieldErrors = {};
+
+    if (!email) {
+      errors.email = "Email không được để trống.";
+    } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
+      errors.email = "Địa chỉ email không hợp lệ.";
+    }
+
+    if (!password) {
+      errors.password = "Mật khẩu không được để trống.";
+    } else if (password.length < 8) {
+      errors.password = "Mật khẩu phải chứa ít nhất 8 ký tự.";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError("Vui lòng điền đầy đủ email và mật khẩu.");
+    if (!validate()) {
       return;
     }
 
@@ -28,26 +50,9 @@ export function LoginPage() {
       navigate("/");
     } catch (err: unknown) {
       if (err instanceof Error) {
-        const msg = err.message;
-        if (msg.includes("Failed to fetch") || msg.toLowerCase().includes("network") || msg.includes("fetch failed") || msg.includes("kết nối")) {
-          setError("Không thể kết nối tới máy chủ. Hệ thống sẽ chuyển sang chế độ xem phim offline.");
-          // Auto-fallback after a brief delay so user sees the message
-          setTimeout(async () => {
-            try {
-              const user = await authApi.login(email, password);
-              setUser(user);
-              navigate("/");
-            } catch {
-              setError("Không thể đăng nhập. Vui lòng thử lại.");
-            } finally {
-              setLoading(false);
-            }
-          }, 1500);
-          return;
-        }
-        setError(msg || "Đăng nhập thất bại.");
+        setError(err.message);
       } else {
-        setError("Đăng nhập thất bại.");
+        setError("Máy chủ gặp lỗi. Vui lòng thử lại.");
       }
     } finally {
       setLoading(false);
@@ -81,11 +86,17 @@ export function LoginPage() {
                 type="email"
                 id="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email hoặc số điện thoại"
-                className="w-full h-14 rounded bg-zinc-800/80 border border-zinc-700 px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#e50914]/80 focus:border-transparent transition-all"
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
+                }}
+                placeholder="Địa chỉ Email"
+                className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.email ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                 required
               />
+              {fieldErrors.email && (
+                <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div className="relative w-full">
@@ -93,11 +104,17 @@ export function LoginPage() {
                 type="password"
                 id="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
+                }}
                 placeholder="Mật khẩu"
-                className="w-full h-14 rounded bg-zinc-800/80 border border-zinc-700 px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-[#e50914]/80 focus:border-transparent transition-all"
+                className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.password ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                 required
               />
+              {fieldErrors.password && (
+                <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.password}</p>
+              )}
             </div>
 
             <button
