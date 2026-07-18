@@ -36,7 +36,20 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
       <p style="font-size: 12px; color: #a1a1aa; text-align: center;">Đây là email tự động từ StreamForge. Vui lòng không phản hồi.</p>
     </div>`;
 
-  // If BREVO_API_KEY is available, use Brevo HTTP API (never blocked by Render and allows sending to anyone)
+  // Priority 1: Gmail SMTP (most reliable for Gmail sender accounts)
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    const mailOptions = {
+      from: `"StreamForge" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject,
+      text: textContent,
+      html: htmlContent,
+    };
+    await transporter.sendMail(mailOptions);
+    return;
+  }
+
+  // Priority 2: Brevo HTTP API (fallback)
   if (process.env.BREVO_API_KEY) {
     const senderEmail = process.env.SMTP_USER || "duycute11082005@gmail.com";
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -60,13 +73,13 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
       console.error("=== BREVO API ERROR ===");
       console.error("Status:", response.status);
       console.error("Response:", errorText);
-      console.error("Sender:", process.env.SMTP_USER);
       console.error("=======================");
       throw new ApiError(500, `Gửi email thất bại (${response.status}). Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
     }
     return;
   }
 
+  // Priority 3: Resend API (fallback)
   if (process.env.RESEND_API_KEY) {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -90,23 +103,11 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
     return;
   }
 
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    throw new ApiError(
-      500,
-      "Chưa cấu hình thông tin gửi Email (BREVO_API_KEY, RESEND_API_KEY hoặc SMTP_USER/SMTP_PASS) trong file .env.",
-      "EMAIL_CONFIG_MISSING"
-    );
-  }
-
-  const mailOptions = {
-    from: `"StreamForge" <${process.env.SMTP_USER}>`,
-    to: email,
-    subject,
-    text: textContent,
-    html: htmlContent,
-  };
-
-  await transporter.sendMail(mailOptions);
+  throw new ApiError(
+    500,
+    "Chưa cấu hình thông tin gửi Email (SMTP_USER/SMTP_PASS, BREVO_API_KEY hoặc RESEND_API_KEY) trong file .env.",
+    "EMAIL_CONFIG_MISSING"
+  );
 }
 
 export const otpMap = new Map<string, { code: string, username: string, passwordHash: string, expires: number }>();
