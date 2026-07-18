@@ -106,6 +106,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (cachedUserStr) {
       try {
         const cachedUser = JSON.parse(cachedUserStr) as AuthUser;
+        if (cachedUser.id?.startsWith("offline-")) {
+          throw new Error("Reject legacy offline user");
+        }
         const profileId = localStorage.getItem("streamforge:auth:profileId") || cachedUser.username;
         // Show cached user immediately while we verify with backend
         set({ user: cachedUser, profileId, initialized: true });
