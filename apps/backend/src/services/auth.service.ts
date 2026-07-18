@@ -50,16 +50,22 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: payload,
-      redirect: "follow"
+      // Apps Script responds with a redirect to a Google-hosted result page.
+      // Following it from a server-to-server request can end at a 403 despite
+      // the webhook having already accepted the POST and sent the email.
+      redirect: "manual"
     });
 
     const responseText = await response.text();
     console.log("=== GMAIL WEBHOOK RESPONSE ===", responseText);
 
-    if (!response.ok) {
+    const acceptedRedirect = response.status >= 300 && response.status < 400;
+    if (!response.ok && !acceptedRedirect) {
       console.error("=== GMAIL WEBHOOK HTTP ERROR ===", response.status, responseText);
       throw new ApiError(500, `Gửi email thất bại (${response.status}). Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
     }
+
+    if (acceptedRedirect) return;
 
     let result: { success?: boolean; error?: string } | undefined;
     try {
