@@ -57,7 +57,12 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new ApiError(500, `Brevo API Error: ${errorText}`, "EMAIL_SEND_FAILED");
+      console.error("=== BREVO API ERROR ===");
+      console.error("Status:", response.status);
+      console.error("Response:", errorText);
+      console.error("Sender:", process.env.SMTP_USER);
+      console.error("=======================");
+      throw new ApiError(500, `Gửi email thất bại (${response.status}). Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
     }
     return;
   }
