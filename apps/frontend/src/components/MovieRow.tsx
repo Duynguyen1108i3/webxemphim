@@ -204,6 +204,9 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
                   }
                 }}
                 onHover={(anchor) => {
+                  if (typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0)) {
+                    return;
+                  }
                   clearCloseTimer();
                   clearOpenTimer();
                   openHoverTimer.current = window.setTimeout(() => setHovered({ movie, anchor, rect: anchor.getBoundingClientRect() }), 180);
@@ -226,7 +229,7 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
         </div>
       </motion.section>
       <AnimatePresence>
-        {hovered && (
+        {hovered && !activeMovieDetail && !activePlayback && (
           <HoverPreview
             key={hovered.movie.id}
             movie={hovered.movie}

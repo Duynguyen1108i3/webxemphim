@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, Play, Plus, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Play, Plus, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePlaybackStore } from "../store/playbackStore";
 import { movieApi } from "../lib/movieApi";
@@ -9,7 +9,7 @@ import { formatRuntime, getEpisodes } from "@streamforge/utils";
 import { MovieTile, HoverPreview } from "./MovieRow";
 
 export function CinematicDetailModal() {
-  const { activeMovieDetail, clickedElementId, closeDetailModal, openPlayback, myList, toggleMyList } = usePlaybackStore();
+  const { activeMovieDetail, clickedElementId, closeDetailModal, openPlayback, myList, toggleMyList, activePlayback } = usePlaybackStore();
   const [showTrailer, setShowTrailer] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [liked, setLiked] = useState(false);
@@ -19,6 +19,7 @@ export function CinematicDetailModal() {
   const modalContainerRef = useRef<HTMLDivElement>(null);
 
   const [hovered, setHovered] = useState<{ movie: any; anchor: HTMLElement; rect: DOMRect } | null>(null);
+  const [showAllSimilar, setShowAllSimilar] = useState(false);
 
   const openHoverTimer = useRef<number | null>(null);
   const closeHoverTimer = useRef<number | null>(null);
@@ -159,15 +160,15 @@ export function CinematicDetailModal() {
     } else {
       setSelectedSeasonId("");
     }
+    setShowAllSimilar(false);
   }, [displayMovieId, seasonsList.length]);
 
   if (!movie) return null;
 
   const displayMovie = data?.movie ?? movie;
   const inMyList = displayMovie ? myList.some((item) => item.id === displayMovie.id) : false;
-  const similarTitles = (similarData ?? [])
-    .filter((item) => item.id !== displayMovie.id)
-    .slice(0, 6);
+  const allSimilarTitles = (similarData ?? []).filter((item) => item.id !== displayMovie.id);
+  const similarTitles = showAllSimilar ? allSimilarTitles.slice(0, 24) : allSimilarTitles.slice(0, 6);
   
   const activeSeason = displayMovie.seasons?.find((s) => s.id === selectedSeasonId) || displayMovie.seasons?.[0];
   const activeEpisodes = activeSeason?.episodes || [];
@@ -477,6 +478,9 @@ export function CinematicDetailModal() {
                     usePlaybackStore.getState().openDetailModal(item as any, `card-${item.id}`);
                   }}
                   onHover={(anchor) => {
+                    if (typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0)) {
+                      return;
+                    }
                     clearCloseTimer();
                     clearOpenTimer();
                     openHoverTimer.current = window.setTimeout(() => {
@@ -487,6 +491,24 @@ export function CinematicDetailModal() {
                 />
               ))}
             </div>
+            {allSimilarTitles.length > 6 && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={() => setShowAllSimilar(!showAllSimilar)}
+                  className="px-6 py-2 border border-white/30 rounded-full text-sm font-semibold flex items-center gap-2 hover:border-white hover:bg-white/10 transition duration-200"
+                >
+                  {showAllSimilar ? (
+                    <>
+                      Thu gọn <ChevronUp size={16} />
+                    </>
+                  ) : (
+                    <>
+                      Xem thêm <ChevronDown size={16} />
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </section>
         )}
 
@@ -524,7 +546,7 @@ export function CinematicDetailModal() {
       </motion.div>
 
       <AnimatePresence>
-        {hovered && (
+        {hovered && !activePlayback && (
           <HoverPreview
             key={hovered.movie.id}
             movie={hovered.movie}

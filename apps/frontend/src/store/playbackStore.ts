@@ -2,6 +2,61 @@ import { create } from "zustand";
 import type { NormalizedMovie } from "../lib/movieApi";
 import { authApi, useAuthStore } from "./auth";
 
+interface SyncAction {
+  movieId: string;
+  action: "ADD" | "REMOVE";
+  movie?: NormalizedMovie;
+}
+
+const getSyncQueueKey = (profileId: string) => `streamforge:${profileId}:mylist_sync_queue`;
+
+const queueSyncAction = (profileId: string, action: SyncAction) => {
+  try {
+    const key = getSyncQueueKey(profileId);
+    const queue = JSON.parse(localStorage.getItem(key) || "[]");
+    queue.push(action);
+    localStorage.setItem(key, JSON.stringify(queue));
+  } catch (e) {
+    console.error("Failed to queue sync action:", e);
+  }
+};
+
+const flushSyncQueue = async (profileId: string): Promise<void> => {
+  const key = getSyncQueueKey(profileId);
+  let queue: SyncAction[] = [];
+  try {
+    queue = JSON.parse(localStorage.getItem(key) || "[]");
+  } catch {
+    return;
+  }
+  if (queue.length === 0) return;
+
+  for (let i = 0; i < queue.length; i++) {
+    const item = queue[i];
+    try {
+      if (item.action === "ADD" && item.movie) {
+        await authApi.request(`/users/profiles/${profileId}/my-list`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(item.movie)
+        });
+      } else if (item.action === "REMOVE") {
+        await authApi.request(`/users/profiles/${profileId}/my-list/${item.movieId}`, {
+          method: "DELETE"
+        });
+      }
+    } catch (e) {
+      // Keep remaining items in the queue and stop flushing
+      const remaining = queue.slice(i);
+      localStorage.setItem(key, JSON.stringify(remaining));
+      return;
+    }
+  }
+  localStorage.removeItem(key);
+};
+
 export interface WatchHistoryItem {
   id: string;
   slug: string;
@@ -57,6 +112,9 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
 
       if (!dbProfileId) return;
 
+      const email = user.email || "";
+      const mylistKey = `streamforge:${email}:mylist`;
+
       // 1. Fetch My List from PostgreSQL DB via Express backend
       const mapFavorites = (favorites: NormalizedMovie[]) => {
         return favorites.map((m) => {
@@ -67,22 +125,25 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         });
       };
 
-      authApi.request<{ favorites: NormalizedMovie[] }>(`/users/profiles/${dbProfileId}/my-list`)
+      // Flush sync queue first before querying the latest list
+      flushSyncQueue(dbProfileId)
+        .then(() => {
+          return authApi.request<{ favorites: NormalizedMovie[] }>(`/users/profiles/${dbProfileId}/my-list`);
+        })
         .then((data) => {
           if (data?.favorites) {
-            set({ myList: mapFavorites(data.favorites) });
+            const mapped = mapFavorites(data.favorites);
+            set({ myList: mapped });
+            localStorage.setItem(mylistKey, JSON.stringify(mapped)); // Sync cache
           }
         })
         .catch(() => {
-          const email = user.email || "";
-          const mylistKey = `streamforge:${email}:mylist`;
           const storedList = localStorage.getItem(mylistKey);
           const parsed = storedList ? JSON.parse(storedList) : [];
           set({ myList: mapFavorites(parsed) });
         });
 
       // 2. Fetch watch history (standard local storage fallback)
-      const email = user.email || "";
       const historyKey = `streamforge:${email}:watchhistory`;
       const storedHistory = localStorage.getItem(historyKey);
       set({ watchHistory: storedHistory ? JSON.parse(storedHistory) : [] });
@@ -98,29 +159,35 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
     const dbProfileId = user.profiles.find((profile) => profile.name === profileName)?.id ?? user.profiles[0]?.id;
     if (!dbProfileId) return;
 
+    const email = user.email || "";
+    const mylistKey = `streamforge:${email}:mylist`;
+
     set((state) => {
       const exists = state.myList.some((item) => item.id === movie.id);
       let updated;
       if (exists) {
         updated = state.myList.filter((item) => item.id !== movie.id);
 
-        // Async delete from PostgreSQL DB
-        void authApi.request(`/users/profiles/${dbProfileId}/my-list/${movie.id}`, { method: "DELETE" }).catch(() => undefined);
+        // Try to delete from PostgreSQL DB, queue on failure
+        authApi.request(`/users/profiles/${dbProfileId}/my-list/${movie.id}`, { method: "DELETE" })
+          .catch(() => {
+            queueSyncAction(dbProfileId, { movieId: movie.id, action: "REMOVE" });
+          });
       } else {
         updated = [...state.myList, movie];
 
-        // Async add to PostgreSQL DB
-        void authApi.request(`/users/profiles/${dbProfileId}/my-list`, {
+        // Try to add to PostgreSQL DB, queue on failure
+        authApi.request(`/users/profiles/${dbProfileId}/my-list`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
           body: JSON.stringify(movie)
-        }).catch(() => undefined);
+        }).catch(() => {
+          queueSyncAction(dbProfileId, { movieId: movie.id, action: "ADD", movie });
+        });
       }
       
-      const email = user.email || "";
-      const mylistKey = `streamforge:${email}:mylist`;
       localStorage.setItem(mylistKey, JSON.stringify(updated));
       return { myList: updated };
     });

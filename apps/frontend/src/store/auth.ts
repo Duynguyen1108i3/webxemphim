@@ -119,6 +119,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           const user = await authApi.getCurrentUser();
           localStorage.setItem("streamforge:auth:user", JSON.stringify(user));
           set({ user });
+          usePlaybackStore.getState().loadUserData();
         } catch (error) {
           // If token verification fails (e.g. 401 Unauthorized), clean up session
           if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {

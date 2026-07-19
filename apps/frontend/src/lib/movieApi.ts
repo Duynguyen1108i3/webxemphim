@@ -1040,8 +1040,12 @@ function normalizePhim4kMovie(item: any, isDetail = false, imageCdnUrl?: unknown
     category: Array.isArray(item.category) ? item.category : [],
     country: Array.isArray(item.country) ? item.country : [],
     description: item.content || item.description || "Xem phim online chất lượng cao.",
-    cast: [],
-    director: "",
+    cast: Array.isArray(item.actor) 
+      ? item.actor.filter(Boolean) 
+      : (typeof item.actor === "string" ? item.actor.split(",").map((s: string) => s.trim()).filter(Boolean) : []),
+    director: Array.isArray(item.director) 
+      ? item.director.filter(Boolean).join(", ") 
+      : (typeof item.director === "string" ? item.director : ""),
     tags: Array.isArray(item.category) ? item.category.map((g: any) => g.name) : [],
     match: Math.round(rating * 10),
     reviews: [],

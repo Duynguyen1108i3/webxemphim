@@ -692,22 +692,6 @@ export function VideoPlayer({
           </div>
 
           <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
-            {/* Server selection */}
-            {source?.alternateSources && source.alternateSources.length > 1 && (
-              <select 
-                value={activeUrl} 
-                onChange={(e) => setActiveUrl(e.target.value)} 
-                className="rounded bg-white/10 border border-white/10 px-1 py-1 sm:px-2 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-1 focus:ring-white max-w-[100px] sm:max-w-[150px]"
-                aria-label="Select streaming server"
-              >
-                {source.alternateSources.map((altSource: any, idx: number) => (
-                  <option key={idx} value={altSource.url} className="bg-zinc-900">
-                    {altSource.name || `Server ${idx + 1}`}
-                  </option>
-                ))}
-              </select>
-            )}
-
             {/* Speed selection */}
             <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} className="rounded bg-white/10 border border-white/10 px-1 py-1 sm:px-2 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-1 focus:ring-white">
               {[0.5, 1, 1.25, 1.5, 2].map((value) => <option key={value} value={value} className="bg-zinc-900">{value}x</option>)}
