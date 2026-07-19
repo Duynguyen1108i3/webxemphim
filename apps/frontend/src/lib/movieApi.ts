@@ -461,11 +461,14 @@ export const movieApi = {
         });
       }
       
-      const playId = movie.tmdbId || movie.id;
-      const selectedSeason = 1;
-      const selectedEpisode = 1;
-      alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" as const });
-      alternateSources.push({ name: "Vidsrc.cc", url: `https://vidsrc.cc/v2/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" as const });
+      const isMobile = typeof navigator !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (!isMobile || !streamUrl) {
+        const playId = movie.tmdbId || movie.id;
+        const selectedSeason = 1;
+        const selectedEpisode = 1;
+        alternateSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" as const });
+        alternateSources.push({ name: "Vidsrc.cc", url: `https://vidsrc.cc/v2/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" as const });
+      }
       
       const finalUrl = streamUrl || alternateSources[0]?.url || "";
       
@@ -579,7 +582,8 @@ export const movieApi = {
     }
 
     // Final order: Phim4K streams first (direct play) -> Embed fallbacks
-    const finalSources = [...phim4kStreams, ...embedSources];
+    const isMobile = typeof navigator !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const finalSources = (isMobile && phim4kStreams.length > 0) ? phim4kStreams : [...phim4kStreams, ...embedSources];
     finalSources.forEach(s => alternateSources.push(s));
 
     // Choose first working stream as primary (prefer Direct HLS from Phim4K if available)
