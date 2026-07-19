@@ -149,6 +149,20 @@ export function VideoPlayer({
     const isHls = activeUrl.includes(".m3u8");
     
     let hls: Hls | null = null;
+    let networkRetryCount = 0;
+    let fallbackTriggered = false;
+
+    const handleFallback = () => {
+      if (fallbackTriggered) return;
+      if (!source.alternateSources || source.alternateSources.length <= 1) return;
+      const currentIndex = source.alternateSources.findIndex((s: any) => s.url === activeUrl);
+      if (currentIndex !== -1 && currentIndex < source.alternateSources.length - 1) {
+        fallbackTriggered = true;
+        const nextSource = source.alternateSources[currentIndex + 1];
+        console.warn(`Switching to fallback source: ${nextSource.name} (${nextSource.url})`);
+        setActiveUrl(nextSource.url);
+      }
+    };
 
     const startPlayback = () => {
       const playPromise = video.play();
@@ -180,6 +194,12 @@ export function VideoPlayer({
       }
     };
 
+    const handleVideoError = (e: Event) => {
+      console.error("Native video element error:", e);
+      handleFallback();
+    };
+    video.addEventListener("error", handleVideoError);
+
     if (isHls && Hls.isSupported()) {
       hls = new Hls({ 
         enableWorker: true, 
@@ -196,15 +216,22 @@ export function VideoPlayer({
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              console.warn("Fatal network error in player, attempting recovery...");
-              hls?.startLoad();
+              networkRetryCount++;
+              if (networkRetryCount > 2) {
+                console.warn("Fatal network error limit reached in player. Switching to fallback...");
+                handleFallback();
+              } else {
+                console.warn(`Fatal network error in player, attempting recovery (retry ${networkRetryCount})...`);
+                hls?.startLoad();
+              }
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
               console.warn("Fatal media error in player, recovering media...");
               hls?.recoverMediaError();
               break;
             default:
-              console.error("Fatal unrecoverable player error");
+              console.error("Fatal unrecoverable player error. Switching to fallback...");
+              handleFallback();
               break;
           }
         }
@@ -226,6 +253,7 @@ export function VideoPlayer({
       if (hls) {
         hls.destroy();
       }
+      video.removeEventListener("error", handleVideoError);
       try {
         video.pause();
         video.removeAttribute("src");
@@ -234,7 +262,7 @@ export function VideoPlayer({
         console.error("Video player unmount cleanup error:", err);
       }
     };
-  }, [activeUrl, onPlayStarted]);
+  }, [activeUrl, source, onPlayStarted]);
 
   useEffect(() => {
     if (!source) return;
