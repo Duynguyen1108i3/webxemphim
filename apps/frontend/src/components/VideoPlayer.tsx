@@ -73,6 +73,19 @@ export function VideoPlayer({
   // early return for iframe embeds moved below all hooks to satisfy react rules
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Parent callbacks are recreated as overlay state changes. Keep the media
+  // lifecycle independent from those renders: changing a callback must never
+  // destroy and recreate the active stream.
+  const latestSourceRef = useRef(source);
+  const onPlayStartedRef = useRef(onPlayStarted);
+  const onProgressRef = useRef(onProgress);
+
+  useEffect(() => {
+    latestSourceRef.current = source;
+    onPlayStartedRef.current = onPlayStarted;
+    onProgressRef.current = onProgress;
+  }, [source, onPlayStarted, onProgress]);
+
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -89,8 +102,9 @@ export function VideoPlayer({
   useEffect(() => {
     return () => {
       const video = videoRef.current;
-      if (video && onProgress && video.duration && source) {
-        onProgress(Math.floor(video.currentTime), Math.floor(video.duration), source.currentEpisodeId, source.title);
+      const currentSource = latestSourceRef.current;
+      if (video && onProgressRef.current && video.duration && currentSource) {
+        onProgressRef.current(Math.floor(video.currentTime), Math.floor(video.duration), currentSource.currentEpisodeId, currentSource.title);
       }
     };
   }, [onProgress, source]);
@@ -143,7 +157,7 @@ export function VideoPlayer({
   }, []);
 
   useEffect(() => {
-    if (!source || !activeUrl) return;
+    if (!latestSourceRef.current || !activeUrl) return;
     const video = videoRef.current;
     if (!video) return;
     const isHls = activeUrl.includes(".m3u8") || activeUrl.includes("/stream/hls") || activeUrl.includes("dramahay.xyz") || activeUrl.includes("phim4k.dpdns.org");
@@ -154,11 +168,12 @@ export function VideoPlayer({
 
     const handleFallback = () => {
       if (fallbackTriggered) return;
-      if (!source.alternateSources || source.alternateSources.length <= 1) return;
-      const currentIndex = source.alternateSources.findIndex((s: any) => s.url === activeUrl);
-      if (currentIndex !== -1 && currentIndex < source.alternateSources.length - 1) {
+      const currentSource = latestSourceRef.current;
+      if (!currentSource?.alternateSources || currentSource.alternateSources.length <= 1) return;
+      const currentIndex = currentSource.alternateSources.findIndex((s: any) => s.url === activeUrl);
+      if (currentIndex !== -1 && currentIndex < currentSource.alternateSources.length - 1) {
         fallbackTriggered = true;
-        const nextSource = source.alternateSources[currentIndex + 1];
+        const nextSource = currentSource.alternateSources[currentIndex + 1];
         console.warn(`Switching to fallback source: ${nextSource.name} (${nextSource.url})`);
         setActiveUrl(nextSource.url);
       }
@@ -170,7 +185,7 @@ export function VideoPlayer({
         playPromise
           .then(() => {
             setPlaying(true);
-            onPlayStarted?.();
+            onPlayStartedRef.current?.();
           })
           .catch((err) => {
             console.log("Autoplay blocked:", err);
@@ -185,7 +200,7 @@ export function VideoPlayer({
         const historyKey = user?.email ? `streamforge:${user.email}:watchhistory` : "streamforge:watchhistory";
         const stored = localStorage.getItem(historyKey);
         const history = stored ? JSON.parse(stored) : [];
-        const item = history.find((x: any) => x.id === source.movieId);
+        const item = history.find((x: any) => x.id === latestSourceRef.current?.movieId);
         if (item && item.currentTime > 5 && item.currentTime < item.duration - 10) {
           video.currentTime = item.currentTime;
         }
@@ -203,8 +218,13 @@ export function VideoPlayer({
     if (isHls && Hls.isSupported()) {
       hls = new Hls({ 
         enableWorker: true, 
-        lowLatencyMode: true,
-        backBufferLength: 90
+        // Movie streams are VOD, not live broadcasts. Low-latency mode can
+        // aggressively evict/replace media buffers and presents as a brief
+        // black frame on Chromium while seeking or recovering a segment.
+        lowLatencyMode: false,
+        backBufferLength: 120,
+        maxBufferLength: 60,
+        maxMaxBufferLength: 120
       });
       hls.loadSource(activeUrl);
       hls.attachMedia(video);
@@ -262,16 +282,20 @@ export function VideoPlayer({
         console.error("Video player unmount cleanup error:", err);
       }
     };
-  }, [activeUrl, source, onPlayStarted]);
+  }, [activeUrl]);
 
   useEffect(() => {
-    if (!source) return;
     const video = videoRef.current;
     if (!video) return;
-    const handler = () => onProgress?.(Math.floor(video.currentTime), Math.floor(video.duration || 0), source.currentEpisodeId, source.title);
+    const handler = () => {
+      const currentSource = latestSourceRef.current;
+      if (currentSource) {
+        onProgressRef.current?.(Math.floor(video.currentTime), Math.floor(video.duration || 0), currentSource.currentEpisodeId, currentSource.title);
+      }
+    };
     const interval = window.setInterval(handler, 10_000);
     return () => window.clearInterval(interval);
-  }, [onProgress, source]);
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -307,7 +331,7 @@ export function VideoPlayer({
       }
 
       if (video.currentTime > 0.1) {
-        onPlayStarted?.();
+        onPlayStartedRef.current?.();
       }
     };
 
@@ -317,12 +341,12 @@ export function VideoPlayer({
 
     const onPlay = () => {
       setPlaying(true);
-      onPlayStarted?.();
+      onPlayStartedRef.current?.();
     };
     
     const onPlaying = () => {
       setPlaying(true);
-      onPlayStarted?.();
+      onPlayStartedRef.current?.();
     };
 
     const onVolume = () => {
@@ -351,7 +375,7 @@ export function VideoPlayer({
       video.removeEventListener("pause", onPause);
       video.removeEventListener("volumechange", onVolume);
     };
-  }, [onPlayStarted]);
+  }, []);
 
   async function toggle() {
     const video = videoRef.current!;

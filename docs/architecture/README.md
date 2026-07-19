@@ -26,6 +26,16 @@ flowchart LR
 - Access tokens are short lived. Refresh tokens are stored in HttpOnly cookies and backed by revocable database sessions.
 - Admin routes require `ADMIN` or `SUPER_ADMIN`; moderation actions are audited through database timestamps.
 
+## Source Layout
+
+Each deployable React application keeps its startup concerns in `src/app/`:
+
+- `AppProviders.tsx` owns long-lived runtime providers such as React Query and error handling.
+- `router.tsx` owns route definitions and code-splitting policy.
+- `main.tsx` is only the browser bootstrap seam.
+
+This makes page and shell modules independent of global runtime configuration. The backend follows the same separation at a server level: `app.ts` composes middleware and routes, while `server.ts` owns process startup. Shared packages expose domain types (`shared-types`), UI primitives (`ui`), and pure helpers (`utils`) only.
+
 ## Recommendation Formula
 
 `score = genreAffinity * 0.35 + completionRate * 0.25 + ratingAffinity * 0.20 + freshnessBoost * 0.10 + popularityBoost * 0.10`
