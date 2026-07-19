@@ -146,7 +146,7 @@ export function VideoPlayer({
     if (!source || !activeUrl) return;
     const video = videoRef.current;
     if (!video) return;
-    const isHls = activeUrl.includes(".m3u8");
+    const isHls = activeUrl.includes(".m3u8") || activeUrl.includes("/stream/hls") || activeUrl.includes("dramahay.xyz") || activeUrl.includes("phim4k.dpdns.org");
     
     let hls: Hls | null = null;
     let networkRetryCount = 0;

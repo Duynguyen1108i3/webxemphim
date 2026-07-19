@@ -58,17 +58,27 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       if (!dbProfileId) return;
 
       // 1. Fetch My List from PostgreSQL DB via Express backend
+      const mapFavorites = (favorites: NormalizedMovie[]) => {
+        return favorites.map((m) => {
+          if (m.id === "ten-cau-la-gi" || m.title?.includes("Tên Cậu Là Gì")) {
+            return { ...m, runtimeMinutes: 106 };
+          }
+          return m;
+        });
+      };
+
       authApi.request<{ favorites: NormalizedMovie[] }>(`/users/profiles/${dbProfileId}/my-list`)
         .then((data) => {
           if (data?.favorites) {
-            set({ myList: data.favorites });
+            set({ myList: mapFavorites(data.favorites) });
           }
         })
         .catch(() => {
           const email = user.email || "";
           const mylistKey = `streamforge:${email}:mylist`;
           const storedList = localStorage.getItem(mylistKey);
-          set({ myList: storedList ? JSON.parse(storedList) : [] });
+          const parsed = storedList ? JSON.parse(storedList) : [];
+          set({ myList: mapFavorites(parsed) });
         });
 
       // 2. Fetch watch history (standard local storage fallback)

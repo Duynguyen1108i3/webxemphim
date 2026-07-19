@@ -50,7 +50,7 @@ function slugify(value: string) {
 }
 
 export function MovieRow({ title, items, ranked = false, compact = false }: { title: string; items: MovieCardDto[]; ranked?: boolean; compact?: boolean }) {
-  const { openDetailModal, openPlayback } = usePlaybackStore();
+  const { openDetailModal, openPlayback, activeMovieDetail, activePlayback } = usePlaybackStore();
   const isContinueWatching = title === "Continue Watching for Celine";
   const [hovered, setHovered] = useState<{ movie: MovieCardDto; anchor: HTMLElement; rect: DOMRect } | null>(null);
   
@@ -101,6 +101,15 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
     clearOpenTimer();
     closeHoverTimer.current = window.setTimeout(() => setHovered(null), 180);
   }
+
+  // Clear hover popup when detail modal or player opens
+  useEffect(() => {
+    if (activeMovieDetail || activePlayback) {
+      setHovered(null);
+      clearOpenTimer();
+      clearCloseTimer();
+    }
+  }, [activeMovieDetail, activePlayback]);
 
   useEffect(() => {
     if (!hovered) return;
@@ -165,7 +174,7 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
           {canScrollLeft && (
             <button
               onClick={() => scroll("left")}
-              className="absolute left-0 top-0 bottom-4 z-30 hidden md:grid w-12 place-items-center bg-black/50 text-white opacity-0 group-hover/row:opacity-100 transition duration-300 hover:bg-black/75 focus:outline-none"
+              className="absolute left-0 top-0 bottom-4 z-30 hidden md:grid w-12 place-items-center text-white opacity-0 group-hover/row:opacity-100 transition duration-300 focus:outline-none cursor-pointer"
               aria-label="Scroll left"
             >
               <ChevronLeft size={32} className="transition-transform hover:scale-125" />
@@ -185,6 +194,9 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
                 rank={ranked ? index + 1 : undefined}
                 isContinueWatching={isContinueWatching}
                 onOpen={() => {
+                  setHovered(null);
+                  clearOpenTimer();
+                  clearCloseTimer();
                   if (isContinueWatching) {
                     openPlayback(movie as NormalizedMovie, `card-${movie.id}`);
                   } else {
@@ -205,7 +217,7 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
           {canScrollRight && (
             <button
               onClick={() => scroll("right")}
-              className="absolute right-0 top-0 bottom-4 z-30 hidden md:grid w-12 place-items-center bg-black/50 text-white opacity-0 group-hover/row:opacity-100 transition duration-300 hover:bg-black/75 focus:outline-none"
+              className="absolute right-0 top-0 bottom-4 z-30 hidden md:grid w-12 place-items-center text-white opacity-0 group-hover/row:opacity-100 transition duration-300 focus:outline-none cursor-pointer"
               aria-label="Scroll right"
             >
               <ChevronRight size={32} className="transition-transform hover:scale-125" />
@@ -273,7 +285,7 @@ export const MovieTile = React.memo(function MovieTile({
       onBlur={onHoverEnd}
     >
       <button onClick={onOpen} className="relative block w-full overflow-hidden rounded-md bg-zinc-900 text-left focus:outline-none focus:ring-2 focus:ring-white/70" aria-label={`Open ${movie.title}`}>
-        <motion.img layoutId={`card-${movie.id}`} src={movie.backdropUrl || movie.posterUrl} alt={movie.title} loading="lazy" onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover transition duration-500 group-hover:brightness-90" />
+        <img src={movie.backdropUrl || movie.posterUrl} alt={movie.title} loading="lazy" onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover transition duration-500 group-hover:brightness-90" />
         {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700 z-10">
             <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />
@@ -291,6 +303,11 @@ export const MovieTile = React.memo(function MovieTile({
             e.preventDefault();
             removeFromWatchHistory(movie.id);
           }}
+          onMouseEnter={(e) => {
+            e.stopPropagation();
+            onHoverEnd();
+          }}
+          onPointerEnter={(e) => e.stopPropagation()}
           className="absolute top-2 right-2 z-20 grid h-8 w-8 md:h-6 md:w-6 place-items-center rounded-full bg-black/60 text-white/70 border border-white/10 hover:text-white hover:bg-black/90 hover:scale-105 active:scale-95 transition cursor-pointer md:opacity-0 md:group-hover:opacity-100 shadow-lg"
           title="Xóa khỏi danh sách xem tiếp"
           aria-label="Remove from Continue Watching"
@@ -340,7 +357,7 @@ export const HoverPreview = React.memo(function HoverPreview({
       >
         <div className="relative w-full overflow-hidden bg-zinc-950 text-left">
           <button onClick={onOpen} className="block w-full text-left relative" aria-label={`Open ${movie.title} preview`}>
-            <motion.img layoutId={`card-${movie.id}`} src={movie.backdropUrl || movie.posterUrl} alt={movie.title} onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover" />
+            <img src={movie.backdropUrl || movie.posterUrl} alt={movie.title} onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover" />
             {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
               <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-zinc-700 z-10">
                 <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />
@@ -394,7 +411,7 @@ export const HoverPreview = React.memo(function HoverPreview({
             }} className="nf-icon ml-auto grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-[#2a2a2a] text-white transition hover:border-white hover:bg-[#333]" aria-label="Episodes and info"><ChevronDown size={20} /></button>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm text-white/75">
-            <span className="font-bold text-[#46d369]">{Math.min(99, Math.round(movie.averageRating * 10 + 10))}% Match</span>
+            <span className="font-bold text-[#46d369]">★ {movie.averageRating ? movie.averageRating.toFixed(1) : "8.0"} IMDb</span>
             <Badge className="px-1.5 py-0.5 text-xs">{movie.maturityRating.replace("_", "-")}</Badge>
             <span>{formatRuntime(movie.runtimeMinutes)}</span>
             <span className="rounded border border-white/30 px-1 text-[11px]">HD</span>

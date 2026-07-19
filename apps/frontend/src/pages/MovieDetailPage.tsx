@@ -38,7 +38,7 @@ export function MovieDetailPage() {
         <div className="relative z-10 max-w-5xl px-4 pt-36 sm:px-8 md:px-14 lg:px-16">
           <h1 className="max-w-3xl text-5xl font-black leading-none md:text-7xl">{movie.title}</h1>
           <div className="mt-5 flex flex-wrap items-center gap-3 text-sm font-semibold text-white/80">
-            <span className="text-[#46d369]">{movie.match ?? Math.round(movie.averageRating * 10)}% Match</span>
+            <span className="text-[#46d369] font-bold">⭐ {movie.averageRating ? movie.averageRating.toFixed(1) : "8.0"} IMDb</span>
             <span>{movie.releaseYear}</span>
             <Badge>{movie.maturityRating.replace("_", "-")}</Badge>
             <span>{movie.runtimeMinutes}m</span>

@@ -338,7 +338,7 @@ export function CinematicDetailModal() {
           {/* Left Column (Meta & Synopsis) */}
           <div className="space-y-5">
             <motion.div className="flex flex-wrap items-center gap-2.5 text-sm font-semibold text-white/80" variants={itemVariants}>
-              <span className="text-[#46d369]">{displayMovie.match}% Match</span>
+              <span className="text-[#46d369] font-bold">★ {displayMovie.averageRating ? displayMovie.averageRating.toFixed(1) : "8.0"} IMDb</span>
               <span>{displayMovie.releaseYear}</span>
               <Badge className="border-white/30 text-white/90">{displayMovie.maturityRating.replace("_", "-")}</Badge>
               <span>{formatRuntime(displayMovie.runtimeMinutes)}</span>

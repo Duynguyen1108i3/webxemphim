@@ -1,4 +1,4 @@
-import { Bell, Lock, Menu, Search, UserCircle, X } from "lucide-react";
+import { Bell, ChevronDown, Lock, Menu, Search, UserCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -8,8 +8,8 @@ import { CinematicPlayerOverlay } from "./CinematicPlayerOverlay";
 import { Footer } from "./Footer";
 import { useQuery } from "@tanstack/react-query";
 import { movieApi, type NormalizedMovie } from "../lib/movieApi";
-import { MovieRow } from "./MovieRow";
-import { Skeleton } from "@streamforge/ui";
+import { MovieRow, MovieTile, HoverPreview } from "./MovieRow";
+import { Button, Skeleton } from "@streamforge/ui";
 import type { MovieCardDto } from "@streamforge/shared-types";
 
 import { useAuthStore } from "../store/auth";
@@ -257,14 +257,119 @@ export function AppShell() {
     }
   };
 
-  const { data: searchResultsData, isLoading: isSearching } = useQuery({
-    queryKey: ["search", q],
-    enabled: q.length > 1,
-    staleTime: 60_000,
-    retry: false,
-    queryFn: () => movieApi.searchMovies(q)
-  });
-  const searchResults = searchResultsData ?? [];
+  const [searchResults, setSearchResults] = useState<NormalizedMovie[]>([]);
+  const [searchPage, setSearchPage] = useState(1);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasMoreSearch, setHasMoreSearch] = useState(false);
+
+  useEffect(() => {
+    setHovered(null);
+    clearOpenTimer();
+    clearCloseTimer();
+    if (q.length > 1) {
+      setIsSearching(true);
+      setSearchPage(1);
+      movieApi.searchMovies(q, 1)
+        .then((results) => {
+          setSearchResults(results);
+          setHasMoreSearch(results.length >= 20); // 20 is the default API page limit for TMDB, 24 for Phim4k
+        })
+        .catch(() => setSearchResults([]))
+        .finally(() => setIsSearching(false));
+    } else {
+      setSearchResults([]);
+      setHasMoreSearch(false);
+    }
+  }, [q]);
+
+  const handleLoadMoreSearch = () => {
+    setHovered(null);
+    clearOpenTimer();
+    clearCloseTimer();
+    const nextPage = searchPage + 1;
+    setIsSearching(true);
+    movieApi.searchMovies(q, nextPage)
+      .then((results) => {
+        if (results.length > 0) {
+          setSearchResults((prev) => [...prev, ...results]);
+          setSearchPage(nextPage);
+          setHasMoreSearch(results.length >= 20);
+        } else {
+          setHasMoreSearch(false);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => setIsSearching(false));
+  };
+
+  const [hovered, setHovered] = useState<{ movie: MovieCardDto; anchor: HTMLElement; rect: DOMRect } | null>(null);
+
+  const openHoverTimer = useRef<number | null>(null);
+  const closeHoverTimer = useRef<number | null>(null);
+  const hoverFrame = useRef<number | null>(null);
+
+  const clearOpenTimer = () => { if (openHoverTimer.current != null) { window.clearTimeout(openHoverTimer.current); openHoverTimer.current = null; } };
+  const clearCloseTimer = () => { if (closeHoverTimer.current != null) { window.clearTimeout(closeHoverTimer.current); closeHoverTimer.current = null; } };
+
+  function scheduleHoverClose() {
+    clearCloseTimer();
+    clearOpenTimer();
+    closeHoverTimer.current = window.setTimeout(() => setHovered(null), 180);
+  }
+
+  useEffect(() => {
+    if (activeMovieDetail || activePlayback) {
+      setHovered(null);
+      clearOpenTimer();
+      clearCloseTimer();
+    }
+  }, [activeMovieDetail, activePlayback]);
+
+  useEffect(() => {
+    if (!hovered) return;
+    const updatePosition = () => {
+      hoverFrame.current = null;
+      const rect = hovered.anchor.getBoundingClientRect();
+      const isOutOfView = rect.bottom < 72 || rect.top > window.innerHeight - 24 || rect.right < 0 || rect.left > window.innerWidth;
+      if (isOutOfView) {
+        setHovered(null);
+        return;
+      }
+      setHovered((current) => {
+        if (!current || current.anchor !== hovered.anchor) return current;
+        if (
+          Math.abs(current.rect.top - rect.top) < 0.5 &&
+          Math.abs(current.rect.left - rect.left) < 0.5 &&
+          Math.abs(current.rect.width - rect.width) < 0.5
+        ) {
+          return current;
+        }
+        return { ...current, rect };
+      });
+    };
+    const requestPosition = () => {
+      if (hoverFrame.current != null) return;
+      hoverFrame.current = window.requestAnimationFrame(updatePosition);
+    };
+    window.addEventListener("scroll", requestPosition, { passive: true });
+    window.addEventListener("resize", requestPosition);
+    requestPosition();
+    return () => {
+      window.removeEventListener("scroll", requestPosition);
+      window.removeEventListener("resize", requestPosition);
+      if (hoverFrame.current != null) {
+        window.cancelAnimationFrame(hoverFrame.current);
+        hoverFrame.current = null;
+      }
+    };
+  }, [hovered?.anchor]);
+
+  const handleOpen = (movie: MovieCardDto) => {
+    setHovered(null);
+    clearOpenTimer();
+    clearCloseTimer();
+    usePlaybackStore.getState().openDetailModal(movie as NormalizedMovie, `search-${movie.id}`);
+  };
 
   const handleGenreClick = (slug: string) => {
     setIsMobileMenuOpen(false);
@@ -600,7 +705,50 @@ export function AppShell() {
               ))}
             </div>
           ) : searchResults.length > 0 ? (
-            <MovieRow title="" items={searchResults as MovieCardDto[]} compact />
+            <div className="flex flex-col gap-8">
+              <div className="mt-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 md:gap-2">
+                {searchResults.map((movie: NormalizedMovie) => (
+                  <motion.div
+                    key={movie.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                  >
+                    <MovieTile
+                      movie={movie as any}
+                      className="group relative w-full cursor-pointer rounded-md transition"
+                      onOpen={() => handleOpen(movie as any)}
+                      onHover={(anchor) => {
+                        clearCloseTimer();
+                        clearOpenTimer();
+                        openHoverTimer.current = window.setTimeout(() => {
+                          setHovered({ movie: movie as any, anchor, rect: anchor.getBoundingClientRect() });
+                        }, 180);
+                      }}
+                      onHoverEnd={scheduleHoverClose}
+                    />
+                  </motion.div>
+                ))}
+                {isSearching && Array.from({ length: 6 }).map((_, i) => (
+                  <div 
+                    key={`shimmer-${i}`} 
+                    className="aspect-video w-full overflow-hidden rounded bg-zinc-800/40 animate-pulse border border-white/5 relative before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_1.5s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/5 before:to-transparent"
+                  />
+                ))}
+              </div>
+              {!isSearching && hasMoreSearch && (
+                <div className="flex justify-center mt-4">
+                  <Button
+                    onClick={handleLoadMoreSearch}
+                    disabled={isSearching}
+                    className="flex items-center gap-2 px-6 py-2 rounded-full border border-white/20 bg-zinc-900/60 hover:bg-white hover:text-black hover:border-white text-white text-sm font-semibold transition-all duration-300 shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    <span>Xem thêm</span>
+                    <ChevronDown size={16} />
+                  </Button>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center text-zinc-500">
               No search results found for "{q}". Try searching for another title.
@@ -736,6 +884,21 @@ export function AppShell() {
       </AnimatePresence>
       <AnimatePresence>
         {activePlayback && <CinematicPlayerOverlay />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {hovered && (
+          <HoverPreview
+            key={hovered.movie.id}
+            movie={hovered.movie}
+            rect={hovered.rect}
+            onOpen={() => handleOpen(hovered.movie)}
+            onMouseEnter={() => {
+              clearOpenTimer();
+              clearCloseTimer();
+            }}
+            onMouseLeave={scheduleHoverClose}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

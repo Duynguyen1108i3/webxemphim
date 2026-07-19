@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Search, ChevronDown } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { movieApi, type NormalizedMovie } from "../lib/movieApi";
 import { usePlaybackStore } from "../store/playbackStore";
 import { MovieTile, HoverPreview } from "../components/MovieRow";
@@ -11,8 +10,21 @@ import type { MovieCardDto } from "@streamforge/shared-types";
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") ?? "";
-  const genre = searchParams.get("genre") ?? "";
+  const lang = searchParams.get("lang") ?? "";
   const { openDetailModal, openPlayback } = usePlaybackStore();
+
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   const [hovered, setHovered] = useState<{ movie: MovieCardDto; anchor: HTMLElement; rect: DOMRect } | null>(null);
 
@@ -34,49 +46,98 @@ export function SearchPage() {
     (import.meta.env && import.meta.env.VITE_TMDB_API_KEY)
   );
 
-  const genresList = hasTmdb ? [
-    { name: "Hành Động", slug: "action" },
-    { name: "Phiêu Lưu", slug: "adventure" },
-    { name: "Hoạt Hình", slug: "animation" },
-    { name: "Hài Hước", slug: "comedy" },
-    { name: "Hình Sự", slug: "crime" },
-    { name: "Chính Kịch", slug: "drama" },
-    { name: "Viễn Tưởng", slug: "fantasy" },
-    { name: "Kinh Dị", slug: "horror" },
-    { name: "Tình Cảm", slug: "romance" },
-    { name: "Hồi Hộp", slug: "thriller" }
-  ] : [
-    { name: "Phim Mới", slug: "phim-moi-cap-nhat" },
-    { name: "Phim Lẻ", slug: "phim-le" },
-    { name: "Phim Bộ", slug: "phim-bo" },
-    { name: "Hành Động", slug: "hanh-dong" },
-    { name: "Viễn Tưởng", slug: "vien-tuong" },
-    { name: "Tình Cảm", slug: "tinh-cam" },
-    { name: "Hài Hước", slug: "hai-huoc" },
-    { name: "Kinh Dị", slug: "kinh-di" },
-    { name: "Cổ Trang", slug: "co-trang" },
-    { name: "Hoạt Hình", slug: "hoat-hinh" }
+  const languagesList = [
+    { name: "Tiếng Anh (Âu Mỹ)", slug: "au-my" },
+    { name: "Tiếng Hàn (Hàn Quốc)", slug: "han-quoc" },
+    { name: "Tiếng Trung (Trung Quốc)", slug: "trung-quoc" },
+    { name: "Tiếng Nhật (Nhật Bản)", slug: "nhat-ban" },
+    { name: "Tiếng Việt (Việt Nam)", slug: "viet-nam" },
+    { name: "Tiếng Thái (Thái Lan)", slug: "thai-lan" },
+    { name: "Vietsub", slug: "vietsub" },
+    { name: "Thuyết Minh", slug: "thuyet-minh" },
+    { name: "Anime (Hoạt Hình)", slug: "anime" }
   ];
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["search", q, genre],
-    retry: false,
-    queryFn: async () => {
+  const [results, setResults] = useState<NormalizedMovie[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    setPage(1);
+    
+    const fetchFirstPage = async () => {
+      try {
+        let data: NormalizedMovie[] = [];
+        if (q.length >= 2) {
+          data = await movieApi.searchMovies(q, 1);
+        } else if (lang) {
+          if (lang === "anime") {
+            data = await movieApi.getByList("hoat-hinh", 1);
+          } else {
+            const countrySlugs = ["au-my", "han-quoc", "trung-quoc", "nhat-ban", "viet-nam", "thai-lan"];
+            if (countrySlugs.includes(lang)) {
+              data = await movieApi.getByCountry(lang, 1);
+            } else {
+              data = await movieApi.searchMovies(lang, 1);
+            }
+          }
+        } else {
+          data = await movieApi.getNewMovies(1);
+        }
+        setResults(data);
+        setHasMore(data.length >= 20);
+      } catch (err) {
+        console.error(err);
+        setResults([]);
+        setHasMore(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFirstPage();
+  }, [q, lang]);
+
+  const handleLoadMore = async () => {
+    const nextPage = page + 1;
+    setLoading(true);
+    try {
+      let data: NormalizedMovie[] = [];
       if (q.length >= 2) {
-        const results = await movieApi.searchMovies(q);
-        return { results };
+        data = await movieApi.searchMovies(q, nextPage);
+      } else if (lang) {
+        if (lang === "anime") {
+          data = await movieApi.getByList("hoat-hinh", nextPage);
+        } else {
+          const countrySlugs = ["au-my", "han-quoc", "trung-quoc", "nhat-ban", "viet-nam", "thai-lan"];
+          if (countrySlugs.includes(lang)) {
+            data = await movieApi.getByCountry(lang, nextPage);
+          } else {
+            data = await movieApi.searchMovies(lang, nextPage);
+          }
+        }
+      } else {
+        data = await movieApi.getNewMovies(nextPage);
       }
-      if (genre) {
-        const results = await movieApi.getByGenre(genre, 1);
-        return { results };
+      
+      if (data.length > 0) {
+        setResults((prev) => [...prev, ...data]);
+        setPage(nextPage);
+        setHasMore(data.length >= 20);
+      } else {
+        setHasMore(false);
       }
-      const results = await movieApi.getNewMovies(1);
-      return { results };
+    } catch (err) {
+      console.error(err);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
     }
-  });
-  
-  const results = data?.results ?? [];
-  const activeGenreName = genresList.find((g) => g.slug === genre)?.name;
+  };
+
+  const activeLanguageName = languagesList.find((l) => l.slug === lang)?.name;
 
   useEffect(() => {
     if (!hovered) return;
@@ -124,82 +185,130 @@ export function SearchPage() {
   }, [hovered?.anchor]);
 
   const handleOpen = (movie: MovieCardDto) => {
+    setHovered(null);
+    clearOpenTimer();
+    clearCloseTimer();
     openDetailModal(movie as NormalizedMovie, `search-${movie.id}`);
   };
 
   return (
     <main className="min-h-screen bg-[#141414] px-4 pt-28 pb-16 sm:px-8 md:px-14 lg:px-16">
-      <label className="flex max-w-2xl items-center gap-3 rounded-sm border border-white/35 bg-black/75 px-3 py-2 transition focus-within:border-white focus-within:bg-black/90">
-        <Search className="shrink-0 text-white/80" size={24} />
+      <label className="flex max-w-md items-center gap-2 rounded-full border border-white/20 bg-black/60 px-4 py-1.5 transition focus-within:border-white/50 focus-within:bg-black/85">
+        <Search className="shrink-0 text-white/60" size={18} />
         <input 
           value={q} 
           onChange={(e) => setSearchParams(e.target.value ? { q: e.target.value } : {})} 
           autoFocus 
-          placeholder="Titles, people, genres" 
-          className="w-full bg-transparent text-lg font-semibold outline-none placeholder:text-white/45 md:text-xl" 
+          placeholder="Titles, people, languages" 
+          className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-white/35 md:text-base" 
         />
       </label>
 
-      {/* Genre Pills */}
-      <div className="mt-6">
-        <p className="text-xs uppercase tracking-wider text-white/40 font-bold mb-3">Browse by Genre</p>
-        <div className="flex flex-wrap gap-2">
-          {genresList.map((g) => {
-            const isActive = genre === g.slug;
-            return (
-              <button
-                key={g.slug}
-                onClick={() => setSearchParams({ genre: g.slug })}
-                className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition duration-200 cursor-pointer ${
-                  isActive 
-                    ? "bg-[#e50914] text-white shadow-lg" 
-                    : "bg-white/10 text-white/80 hover:bg-white/15 hover:text-white"
-                }`}
+      {/* Language / Region Custom Dropdown */}
+      <div className="mt-6 flex flex-col gap-1.5" ref={dropdownRef}>
+        <span className="text-xs uppercase tracking-wider text-white/40 font-bold">Browse by Language / Region</span>
+        <div className="relative inline-block w-full sm:w-64">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex w-full items-center justify-between rounded border border-white/20 bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:border-white focus:outline-none cursor-pointer"
+          >
+            <span>{activeLanguageName ? activeLanguageName : "Tất cả ngôn ngữ / vùng"}</span>
+            <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          <AnimatePresence>
+            {isOpen && (
+              <motion.ul
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
+                className="absolute left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto rounded border border-white/10 bg-zinc-950 py-1.5 shadow-2xl backdrop-blur-md"
               >
-                {g.name}
-              </button>
-            );
-          })}
-          {genre && (
-            <button
-              onClick={() => setSearchParams({})}
-              className="px-4 py-2 rounded-full text-xs sm:text-sm font-semibold bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition duration-200 cursor-pointer border border-white/10"
-            >
-              Clear Filter
-            </button>
-          )}
+                <li
+                  onClick={() => {
+                    setSearchParams({});
+                    setIsOpen(false);
+                  }}
+                  className={`px-4 py-2 text-sm font-medium transition cursor-pointer hover:bg-white/15 hover:text-white ${!lang ? "text-[#e50914] font-bold" : "text-white/80"}`}
+                >
+                  Tất cả ngôn ngữ / vùng
+                </li>
+                {languagesList.map((l) => {
+                  const isSelected = lang === l.slug;
+                  return (
+                    <li
+                      key={l.slug}
+                      onClick={() => {
+                        setSearchParams({ lang: l.slug });
+                        setIsOpen(false);
+                      }}
+                      className={`px-4 py-2 text-sm font-medium transition cursor-pointer hover:bg-white/15 hover:text-white ${isSelected ? "text-[#e50914] font-bold" : "text-white/80"}`}
+                    >
+                      {l.name}
+                    </li>
+                  );
+                })}
+              </motion.ul>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       <h1 className="mt-10 text-2xl font-bold">
         {q.length > 1 
           ? `Search results for "${q}"` 
-          : genre 
-            ? `Category: ${activeGenreName}` 
+          : lang 
+            ? `Language / Region: ${activeLanguageName}` 
             : "Explore titles"
         }
       </h1>
 
-      {isLoading ? (
+      {loading && results.length === 0 ? (
         <div className="mt-10 text-center text-white/50">Loading titles...</div>
       ) : (
-        <div className="mt-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 md:gap-2">
-          {results.map((movie: NormalizedMovie) => (
-            <MovieTile
-              key={movie.id}
-              movie={movie as any}
-              className="group relative w-full cursor-pointer rounded-md transition"
-              onOpen={() => handleOpen(movie as any)}
-              onHover={(anchor) => {
-                clearCloseTimer();
-                clearOpenTimer();
-                openHoverTimer.current = window.setTimeout(() => {
-                  setHovered({ movie: movie as any, anchor, rect: anchor.getBoundingClientRect() });
-                }, 180);
-              }}
-              onHoverEnd={scheduleHoverClose}
-            />
-          ))}
+        <div className="flex flex-col gap-8">
+          <div className="mt-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 md:gap-2">
+            {results.map((movie: NormalizedMovie) => (
+              <motion.div
+                key={movie.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+                <MovieTile
+                  movie={movie as any}
+                  className="group relative w-full cursor-pointer rounded-md transition"
+                  onOpen={() => handleOpen(movie as any)}
+                  onHover={(anchor) => {
+                    clearCloseTimer();
+                    clearOpenTimer();
+                    openHoverTimer.current = window.setTimeout(() => {
+                      setHovered({ movie: movie as any, anchor, rect: anchor.getBoundingClientRect() });
+                    }, 180);
+                  }}
+                  onHoverEnd={scheduleHoverClose}
+                />
+              </motion.div>
+            ))}
+            {loading && Array.from({ length: 6 }).map((_, i) => (
+              <div 
+                key={`shimmer-${i}`} 
+                className="aspect-video w-full overflow-hidden rounded bg-zinc-800/40 animate-pulse border border-white/5 relative before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_1.5s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/5 before:to-transparent"
+              />
+            ))}
+          </div>
+          {!loading && hasMore && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={handleLoadMore}
+                className="flex items-center gap-2 px-6 py-2 rounded-full border border-white/20 bg-zinc-900/60 hover:bg-white hover:text-black hover:border-white text-white text-sm font-semibold transition-all duration-300 shadow-md cursor-pointer"
+              >
+                <span>Xem thêm</span>
+                <ChevronDown size={16} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 

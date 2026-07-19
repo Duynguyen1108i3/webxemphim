@@ -246,12 +246,12 @@ export const movieApi = {
     }
   },
 
-  async searchMovies(keyword: string) {
+  async searchMovies(keyword: string, page = 1) {
     if (getTmdbApiKey()) {
-      const data = await fetchTmdb<any>(`/search/multi?query=${encodeURIComponent(keyword)}`);
+      const data = await fetchTmdb<any>(`/search/multi?query=${encodeURIComponent(keyword)}&page=${page}`);
       return normalizeList(data?.results || []);
     } else {
-      const res = await fetch(`https://free1.phim4k.lol/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}`);
+      const res = await fetch(`https://free1.phim4k.lol/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=${page}`);
       if (!res.ok) return [];
       const data = await res.json();
       return normalizePhim4kList(data?.data?.items || [], data?.data?.APP_DOMAIN_CDN_IMAGE);
@@ -834,7 +834,7 @@ function normalizeCinemetaMovie(item: any): NormalizedMovie {
     backdropUrl,
     trailerUrl: null,
     releaseYear: year,
-    runtimeMinutes: 45,
+    runtimeMinutes: item.runtime ? parseInt(String(item.runtime).match(/\d+/)?.[0] || "45", 10) : 45,
     maturityRating: "PG_13",
     averageRating: rating,
     genres: Array.isArray(item.genres) ? item.genres.map((g: string) => ({ id: g, name: g, slug: slugify(g) })) : [],
@@ -870,7 +870,7 @@ function normalizeCinemetaEpisodes(videos: any[], movieSlug: string, synopsis: s
       id: video.id || `${movieSlug}-ep-${season}-${video.episode || video.number || 1}`,
       title: video.title || `Episode ${video.episode || video.number || 1}`,
       synopsis: synopsis,
-      runtimeMinutes: 45,
+      runtimeMinutes: video.runtime ? parseInt(String(video.runtime).match(/\d+/)?.[0] || "45", 10) : 45,
       posterUrl: video.thumbnail || "",
       seasonNumber: season,
       episodeNumber: video.episode || video.number || 1
@@ -982,6 +982,7 @@ function normalizePhim4kMovie(item: any, isDetail = false, imageCdnUrl?: unknown
   const backdropUrl = isDetail ? thumbUrl || posterUrl : posterUrl;
   const year = item.year || new Date().getFullYear();
   const rating = item.imdb?.vote_average ? parseFloat(item.imdb.vote_average) : 8.0;
+  const parsedRuntime = item.time ? (parseInt(item.time.match(/\d+/)?.[0] || "45", 10)) : 45;
 
   let seasons: any[] = [];
   if (Array.isArray(item.episodes)) {
@@ -996,7 +997,7 @@ function normalizePhim4kMovie(item: any, isDetail = false, imageCdnUrl?: unknown
             id: ep.slug || `${slug}-ep-${idx + 1}`,
             title: ep.name || `Tập ${idx + 1}`,
             synopsis: item.content || item.description || "Xem phim online chất lượng cao.",
-            runtimeMinutes: 45,
+            runtimeMinutes: parsedRuntime,
             posterUrl: backdropUrl,
             seasonNumber: season,
             episodeNumber: idx + 1
@@ -1024,7 +1025,7 @@ function normalizePhim4kMovie(item: any, isDetail = false, imageCdnUrl?: unknown
     backdropUrl,
     trailerUrl: null,
     releaseYear: year,
-    runtimeMinutes: 45,
+    runtimeMinutes: parsedRuntime,
     maturityRating: "PG_13",
     averageRating: rating,
     genres: Array.isArray(item.category) ? item.category.map((g: any) => ({ id: g.slug || g.name, name: g.name, slug: g.slug })) : [],
