@@ -107,7 +107,10 @@ export function VideoPlayer({
         onProgressRef.current(Math.floor(video.currentTime), Math.floor(video.duration), currentSource.currentEpisodeId, currentSource.title);
       }
     };
-  }, [onProgress, source]);
+  // This is intentionally unmount-only. Depending on the callback here makes
+  // each watch-history update run this cleanup again, causing a React update
+  // loop in the overlay.
+  }, []);
 
   // Listen to video ended event to automatically play next episode
   useEffect(() => {
