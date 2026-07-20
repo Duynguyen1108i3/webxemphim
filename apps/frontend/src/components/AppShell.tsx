@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, Lock, Menu, Search, UserCircle, X } from "lucide-react";
+import { Bell, Lock, Menu, Search, X, Sliders, ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -6,9 +6,8 @@ import { usePlaybackStore } from "../store/playbackStore";
 import { CinematicDetailModal } from "./CinematicDetailModal";
 import { CinematicPlayerOverlay } from "./CinematicPlayerOverlay";
 import { Footer } from "./Footer";
-import { useQuery } from "@tanstack/react-query";
 import { movieApi, type NormalizedMovie } from "../lib/movieApi";
-import { MovieRow, MovieTile, HoverPreview } from "./MovieRow";
+import { MovieTile, HoverPreview } from "./MovieRow";
 import { Button, Skeleton } from "@streamforge/ui";
 import type { MovieCardDto } from "@streamforge/shared-types";
 
@@ -25,6 +24,47 @@ export function AppShell() {
   const navigate = useNavigate();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchExpanded, setSearchExpanded] = useState(false);
+
+  const [glassness, setGlassness] = useState(() => {
+    const val = localStorage.getItem("system-glassness");
+    return val ? parseFloat(val) : 0.85;
+  });
+  const [ambientOpacity, setAmbientOpacity] = useState(() => {
+    const val = localStorage.getItem("system-ambient-opacity");
+    return val ? parseFloat(val) : 0.25;
+  });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  const toggleSettings = () => setSettingsOpen(!settingsOpen);
+
+  const handleGlassnessChange = (val: number) => {
+    setGlassness(val);
+    localStorage.setItem("system-glassness", String(val));
+    document.documentElement.style.setProperty("--system-glassness", String(val));
+  };
+
+  const handleAmbientOpacityChange = (val: number) => {
+    setAmbientOpacity(val);
+    localStorage.setItem("system-ambient-opacity", String(val));
+    document.documentElement.style.setProperty("--ambient-opacity", String(val));
+  };
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--system-glassness", String(glassness));
+    document.documentElement.style.setProperty("--ambient-opacity", String(ambientOpacity));
+  }, [glassness, ambientOpacity]);
+
+  // Click outside to close settings
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Initialize auth state on mount
   useEffect(() => {
@@ -153,8 +193,6 @@ export function AppShell() {
     }
   }, [initialized, user, activeMovieDetail, activePlayback, activeEpisodeId, navigate, location.search]);
 
-
-
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
     onScroll();
@@ -272,7 +310,7 @@ export function AppShell() {
       movieApi.searchMovies(q, 1)
         .then((results) => {
           setSearchResults(results);
-          setHasMoreSearch(results.length >= 20); // 20 is the default API page limit for TMDB, 24 for Phim4k
+          setHasMoreSearch(results.length >= 20);
         })
         .catch(() => setSearchResults([]))
         .finally(() => setIsSearching(false));
@@ -415,7 +453,7 @@ export function AppShell() {
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-col items-center gap-6"
         >
-          <span className="brand-logo text-3xl font-black text-[#e50914] tracking-tighter sm:text-4xl">STREAMFORGE</span>
+          <span className="brand-logo text-2xl font-black text-[#e50914] tracking-tighter sm:text-3xl">RytoxGroup</span>
           <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#e50914]/20 border-t-[#e50914]" />
           <p className="text-xs font-semibold text-white/35 tracking-[0.15em] uppercase animate-pulse">Đang kết nối...</p>
         </motion.div>
@@ -424,7 +462,6 @@ export function AppShell() {
   }
 
   if (!user) {
-    // Not authenticated — render nothing; the useEffect redirect to /login will fire
     return <div className="min-h-screen bg-[#141414]" />;
   }
 
@@ -438,67 +475,91 @@ export function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-[#141414] text-white">
+    <div className="min-h-screen bg-transparent text-white">
       {location.pathname === "/profile" ? (
         <header className="fixed inset-x-0 top-0 z-50 flex h-[68px] items-center px-4 sm:px-8 md:px-14 lg:px-16 bg-gradient-to-b from-black/60 to-transparent">
-          <span className="brand-logo text-base font-black tracking-tight text-[#e50914] sm:text-xl md:text-2xl select-none">STREAMFORGE</span>
+          <span className="brand-logo text-xs font-black tracking-tight text-[#e50914] sm:text-sm md:text-base select-none">RytoxGroup</span>
         </header>
       ) : (
-        <header className={`fixed inset-x-0 top-0 z-50 flex h-[68px] items-center justify-between px-4 transition-colors duration-500 ease-out sm:px-8 md:px-14 lg:px-16 ${scrolled ? "bg-[#141414] shadow-lg shadow-black/30" : "bg-gradient-to-b from-black/90 via-black/40 to-transparent"}`}>
+        <header 
+          className={`fixed inset-x-0 top-0 z-50 flex h-[68px] items-center justify-between px-4 sm:px-8 md:px-14 lg:px-16 liquid-glass-header ${scrolled ? "scrolled" : ""}`}
+        >
           <div className="flex items-center gap-2 sm:gap-7">
             {/* Hamburger menu button for mobile */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="nf-icon md:hidden rounded-full p-1.5 hover:bg-white/10"
+              className="nf-icon md:hidden rounded-full hover:bg-white/10"
               aria-label="Open navigation menu"
             >
               <Menu size={22} />
             </button>
             
-            <NavLink to="/" className={`brand-logo text-base font-black tracking-tight text-[#e50914] sm:text-xl md:text-2xl ${searchExpanded ? "hidden md:block" : ""}`}>STREAMFORGE</NavLink>
-            <nav className="hidden items-center gap-5 text-sm font-medium text-white/75 md:flex">
-              <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Home</NavLink>
-              <NavLink to="/tv-shows" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Shows</NavLink>
-              <NavLink to="/movies" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Movies</NavLink>
-              <NavLink to="/anime" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Anime</NavLink>
-              <NavLink to="/new-popular" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>New & Popular</NavLink>
-              <NavLink to="/my-list" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>My List</NavLink>
-              <NavLink to="/search" className={({ isActive }) => `nav-link ${isActive ? "text-white after:scale-x-100" : "hover:text-white"}`}>Browse by Languages</NavLink>
+            <NavLink to="/" className={`brand-logo text-xs font-black tracking-tight text-[#e50914] sm:text-sm md:text-base ${searchExpanded ? "hidden md:block" : ""}`}>RytoxGroup</NavLink>
+            <nav className={`hidden items-center gap-2 text-sm font-semibold bg-white/5 border border-white/10 p-1.5 rounded-full backdrop-blur-md shadow-inner relative whitespace-nowrap ${searchExpanded ? "xl:flex" : "md:flex"}`}>
+              {[
+                { to: "/", label: "Home" },
+                { to: "/tv-shows", label: "Shows" },
+                { to: "/movies", label: "Movies" },
+                { to: "/anime", label: "Anime" },
+                { to: "/new-popular", label: "New & Popular" },
+                { to: "/my-list", label: "My List" },
+                { to: "/search", label: "Browse by Languages" },
+              ].map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className="relative px-5 py-2.5 rounded-full transition-colors duration-300 z-10 select-none text-white/70 hover:text-white"
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <motion.div
+                          layoutId="active-nav-pill"
+                          className="absolute inset-0 bg-white/15 border border-white/20 rounded-full shadow-[0_3px_12px_rgba(229,9,20,0.18)] z-[-1]"
+                          style={{
+                            backdropFilter: "blur(20px) saturate(180%)",
+                            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                          }}
+                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        />
+                      )}
+                      <span className={isActive ? "text-white font-bold" : ""}>{item.label}</span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
             </nav>
           </div>
-          <nav className={`flex items-center gap-1.5 text-sm font-medium text-white md:gap-5 ${searchExpanded ? "flex-1 justify-end" : ""}`}>
+          <nav className="flex items-center gap-2.5 text-sm font-semibold text-white">
             {/* Inline Expanding Search Bar */}
-            <div
-              onMouseEnter={() => {
-                setSearchExpanded(true);
-                setTimeout(() => searchInputRef.current?.focus(), 50);
-              }}
-              onMouseLeave={() => {
-                if (document.activeElement !== searchInputRef.current && !localQ) {
-                  setSearchExpanded(false);
-                }
-              }}
-              className="flex items-center justify-end h-[36px]"
-            >
+            <div className="search-container">
               <motion.div
                 initial={false}
                 animate={{
-                  width: searchExpanded ? 240 : 36,
-                  borderColor: searchExpanded ? "rgba(255, 255, 255, 0.4)" : "rgba(255, 255, 255, 0)",
-                  backgroundColor: searchExpanded ? "rgba(0, 0, 0, 0.75)" : "rgba(255, 255, 255, 0)",
-                  paddingLeft: searchExpanded ? 10 : 7,
-                  paddingRight: searchExpanded ? 10 : 7,
-                  borderRadius: searchExpanded ? "6px" : "9999px",
+                  width: searchExpanded ? 270 : "100%",
+                  borderColor: searchExpanded ? "rgba(255, 255, 255, 0.22)" : "rgba(255, 255, 255, 0.12)",
+                  paddingLeft: searchExpanded ? 12 : 0,
+                  paddingRight: searchExpanded ? 12 : 0,
                 }}
                 whileHover={{
-                  backgroundColor: searchExpanded ? "rgba(0, 0, 0, 0.85)" : "rgba(255, 255, 255, 0.1)"
+                  scale: searchExpanded ? 1 : 1.04,
+                  y: searchExpanded ? 0 : -2,
                 }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="flex items-center gap-1.5 h-full rounded border select-none overflow-hidden cursor-pointer"
+                onMouseEnter={() => {
+                  setSearchExpanded(true);
+                  setTimeout(() => searchInputRef.current?.focus(), 50);
+                }}
+                onMouseLeave={() => {
+                  if (document.activeElement !== searchInputRef.current && !localQ) {
+                    setSearchExpanded(false);
+                  }
+                }}
+                className={`absolute right-0 top-0 z-20 flex h-full items-center gap-1.5 overflow-hidden rounded-full border select-none cursor-pointer glass-search ${searchExpanded ? "px-3.5" : "justify-center"}`}
               >
                 <Search
                   size={22}
-                  className="text-white/80 shrink-0 cursor-pointer p-0.5 hover:scale-105 active:scale-95 transition-transform"
+                  className="text-white/80 shrink-0 cursor-pointer hover:scale-105 active:scale-95 transition-transform"
                   onClick={() => {
                     setSearchExpanded(!searchExpanded);
                     if (!searchExpanded) {
@@ -548,35 +609,95 @@ export function AppShell() {
             </div>
 
             {/* Kids Mode Link */}
-            <NavLink to="/search" className="hidden lg:block text-sm font-semibold hover:underline">Kids</NavLink>
+            <NavLink to="/search" className="glass-capsule hidden lg:flex items-center justify-center px-5">Kids</NavLink>
+
+            {/* Liquid Glass Settings Slider Button */}
+            <div ref={settingsRef} className="relative">
+              <button
+                onClick={toggleSettings}
+                className={`glass-capsule glass-capsule--icon ${settingsOpen ? "active" : ""}`}
+                aria-label="Liquid Glass Settings"
+              >
+                <Sliders size={22} />
+              </button>
+              
+              <AnimatePresence>
+                {settingsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
+                    className="absolute right-0 top-full mt-2 w-64 rounded-2xl liquid-glass p-4 shadow-2xl z-50"
+                  >
+                    <h4 className="text-sm font-bold text-white mb-3">Liquid Glass Controls</h4>
+                    <div className="space-y-4">
+                      {/* Glass Transparency Slider */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs text-white/60">
+                          <span>Glass Transparency</span>
+                          <span className="font-bold text-white">{Math.round(glassness * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.1"
+                          max="1"
+                          step="0.05"
+                          value={glassness}
+                          onChange={(e) => handleGlassnessChange(parseFloat(e.target.value))}
+                          className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-[#e50914]"
+                        />
+                      </div>
+                      
+                      {/* Background Ambient Reflection Glow Opacity Slider */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs text-white/60">
+                          <span>Ambient Background</span>
+                          <span className="font-bold text-white">{Math.round(ambientOpacity * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          value={ambientOpacity}
+                          onChange={(e) => handleAmbientOpacityChange(parseFloat(e.target.value))}
+                          className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-[#e50914]"
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Live Updates Notification Bell Icon */}
             <div ref={notificationRef} className="relative">
               <button
                 onClick={toggleNotification}
-                className="nf-icon relative rounded-full p-1.5 hover:bg-white/10"
+                className={`glass-capsule glass-capsule--icon ${notificationOpen ? "active" : ""}`}
                 aria-label="Notifications"
               >
                 <Bell size={22} />
                 {hasNotification && (
-                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#e50914] animate-pulse" />
+                  <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#e50914] animate-pulse" />
                 )}
               </button>
               
               <AnimatePresence>
                 {notificationOpen && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    initial={{ opacity: 0, scale: 0.96, y: 8 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="absolute right-0 mt-3 w-80 rounded border border-white/10 bg-black/95 py-2 shadow-2xl z-50 backdrop-blur-md"
+                    exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
+                    className="absolute right-0 top-full mt-2 w-80 rounded-2xl liquid-glass py-2 shadow-2xl z-50"
                   >
                     <div className="px-4 py-2 border-b border-white/10 text-xs font-bold text-white/50 uppercase tracking-wider">
                       Phim Mới Cập Nhật
                     </div>
                     {latestMovies.length > 0 ? (
-                      <div className="max-h-80 overflow-y-auto">
+                      <div className="max-h-80 overflow-y-auto font-sans">
                         {latestMovies.map((movie) => (
                           <button
                             key={movie.slug}
@@ -609,22 +730,22 @@ export function AppShell() {
             </div>
 
             {/* Profile Dropdown */}
-            <div ref={profileRef} className="relative py-2">
+            <div ref={profileRef} className="relative">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsProfileOpen(!isProfileOpen);
                 }}
-                className="flex items-center gap-1.5 focus:outline-none cursor-pointer"
+                className={`glass-capsule pl-2 pr-3 rounded-full flex items-center gap-2 ${isProfileOpen ? "active" : ""}`}
                 aria-label="Profile Menu"
               >
-                <span className={`grid h-8 w-8 place-items-center rounded bg-gradient-to-br ${
+                <span className={`grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br ${
                   profileId === "Kids" ? "from-yellow-400 to-orange-500" :
                   profileId === "Guest" ? "from-purple-500 to-pink-500" :
                   profileId === "Private" ? "from-zinc-600 to-zinc-900" :
                   "from-blue-500 to-cyan-300"
                 }`}>
-                  {profileId === "Private" ? <Lock size={14} className="text-white/80" /> : <span className="text-sm font-black text-white">{profileId ? profileId[0].toUpperCase() : (user?.username ? user.username[0].toUpperCase() : "M")}</span>}
+                  {profileId === "Private" ? <Lock size={12} className="text-white/80" /> : <span className="text-xs font-black text-white">{profileId ? profileId[0].toUpperCase() : (user?.username ? user.username[0].toUpperCase() : "M")}</span>}
                 </span>
                 <span className={`border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 ${isProfileOpen ? "rotate-180" : ""}`} />
               </button>
@@ -632,11 +753,11 @@ export function AppShell() {
               <AnimatePresence>
                 {isProfileOpen && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    initial={{ opacity: 0, scale: 0.96, y: 8 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                    transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="absolute right-0 top-full mt-1 w-52 origin-top-right rounded border border-white/10 bg-black/95 py-2 shadow-2xl backdrop-blur-md z-[120]"
+                    exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
+                    className="absolute right-0 top-full mt-2 w-52 origin-top-right overflow-hidden rounded-2xl liquid-glass py-2 shadow-2xl z-[120]"
                   >
                     {/* Profile List */}
                     <div className="flex flex-col gap-1 px-2 py-1">
@@ -696,7 +817,7 @@ export function AppShell() {
         </header>
       )}
       {q.length > 1 ? (
-        <main className="bg-[#141414] min-h-screen pt-28 pb-16 px-4 sm:px-8 md:px-14 lg:px-16">
+        <main className="bg-transparent min-h-screen pt-28 pb-16 px-4 sm:px-8 md:px-14 lg:px-16">
           <h1 className="text-2xl font-bold mb-6 text-white/50">Search results for "{q}"</h1>
           {isSearching ? (
             <div className="flex gap-3 overflow-hidden">
@@ -783,7 +904,7 @@ export function AppShell() {
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               <div className="flex items-center justify-between">
-                <span className="brand-logo text-xl font-black text-[#e50914] tracking-tight">STREAMFORGE</span>
+                <span className="brand-logo text-xl font-black text-[#e50914] tracking-tight">RytoxGroup</span>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="nf-icon rounded-full p-2 hover:bg-white/10 text-white/70 hover:text-white"
@@ -817,8 +938,6 @@ export function AppShell() {
                     </span>
                     <span>Chuyển hồ sơ ({profileId || "Main"})</span>
                   </button>
-                  
-
 
                   <button 
                     onClick={() => {

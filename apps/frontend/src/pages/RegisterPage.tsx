@@ -136,18 +136,19 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-black bg-[url('https://assets.nflxext.com/ffe/siteui/vlv3/ca6a761f-bd50-44d5-be40-699a737c9d4e/web_translate/VN-vi-20260120-trifectadaily-perspective_alpha_website_large.jpg')] bg-cover bg-center bg-no-repeat select-none">
-      {/* Radial overlay */}
-      <div className="absolute inset-0 bg-black/50 bg-gradient-to-t from-black via-black/40 to-black/70" />
+    <div className="relative min-h-screen w-full bg-transparent select-none">
+      {/* Background Image with opacity to let ambient background show through */}
+      <div className="absolute inset-0 bg-[url('https://assets.nflxext.com/ffe/siteui/vlv3/ca6a761f-bd50-44d5-be40-699a737c9d4e/web_translate/VN-vi-20260120-trifectadaily-perspective_alpha_website_large.jpg')] bg-cover bg-center bg-no-repeat opacity-40 -z-10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/70 -z-10" />
 
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between px-6 py-6 sm:px-12">
-        <span className="brand-logo text-3xl font-black text-[#e50914] tracking-tighter">STREAMFORGE</span>
+        <span className="brand-logo text-2xl font-black text-[#e50914] tracking-tighter">RytoxGroup</span>
       </header>
 
       {/* Center card */}
       <main className="relative z-10 flex min-h-[calc(100vh-92px)] items-center justify-center p-4">
-        <div className="w-full max-w-[450px] rounded-md bg-black/75 px-6 py-12 sm:px-16 sm:py-16 backdrop-blur-sm border border-white/5 shadow-2xl">
+        <div className="w-full max-w-[450px] rounded-2xl liquid-glass px-6 py-12 sm:px-16 sm:py-16 shadow-2xl">
           <h1 className="text-3xl font-bold text-white mb-7">Đăng Ký</h1>
 
           {error && (
@@ -169,7 +170,7 @@ export function RegisterPage() {
                     if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
                   }}
                   placeholder="Địa chỉ Email"
-                  className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.email ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} pl-5 pr-20 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
+                  className={`w-full h-14 rounded-xl glass-input border ${fieldErrors.email ? "border-red-500" : "border-zinc-700/50"} pl-5 pr-20 text-white placeholder-zinc-400 focus:outline-none transition-all`}
                   required
                 />
                 <button
@@ -199,7 +200,7 @@ export function RegisterPage() {
                     if (fieldErrors.otp) setFieldErrors(prev => ({ ...prev, otp: undefined }));
                   }}
                   placeholder="Nhập mã OTP (6 chữ số)"
-                  className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.otp ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all font-semibold tracking-widest text-center text-lg`}
+                  className={`w-full h-14 rounded-xl glass-input border ${fieldErrors.otp ? "border-red-500" : "border-zinc-700/50"} px-5 text-white placeholder-zinc-400 focus:outline-none transition-all font-semibold tracking-widest text-center text-lg`}
                   required
                 />
                 {fieldErrors.otp && (
@@ -221,7 +222,7 @@ export function RegisterPage() {
                   if (fieldErrors.username) setFieldErrors(prev => ({ ...prev, username: undefined }));
                 }}
                 placeholder="Tên tài khoản (username)"
-                className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.username ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
+                className={`w-full h-14 rounded-xl glass-input border ${fieldErrors.username ? "border-red-500" : "border-zinc-700/50"} px-5 text-white placeholder-zinc-400 focus:outline-none transition-all`}
                 required
               />
               {fieldErrors.username && (
@@ -239,14 +240,14 @@ export function RegisterPage() {
                   if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
                 }}
                 placeholder="Mật khẩu (tối thiểu 8 ký tự)"
-                className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.password ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
+                className={`w-full h-14 rounded-xl glass-input border ${fieldErrors.password ? "border-red-500" : "border-zinc-700/50"} px-5 text-white placeholder-zinc-400 focus:outline-none transition-all`}
                 required
               />
               {fieldErrors.password && (
                 <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.password}</p>
               )}
               {/* Password strength checklist */}
-              <div className="mt-2.5 p-3 rounded bg-zinc-900/60 border border-zinc-800/80 text-xs text-zinc-400 flex flex-col gap-1.5 select-none">
+              <div className="mt-2.5 p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 text-xs text-zinc-400 flex flex-col gap-1.5 select-none">
                 <p className="font-bold text-zinc-300 mb-0.5">Yêu cầu mật khẩu:</p>
                 <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
                   <div className="flex items-center gap-1.5">
@@ -293,7 +294,7 @@ export function RegisterPage() {
                   if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: undefined }));
                 }}
                 placeholder="Xác nhận mật khẩu"
-                className={`w-full h-14 rounded bg-zinc-800/80 border ${fieldErrors.confirmPassword ? "border-red-500 focus:ring-red-500/80" : "border-zinc-700 focus:ring-[#e50914]/80"} px-5 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
+                className={`w-full h-14 rounded-xl glass-input border ${fieldErrors.confirmPassword ? "border-red-500" : "border-zinc-700/50"} px-5 text-white placeholder-zinc-400 focus:outline-none transition-all`}
                 required
               />
               {fieldErrors.confirmPassword && (
@@ -304,7 +305,7 @@ export function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-4 flex h-12 w-full items-center justify-center rounded bg-[#e50914] font-bold text-white hover:bg-[#b20710] active:scale-95 transition disabled:opacity-50 cursor-pointer text-base"
+              className="mt-4 flex h-12 w-full items-center justify-center rounded-full bg-[#e50914] font-bold text-white hover:bg-[#b20710] hover:shadow-lg hover:shadow-red-950/20 active:scale-95 transition disabled:opacity-50 cursor-pointer text-base duration-300"
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Đăng Ký"}
             </button>

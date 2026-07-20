@@ -102,15 +102,17 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-black bg-[url('https://assets.nflxext.com/ffe/siteui/vlv3/ca6a761f-bd50-44d5-be40-699a737c9d4e/web_translate/VN-vi-20260120-trifectadaily-perspective_alpha_website_large.jpg')] bg-cover bg-center bg-no-repeat select-none">
-      <div className="absolute inset-0 bg-black/50 bg-gradient-to-t from-black via-black/40 to-black/70" />
+    <div className="relative min-h-screen w-full bg-transparent select-none">
+      {/* Background Image with opacity to let ambient background show through */}
+      <div className="absolute inset-0 bg-[url('https://assets.nflxext.com/ffe/siteui/vlv3/ca6a761f-bd50-44d5-be40-699a737c9d4e/web_translate/VN-vi-20260120-trifectadaily-perspective_alpha_website_large.jpg')] bg-cover bg-center bg-no-repeat opacity-40 -z-10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/70 -z-10" />
 
       <header className="relative z-10 flex items-center justify-between px-6 py-6 sm:px-12">
         <span className="brand-logo text-3xl font-black text-[#e50914] tracking-tighter">STREAMFORGE</span>
       </header>
 
       <main className="relative z-10 flex min-h-[calc(100vh-92px)] items-center justify-center p-4">
-        <div className="w-full max-w-[450px] rounded-md bg-black/75 px-6 py-12 sm:px-16 sm:py-16 backdrop-blur-sm border border-white/5 shadow-2xl">
+        <div className="w-full max-w-[450px] rounded-2xl liquid-glass px-6 py-12 sm:px-16 sm:py-16 shadow-2xl">
           <h1 className="text-3xl font-bold text-white mb-7">Khôi Phục Mật Khẩu</h1>
 
           {error && (

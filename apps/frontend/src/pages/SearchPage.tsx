@@ -192,8 +192,8 @@ export function SearchPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#141414] px-4 pt-28 pb-16 sm:px-8 md:px-14 lg:px-16">
-      <label className="flex max-w-md items-center gap-2 rounded-full border border-white/20 bg-black/60 px-4 py-1.5 transition focus-within:border-white/50 focus-within:bg-black/85">
+    <main className="min-h-screen bg-transparent px-4 pt-28 pb-16 sm:px-8 md:px-14 lg:px-16">
+      <label className="flex max-w-md items-center gap-2 rounded-full liquid-glass px-4 py-2 hover:brightness-110 focus-within:brightness-110 shadow-lg cursor-text">
         <Search className="shrink-0 text-white/60" size={18} />
         <input 
           value={q} 
@@ -210,7 +210,7 @@ export function SearchPage() {
         <div className="relative inline-block w-full sm:w-64">
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="flex w-full items-center justify-between rounded border border-white/20 bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:border-white focus:outline-none cursor-pointer"
+            className="flex w-full items-center justify-between rounded-xl glass-button px-4 py-2.5 text-sm font-semibold text-white focus:outline-none cursor-pointer"
           >
             <span>{activeLanguageName ? activeLanguageName : "Tất cả ngôn ngữ / vùng"}</span>
             <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -219,11 +219,11 @@ export function SearchPage() {
           <AnimatePresence>
             {isOpen && (
               <motion.ul
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15 }}
-                className="absolute left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto rounded border border-white/10 bg-zinc-950 py-1.5 shadow-2xl backdrop-blur-md"
+                initial={{ opacity: 0, scale: 0.96, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
+                className="absolute left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-2xl liquid-glass py-1.5 shadow-2xl"
               >
                 <li
                   onClick={() => {
@@ -278,7 +278,7 @@ export function SearchPage() {
               >
                 <MovieTile
                   movie={movie as any}
-                  className="group relative w-full cursor-pointer rounded-md transition"
+                  className="group relative w-full cursor-pointer rounded-[16px] transition"
                   onOpen={() => handleOpen(movie as any)}
                   onHover={(anchor) => {
                     clearCloseTimer();

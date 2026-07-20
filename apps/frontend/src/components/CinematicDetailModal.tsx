@@ -7,6 +7,7 @@ import { movieApi } from "../lib/movieApi";
 import { Badge, Button } from "@streamforge/ui";
 import { formatRuntime, getEpisodes } from "@streamforge/utils";
 import { MovieTile, HoverPreview } from "./MovieRow";
+import { ParallaxTilt } from "./ParallaxTilt";
 
 export function CinematicDetailModal() {
   const { activeMovieDetail, clickedElementId, closeDetailModal, openPlayback, myList, toggleMyList, activePlayback } = usePlaybackStore();
@@ -211,17 +212,17 @@ export function CinematicDetailModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex justify-center items-start overflow-y-auto bg-black/80 p-0 sm:p-4 sm:pt-10 backdrop-blur-[10px]"
+      className="fixed inset-0 z-[90] flex justify-center items-start overflow-y-auto bg-[#0a0a0a]/35 p-0 sm:p-4 sm:pt-10 backdrop-blur-[24px] saturate-[180%] transition-all duration-500 ease-out"
       onClick={closeDetailModal}
     >
       <motion.div
         ref={modalContainerRef}
-        className="relative mb-0 sm:mb-10 w-full max-w-4xl overflow-hidden rounded-none sm:rounded-lg bg-[#181818] text-white shadow-[0_28px_90px_rgba(0,0,0,.75)] focus:outline-none"
+        className="relative mb-0 sm:mb-10 w-full max-w-4xl overflow-hidden rounded-none sm:rounded-2xl liquid-glass text-white shadow-[0_28px_90px_rgba(0,0,0,.75)] focus:outline-none"
         onClick={(event) => event.stopPropagation()}
-        initial={{ opacity: 0, scale: 0.94, y: 20 }}
+        initial={{ opacity: 0, scale: 0.96, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 20 }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        exit={{ opacity: 0, scale: 0.96, y: 15 }}
+        transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
         tabIndex={0}
       >
         {/* Sticky Header Top Navigation inside Modal */}
@@ -231,7 +232,7 @@ export function CinematicDetailModal() {
           </span>
           <button
             onClick={closeDetailModal}
-            className="nf-icon grid h-9 w-9 place-items-center rounded-full bg-black/60 text-white transition hover:bg-white/20 pointer-events-auto focus:ring-2 focus:ring-white/70 focus:outline-none"
+            className="nf-icon glass-button grid h-9 w-9 place-items-center rounded-full text-white pointer-events-auto focus:ring-2 focus:ring-white/70 focus:outline-none"
             aria-label="Close details"
           >
             <X size={20} className="transition-transform duration-200 hover:rotate-90" />
@@ -289,7 +290,7 @@ export function CinematicDetailModal() {
                 <Button
                   variant="ghost"
                   onClick={() => toggleMyList(displayMovie)}
-                  className="nf-icon h-11 w-11 rounded-full border border-white/20 bg-black/40 p-0 hover:border-white hover:bg-white/10"
+                  className="nf-icon glass-button h-11 w-11 rounded-full p-0"
                   aria-label="Add to list"
                 >
                   <motion.div animate={{ rotate: inMyList ? 360 : 0 }}>
@@ -300,7 +301,7 @@ export function CinematicDetailModal() {
                 <Button
                   variant="ghost"
                   onClick={handleLike}
-                  className="nf-icon h-11 w-11 rounded-full border border-white/20 bg-black/40 p-0 hover:border-white hover:bg-white/10"
+                  className="nf-icon glass-button h-11 w-11 rounded-full p-0"
                   aria-label="Like this"
                 >
                   <ThumbsUp size={16} className={liked ? "fill-white text-[#46d369]" : ""} />
@@ -309,7 +310,7 @@ export function CinematicDetailModal() {
                 <Button
                   variant="ghost"
                   onClick={handleDislike}
-                  className="nf-icon h-11 w-11 rounded-full border border-white/20 bg-black/40 p-0 hover:border-white hover:bg-white/10"
+                  className="nf-icon glass-button h-11 w-11 rounded-full p-0"
                   aria-label="Dislike this"
                 >
                   <ThumbsDown size={16} className={disliked ? "fill-white text-[#e50914]" : ""} />
@@ -320,7 +321,7 @@ export function CinematicDetailModal() {
               <Button
                 variant="ghost"
                 onClick={() => setIsMuted(!isMuted)}
-                className="nf-icon h-10 w-10 rounded-full border border-white/25 bg-black/40 p-0 hover:border-white"
+                className="nf-icon glass-button h-10 w-10 rounded-full p-0"
                 aria-label={isMuted ? "Unmute preview" : "Mute preview"}
               >
                 {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
@@ -467,28 +468,29 @@ export function CinematicDetailModal() {
             <h4 className="mb-4 text-xl font-black md:text-2xl">More Like This</h4>
             <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:gap-2">
               {similarTitles.map((item) => (
-                <MovieTile
-                  key={item.id}
-                  movie={item as any}
-                  className="group relative w-full cursor-pointer rounded-md transition"
-                  onOpen={() => {
-                    if (modalContainerRef.current) {
-                      modalContainerRef.current.scrollTop = 0;
-                    }
-                    usePlaybackStore.getState().openDetailModal(item as any, `card-${item.id}`);
-                  }}
-                  onHover={(anchor) => {
-                    if (typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0)) {
-                      return;
-                    }
-                    clearCloseTimer();
-                    clearOpenTimer();
-                    openHoverTimer.current = window.setTimeout(() => {
-                      setHovered({ movie: item as any, anchor, rect: anchor.getBoundingClientRect() });
-                    }, 180);
-                  }}
-                  onHoverEnd={scheduleHoverClose}
-                />
+                <ParallaxTilt key={item.id} maxTilt={6}>
+                  <MovieTile
+                    movie={item as any}
+                    className="group relative w-full cursor-pointer rounded-md transition"
+                    onOpen={() => {
+                      if (modalContainerRef.current) {
+                        modalContainerRef.current.scrollTop = 0;
+                      }
+                      usePlaybackStore.getState().openDetailModal(item as any, `card-${item.id}`);
+                    }}
+                    onHover={(anchor) => {
+                      if (typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0)) {
+                        return;
+                      }
+                      clearCloseTimer();
+                      clearOpenTimer();
+                      openHoverTimer.current = window.setTimeout(() => {
+                        setHovered({ movie: item as any, anchor, rect: anchor.getBoundingClientRect() });
+                      }, 180);
+                    }}
+                    onHoverEnd={scheduleHoverClose}
+                  />
+                </ParallaxTilt>
               ))}
             </div>
             {allSimilarTitles.length > 6 && (

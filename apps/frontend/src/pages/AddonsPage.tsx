@@ -220,7 +220,7 @@ export function AddonsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#111] text-white pt-24 pb-20 select-none">
+    <div className="min-h-screen bg-transparent text-white pt-24 pb-20 select-none">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         
         {/* Intro Header banner */}
@@ -648,7 +648,7 @@ export function AddonsPage() {
           onClick={() => setSelectedAddon(null)}
         >
           <div 
-            className="w-full max-w-2xl rounded-2xl border border-white/10 bg-zinc-900/95 p-6 sm:p-8 backdrop-blur-md shadow-2xl relative animate-in zoom-in-95 duration-200"
+            className="w-full max-w-2xl rounded-2xl liquid-glass p-6 sm:p-8 shadow-2xl relative animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header info */}
@@ -779,12 +779,12 @@ export function AddonsPage() {
         {toasts.map(toast => (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-center gap-3 px-5 py-3 rounded-xl border shadow-2xl backdrop-blur-md text-sm font-bold animate-in slide-in-from-right duration-300 ${
+            className={`pointer-events-auto flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl liquid-glass text-sm font-bold animate-in slide-in-from-right duration-300 ${
               toast.type === "success"
-                ? "bg-green-950/90 border-green-500/30 text-green-400"
+                ? "border-green-500/30 text-green-400"
                 : toast.type === "error"
-                ? "bg-red-950/90 border-red-500/30 text-red-400"
-                : "bg-zinc-900/90 border-zinc-700 text-zinc-300"
+                ? "border-red-500/30 text-red-400"
+                : "border-zinc-700 text-zinc-300"
             }`}
           >
             {toast.type === "success" && <CheckCircle2 size={16} />}

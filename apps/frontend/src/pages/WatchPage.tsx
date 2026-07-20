@@ -15,7 +15,7 @@ export function WatchPage() {
   const title = data?.title ?? id ?? "Now Playing";
 
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen bg-transparent text-white">
       <div className="absolute left-4 top-4 z-20">
         <Link to="/" className="inline-flex h-11 items-center justify-center gap-2 rounded bg-black/45 px-4 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/70">
           <ArrowLeft size={18} /> Back

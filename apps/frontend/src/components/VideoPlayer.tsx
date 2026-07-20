@@ -599,7 +599,7 @@ export function VideoPlayer({
               e.stopPropagation();
               toggle();
             }}
-            className="grid h-20 w-20 place-items-center rounded-full bg-black/60 text-white border border-white/20 backdrop-blur-sm pointer-events-auto hover:scale-110 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+            className="grid h-20 w-20 place-items-center rounded-full glass-button pointer-events-auto focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
             aria-label="Play video"
           >
             <Play size={36} fill="currentColor" className="ml-1 text-white" />
@@ -640,23 +640,23 @@ export function VideoPlayer({
         <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 w-full">
           <div className="flex flex-wrap items-center gap-1.5 md:gap-3">
             {/* Play/Pause */}
-            <Button onClick={toggle} className="h-10 w-10 md:h-12 md:w-12 rounded-full p-0 shrink-0" aria-label={playing ? "Pause" : "Play"}>
+            <Button onClick={toggle} className="h-10 w-10 md:h-12 md:w-12 rounded-full p-0 shrink-0 glass-button" aria-label={playing ? "Pause" : "Play"}>
               {playing ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
             </Button>
             
             {/* Rewind 10s */}
-            <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0" aria-label="Rewind 10 seconds">
+            <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label="Rewind 10 seconds">
               <RotateCcw size={16} />
             </Button>
 
             {/* Forward 10s */}
-            <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0" aria-label="Forward 10 seconds">
+            <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label="Forward 10 seconds">
               <RotateCw size={16} />
             </Button>
 
             {/* Next Episode */}
             {hasNextEpisode && onNextEpisode && (
-              <Button variant="ghost" onClick={onNextEpisode} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#46d369] shrink-0" aria-label="Next Episode">
+              <Button variant="ghost" onClick={onNextEpisode} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#46d369] shrink-0 glass-button" aria-label="Next Episode">
                 <SkipForward size={18} fill="currentColor" />
               </Button>
             )}
@@ -670,7 +670,7 @@ export function VideoPlayer({
 
             {/* Volume bar */}
             <div className="flex items-center gap-1.5 md:gap-2 ml-1">
-              <Button variant="ghost" onClick={toggleMute} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0" aria-label={muted ? "Unmute" : "Mute"}>
+              <Button variant="ghost" onClick={toggleMute} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label={muted ? "Unmute" : "Mute"}>
                 {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </Button>
               <input
@@ -693,17 +693,17 @@ export function VideoPlayer({
 
           <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
             {/* Speed selection */}
-            <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} className="rounded bg-white/10 border border-white/10 px-1 py-1 sm:px-2 sm:py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-1 focus:ring-white">
+            <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} className="rounded-lg liquid-glass px-1 py-1 sm:px-2 sm:py-2 text-xs sm:text-sm text-white focus:outline-none">
               {[0.5, 1, 1.25, 1.5, 2].map((value) => <option key={value} value={value} className="bg-zinc-900">{value}x</option>)}
             </select>
             
             {/* Picture-in-Picture */}
-            <Button variant="ghost" onClick={() => videoRef.current?.requestPictureInPicture()} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 flex items-center justify-center" aria-label="Picture in picture">
+            <Button variant="ghost" onClick={() => videoRef.current?.requestPictureInPicture()} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 flex items-center justify-center glass-button" aria-label="Picture in picture">
               <PictureInPicture2 size={16} />
             </Button>
             
             {/* Fullscreen */}
-            <Button variant="ghost" onClick={handleFullscreen} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#e50914]" aria-label="Fullscreen">
+            <Button variant="ghost" onClick={handleFullscreen} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#e50914] glass-button" aria-label="Fullscreen">
               <Maximize size={20} />
             </Button>
           </div>

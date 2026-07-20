@@ -75,7 +75,7 @@ export function MyListPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#141414] px-4 pt-28 pb-12 sm:px-8 md:px-14 lg:px-16">
+    <main className="min-h-screen bg-transparent px-4 pt-28 pb-12 sm:px-8 md:px-14 lg:px-16">
       <h1 className="text-3xl font-bold tracking-tight text-white mb-8">My List</h1>
       
       {myList.length > 0 ? (
@@ -84,7 +84,7 @@ export function MyListPage() {
             <MovieTile
               key={movie.id}
               movie={movie as any}
-              className="group relative w-full cursor-pointer rounded-md transition"
+              className="group relative w-full cursor-pointer rounded-[16px] transition"
               onOpen={() => handleOpen(movie as any)}
               onHover={(anchor) => {
                 clearCloseTimer();

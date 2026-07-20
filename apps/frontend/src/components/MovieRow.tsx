@@ -7,6 +7,7 @@ import { Badge, Button } from "@streamforge/ui";
 import { formatRuntime } from "@streamforge/utils";
 import type { NormalizedMovie } from "../lib/movieApi";
 import { usePlaybackStore } from "../store/playbackStore";
+import { ParallaxTilt } from "./ParallaxTilt";
 
 function createFallbackImage(title: string) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#1f1f1f"/><stop offset=".55" stop-color="#111"/><stop offset="1" stop-color="#2a0d10"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><rect width="1280" height="720" fill="#000" opacity=".22"/></svg>`;
@@ -166,6 +167,22 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
         viewport={{ once: true, margin: "-8% 0px" }}
         transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
       >
+        {/* Dynamic ambient background reflection of the row's movie posters */}
+        <div 
+          className="absolute inset-0 -z-10 pointer-events-none overflow-hidden blur-[90px] saturate-[160%] select-none scale-[1.05] transition-all duration-700"
+          style={{ opacity: "var(--ambient-opacity, 0.25)" }}
+        >
+          <div className="flex gap-4">
+            {items.slice(0, 10).map((movie) => (
+              <img
+                key={`bg-${movie.id}`}
+                src={movie.posterUrl || movie.backdropUrl}
+                alt=""
+                className="w-40 aspect-[2/3] object-cover rounded-md shrink-0"
+              />
+            ))}
+          </div>
+        </div>
         <h2 className="text-lg font-bold text-white md:text-xl">{title}</h2>
         
         {/* Row Container with hover group for arrows */}
@@ -276,10 +293,10 @@ export const MovieTile = React.memo(function MovieTile({
 
   return (
     <motion.article
-      whileHover={{ y: -2, scale: 1.01 }}
+      whileHover={{ y: -4, scale: 1.015 }}
       whileTap={{ scale: 0.98 }}
       transition={{ type: "spring", stiffness: 280, damping: 30, mass: 0.7 }}
-      className={className || "group relative z-10 w-[148px] shrink-0 rounded-md transition sm:w-[180px] md:w-[214px] lg:w-[238px]"}
+      className={className || "group relative z-10 w-[148px] shrink-0 rounded-[16px] transition sm:w-[180px] md:w-[214px] lg:w-[238px]"}
       onMouseEnter={(event) => onHover(event.currentTarget)}
       onPointerEnter={(event) => onHover(event.currentTarget)}
       onMouseLeave={onHoverEnd}
@@ -287,11 +304,11 @@ export const MovieTile = React.memo(function MovieTile({
       onFocus={(event) => onHover(event.currentTarget)}
       onBlur={onHoverEnd}
     >
-      <button onClick={onOpen} className="relative block w-full overflow-hidden rounded-md bg-zinc-900 text-left focus:outline-none focus:ring-2 focus:ring-white/70" aria-label={`Open ${movie.title}`}>
+      <button onClick={onOpen} className="movie-card relative block w-full overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-white/70" aria-label={`Open ${movie.title}`}>
         <img src={movie.backdropUrl || movie.posterUrl} alt={movie.title} loading="lazy" onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover transition duration-500 group-hover:brightness-90" />
         {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-700 z-10">
-            <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />
+          <div className="absolute bottom-1.5 left-2.5 right-2.5 h-1 rounded-full bg-zinc-700/50 z-10 overflow-hidden">
+            <div className="h-full bg-[#e50914] rounded-full shadow-[0_0_6px_#e50914]" style={{ width: `${(movie as any).progress}%` }} />
           </div>
         )}
         {rank && <span className="absolute -left-1 bottom-0 text-[4rem] font-black leading-none text-black/70 [-webkit-text-stroke:1.5px_rgba(255,255,255,.72)] md:text-[5.5rem]">{rank}</span>}
@@ -350,78 +367,80 @@ export const HoverPreview = React.memo(function HoverPreview({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <motion.article
-        initial={{ opacity: 0, scale: 0.9, y: 18 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 8 }}
-        transition={{ type: "spring", stiffness: 300, damping: 34, mass: 0.72 }}
-        className="overflow-hidden rounded-md bg-[#181818] text-white shadow-[0_22px_64px_rgba(0,0,0,.78)] will-change-transform"
-        style={{ transformOrigin: "center top" }}
-      >
-        <div className="relative w-full overflow-hidden bg-zinc-950 text-left">
-          <button onClick={onOpen} className="block w-full text-left relative" aria-label={`Open ${movie.title} preview`}>
-            <img src={movie.backdropUrl || movie.posterUrl} alt={movie.title} onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover" />
-            {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
-              <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-zinc-700 z-10">
-                <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />
-              </div>
+      <ParallaxTilt maxTilt={8}>
+        <motion.article
+          initial={{ opacity: 0, scale: 0.9, y: 18 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 8 }}
+          transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.8 }}
+          className="liquid-glass overflow-hidden rounded-md text-white shadow-[0_22px_64px_rgba(0,0,0,.78)] will-change-transform"
+          style={{ transformOrigin: "center top", transformStyle: "preserve-3d" }}
+        >
+          <div className="relative w-full overflow-hidden bg-zinc-950 text-left">
+            <button onClick={onOpen} className="block w-full text-left relative" aria-label={`Open ${movie.title} preview`}>
+              <img src={movie.backdropUrl || movie.posterUrl} alt={movie.title} onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover" />
+              {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-zinc-700 z-10">
+                  <div className="h-full bg-[#e50914]" style={{ width: `${(movie as any).progress}%` }} />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#181818]/80 via-transparent to-transparent" />
+              <h3 className="absolute bottom-3 left-3 right-3 line-clamp-1 text-xl font-black text-white">{movie.title}</h3>
+            </button>
+            {isContinueWatching && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  removeFromWatchHistory(movie.id);
+                }}
+                className="absolute top-3 right-3 z-[90] grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white/70 border border-white/10 hover:text-white hover:bg-black/90 hover:scale-105 active:scale-95 transition cursor-pointer"
+                title="Xóa khỏi danh sách xem tiếp"
+                aria-label="Remove from Continue Watching"
+              >
+                <X size={15} />
+              </button>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#181818] via-transparent to-transparent" />
-            <h3 className="absolute bottom-3 left-3 right-3 line-clamp-1 text-xl font-black text-white">{movie.title}</h3>
-          </button>
-          {isContinueWatching && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                removeFromWatchHistory(movie.id);
-              }}
-              className="absolute top-3 right-3 z-[90] grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white/70 border border-white/10 hover:text-white hover:bg-black/90 hover:scale-105 active:scale-95 transition cursor-pointer"
-              title="Xóa khỏi danh sách xem tiếp"
-              aria-label="Remove from Continue Watching"
-            >
-              <X size={15} />
-            </button>
-          )}
-        </div>
-        <div className="space-y-3 p-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                usePlaybackStore.getState().openPlayback(movie as NormalizedMovie, `card-${movie.id}`);
-              }}
-              className="nf-icon grid h-10 w-10 place-items-center rounded-full bg-white text-black transition hover:bg-white/80 focus:outline-none"
-              aria-label="Play"
-            >
-              <Play size={18} fill="currentColor" />
-            </button>
-            <Button
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleMyList(movie as NormalizedMovie);
-              }}
-              className="nf-icon grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-[#2a2a2a] p-0 hover:border-white hover:bg-[#333]"
-              aria-label="Add to list"
-            >
-              {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
-            </Button>
-            <Button variant="ghost" className="nf-icon h-10 w-10 rounded-full border border-white/25 bg-[#2a2a2a] p-0 hover:border-white hover:bg-[#333]" aria-label="Like"><ThumbsUp size={17} /></Button>
-            <button onClick={(e) => {
-              e.stopPropagation();
-              openDetailModal(movie as NormalizedMovie, `card-${movie.id}`);
-            }} className="nf-icon ml-auto grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-[#2a2a2a] text-white transition hover:border-white hover:bg-[#333]" aria-label="Episodes and info"><ChevronDown size={20} /></button>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-white/75">
-            <span className="font-bold text-[#46d369]">★ {movie.averageRating ? movie.averageRating.toFixed(1) : "8.0"} IMDb</span>
-            <Badge className="px-1.5 py-0.5 text-xs">{movie.maturityRating.replace("_", "-")}</Badge>
-            <span>{formatRuntime(movie.runtimeMinutes)}</span>
-            <span className="rounded border border-white/30 px-1 text-[11px]">HD</span>
+          <div className="space-y-3 p-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  usePlaybackStore.getState().openPlayback(movie as NormalizedMovie, `card-${movie.id}`);
+                }}
+                className="nf-icon grid h-10 w-10 place-items-center rounded-full bg-white text-black transition hover:bg-white/80 focus:outline-none"
+                aria-label="Play"
+              >
+                <Play size={18} fill="currentColor" />
+              </button>
+              <Button
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleMyList(movie as NormalizedMovie);
+                }}
+                className="nf-icon glass-button grid h-10 w-10 place-items-center rounded-full p-0"
+                aria-label="Add to list"
+              >
+                {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
+              </Button>
+              <Button variant="ghost" className="nf-icon glass-button h-10 w-10 rounded-full p-0" aria-label="Like"><ThumbsUp size={17} /></Button>
+              <button onClick={(e) => {
+                e.stopPropagation();
+                openDetailModal(movie as NormalizedMovie, `card-${movie.id}`);
+              }} className="nf-icon glass-button ml-auto grid h-10 w-10 place-items-center rounded-full text-white" aria-label="Episodes and info"><ChevronDown size={20} /></button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-white/75">
+              <span className="font-bold text-[#46d369]">★ {movie.averageRating ? movie.averageRating.toFixed(1) : "8.0"} IMDb</span>
+              <Badge className="px-1.5 py-0.5 text-xs bg-white/5 border-white/10">{movie.maturityRating.replace("_", "-")}</Badge>
+              <span>{formatRuntime(movie.runtimeMinutes)}</span>
+              <span className="rounded border border-white/20 px-1 text-[11px] bg-white/5">HD</span>
+            </div>
+            <p className="line-clamp-1 text-sm text-white/85">{movie.genres.slice(0, 3).map((g) => g.name).join(" - ")}</p>
           </div>
-          <p className="line-clamp-1 text-sm text-white/85">{movie.genres.slice(0, 3).map((g) => g.name).join(" - ")}</p>
-        </div>
-      </motion.article>
+        </motion.article>
+      </ParallaxTilt>
     </div>,
     document.body
   );

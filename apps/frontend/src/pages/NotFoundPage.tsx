@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export function NotFoundPage() {
   return (
-    <main className="relative min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 select-none overflow-hidden">
+    <main className="relative min-h-screen bg-transparent text-white flex flex-col items-center justify-center p-6 select-none overflow-hidden">
       {/* Background Graphic Grid/Atmosphere */}
       <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1574375927938-d5a98e8edd85?q=80&w=1200')" }} />
       <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/80 to-[#141414]" />

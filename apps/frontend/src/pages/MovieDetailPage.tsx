@@ -27,7 +27,7 @@ export function MovieDetailPage() {
   const similarTitles = (similarData ?? []).filter((item) => item.id !== movie?.id);
   if (!movie) return <div className="min-h-screen px-10 pt-28">Loading title...</div>;
   return (
-    <main className="min-h-screen bg-[#141414] pb-20">
+    <main className="min-h-screen bg-transparent pb-20">
       <section className="relative min-h-[78vh] overflow-hidden">
         {movie.trailerUrl ? (
           <video className="absolute inset-0 h-full w-full object-cover opacity-45" autoPlay muted loop playsInline poster={movie.backdropUrl} src={movie.trailerUrl} />

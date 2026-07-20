@@ -67,9 +67,9 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
   };
 
   return (
-    <main className="bg-[#141414] pb-16">
-      <div className="px-4 sm:px-8 md:px-14 lg:px-16 pt-24 pb-8">
-        <section className="relative h-[72vh] overflow-hidden rounded-[20px] bg-zinc-950 shadow-2xl">
+    <main className="bg-transparent pb-16">
+      <div className="px-4 sm:px-8 md:px-14 lg:px-16 pt-0 pb-8">
+        <section className="relative h-[80vh] overflow-hidden rounded-b-[20px] rounded-t-none bg-zinc-950 shadow-2xl">
           {hero?.trailerUrl ? (
             <motion.video layoutId="hero" className="absolute inset-0 h-full w-full object-cover opacity-60" autoPlay muted={isHeroMuted} loop playsInline poster={hero.backdropUrl} src={hero.trailerUrl} />
           ) : (
@@ -116,12 +116,12 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
             </motion.p>
             
             <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-6 flex flex-wrap gap-2.5">
-              {type === "anime" && (
+              {hero && (hero as any).animeUrl && (
                 <a
                   href="https://animevietsub.id/"
                   target="_blank"
                   rel="noreferrer"
-                  className="nf-button inline-flex h-10 items-center justify-center rounded border border-white/30 bg-black/35 px-4 text-xs font-bold text-white transition hover:bg-white/10 focus:outline-none"
+                  className="nf-button inline-flex h-11 items-center justify-center rounded-full glass-button px-5 text-xs font-bold text-white transition focus:outline-none"
                 >
                   Nguồn AnimeVietsub
                 </a>
@@ -129,7 +129,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
               {hero && (
                 <button
                   onClick={() => openPlayback(hero as NormalizedMovie, "hero")}
-                  className="nf-button inline-flex h-10 items-center justify-center gap-2 rounded bg-white px-5 text-sm font-bold text-black transition hover:bg-white/85 focus:outline-none shadow-md active:scale-95"
+                  className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-lg active:scale-95 duration-300"
                 >
                   <Play size={18} fill="currentColor" /> Play
                 </button>
@@ -137,7 +137,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
               {hero && (
                 <button
                   onClick={() => openDetailModal(hero as NormalizedMovie, "hero")}
-                  className="nf-button inline-flex h-10 items-center justify-center gap-2 rounded bg-[#6d6d6eb3] px-5 text-sm font-bold text-white transition hover:bg-[#6d6d6e66] backdrop-blur-sm focus:outline-none active:scale-95"
+                  className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded-full glass-button px-6 text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300"
                 >
                   <Info size={18} /> More Info
                 </button>
@@ -146,7 +146,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                 <Button
                   variant="ghost"
                   onClick={() => toggleMyList(hero as NormalizedMovie)}
-                  className="nf-button h-10 rounded px-4 border border-white/20 bg-black/40 hover:bg-white/10 text-white flex items-center gap-1.5 text-sm font-bold active:scale-95"
+                  className="nf-button h-11 rounded-full px-6 glass-button text-white flex items-center justify-center gap-1.5 text-sm font-bold active:scale-95 duration-300"
                 >
                   {inMyList ? <Check size={16} className="text-[#46d369]" /> : <Plus size={16} />}
                   {inMyList ? "In My List" : "My List"}

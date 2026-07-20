@@ -28,7 +28,7 @@ export function ProfilePage() {
   const displayName = user?.username || "Main";
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#141414] px-5 py-24 select-none">
+    <main className="grid min-h-screen place-items-center bg-transparent px-5 py-24 select-none">
       <div className="w-full max-w-5xl text-center">
         <h1 className="text-3xl font-medium sm:text-5xl text-white tracking-wide mb-10">Ai đang xem vậy?</h1>
         <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4 max-w-3xl mx-auto">
