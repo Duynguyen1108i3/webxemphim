@@ -7,6 +7,7 @@ export interface AuthUser {
   email: string;
   username: string;
   role: "USER" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN";
+  avatarUrl?: string;
   profiles: Array<{ id: string; name: string; type: "ADULT" | "KIDS" }>;
 }
 
@@ -92,10 +93,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => {
     if (user) {
       localStorage.setItem("streamforge:auth:user", JSON.stringify(user));
+      if (user.avatarUrl) {
+        localStorage.setItem("streamforge:profile:avatar", user.avatarUrl);
+        set({ user, avatarUrl: user.avatarUrl });
+      } else {
+        set({ user });
+      }
     } else {
       localStorage.removeItem("streamforge:auth:user");
+      set({ user });
     }
-    set({ user });
     usePlaybackStore.getState().loadUserData();
   },
   setProfileId: (profileId) => {
@@ -127,7 +134,12 @@ export const useAuthStore = create<AuthState>((set) => ({
         try {
           const user = await authApi.getCurrentUser();
           localStorage.setItem("streamforge:auth:user", JSON.stringify(user));
-          set({ user });
+          if (user.avatarUrl) {
+            localStorage.setItem("streamforge:profile:avatar", user.avatarUrl);
+            set({ user, avatarUrl: user.avatarUrl });
+          } else {
+            set({ user });
+          }
           usePlaybackStore.getState().loadUserData();
         } catch (error) {
           // If token verification fails (e.g. 401 Unauthorized), clean up session
@@ -147,7 +159,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await authApi.getCurrentUser();
       const profileId = localStorage.getItem("streamforge:auth:profileId") || user.username;
       localStorage.setItem("streamforge:auth:user", JSON.stringify(user));
-      set({ user, profileId, initialized: true });
+      if (user.avatarUrl) {
+        localStorage.setItem("streamforge:profile:avatar", user.avatarUrl);
+        set({ user, profileId, avatarUrl: user.avatarUrl, initialized: true });
+      } else {
+        set({ user, profileId, initialized: true });
+      }
     } catch {
       resetLocalAuth(set);
       set({ initialized: true });
@@ -221,6 +238,16 @@ export const authApi = {
   },
   async getCurrentUser(): Promise<AuthUser> {
     const data = await protectedRequest<CurrentUserResponse>("/users/me", { method: "GET" });
+    return data.user;
+  },
+  async updateAvatar(avatarUrl: string): Promise<AuthUser> {
+    const token = await ensureCsrfToken(true);
+    const data = await protectedRequest<{ user: AuthUser }>("/users/me/avatar", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
+      body: JSON.stringify({ avatarUrl })
+    }, false);
+    useAuthStore.getState().setUser(data.user);
     return data.user;
   },
   request<T>(path: string, options: RequestInit = {}): Promise<T> {

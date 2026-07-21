@@ -44,6 +44,21 @@ router.get("/me", async (req, res, next) => {
   }
 });
 
+router.put("/me/avatar", async (req, res, next) => {
+  try {
+    const { avatarUrl } = z.object({ avatarUrl: z.string() }).parse(req.body);
+    const userId = req.user!.id;
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl },
+      select: { id: true, email: true, username: true, role: true, avatarUrl: true }
+    });
+    res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET user favorites (My List)
 router.get("/profiles/:profileId/my-list", async (req, res, next) => {
   try {

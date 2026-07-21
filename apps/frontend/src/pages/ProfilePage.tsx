@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { ArrowLeft, Check, Camera, LogOut, Save } from "lucide-react";
-import { useAuthStore } from "../store/auth";
+import { useAuthStore, authApi } from "../store/auth";
 import { useNavigate } from "react-router-dom";
 
 const presetGradients = [
@@ -21,17 +21,51 @@ export function ProfilePage() {
 
   const [inputAvatar, setInputAvatar] = useState(avatarUrl || "");
   const [successMsg, setSuccessMsg] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Separate state to track custom uploaded/selected image so it stays in the preset list
+  const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(
+    avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? avatarUrl : null
+  );
 
   const handleSignOut = () => {
     logout();
     navigate("/login");
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1.5 * 1024 * 1024) {
+      alert("Kích thước ảnh đại diện phải nhỏ hơn 1.5MB!");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === "string") {
+        setInputAvatar(reader.result);
+        setUploadedPhoto(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAvatarUrl(inputAvatar);
-    setSuccessMsg("Lưu thay đổi thành công!");
-    setTimeout(() => setSuccessMsg(""), 3000);
+    try {
+      await authApi.updateAvatar(inputAvatar);
+      setSuccessMsg("Lưu thay đổi thành công!");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err) {
+      console.error(err);
+      alert("Đã xảy ra lỗi khi lưu ảnh đại diện!");
+    }
   };
 
   const displayName = user?.username || "Thành viên";
@@ -41,6 +75,13 @@ export function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-transparent px-4 pt-28 pb-16 sm:px-8 md:px-14 lg:px-16 flex items-center justify-center">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        accept="image/*" 
+        className="hidden" 
+      />
       <div className="w-full max-w-2xl liquid-glass rounded-3xl p-6 sm:p-10 shadow-2xl border border-white/10 relative overflow-hidden">
         
         {/* Top Header Row with Back Button */}
@@ -64,30 +105,29 @@ export function ProfilePage() {
         <form onSubmit={handleSave} className="space-y-8">
           <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
             
-            {/* Avatar Preview block */}
+            {/* 1:1 Aspect-Square Avatar Preview block */}
             <div className="flex flex-col items-center gap-3">
-              <div className="relative group">
-                <div className="h-32 w-32 rounded-3xl overflow-hidden shadow-2xl border-2 border-white/20 transition-transform duration-300 group-hover:scale-105">
+              <div className="relative group cursor-pointer" onClick={handleAvatarClick} title="Bấm vào để chọn ảnh đại diện">
+                <div className="h-32 w-32 rounded-3xl overflow-hidden shadow-2xl border-2 border-white/20 transition-transform duration-300 group-hover:scale-105 aspect-square">
                   {isCustomImage ? (
                     <img 
                       src={inputAvatar} 
-                      className="h-full w-full object-cover" 
+                      className="h-full w-full object-cover aspect-square" 
                       alt="Avatar Preview" 
                       onError={(e) => {
-                        // fallback to default gradient on error
                         (e.target as HTMLImageElement).src = "";
                         setInputAvatar("from-blue-500 to-cyan-300");
                       }}
                     />
                   ) : (
-                    <div className={`h-full w-full bg-gradient-to-br ${inputAvatar || "from-blue-500 to-cyan-300"} grid place-items-center`}>
+                    <div className={`h-full w-full bg-gradient-to-br ${inputAvatar || "from-blue-500 to-cyan-300"} grid place-items-center aspect-square`}>
                       <span className="text-5xl font-black text-white">
                         {displayName[0].toUpperCase()}
                       </span>
                     </div>
                   )}
                 </div>
-                <div className="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300 pointer-events-none">
+                <div className="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-300">
                   <Camera size={24} className="text-white" />
                 </div>
               </div>
@@ -115,7 +155,7 @@ export function ProfilePage() {
           {/* Preset Avatar Selection Grid */}
           <div className="space-y-3">
             <label className="text-xs font-bold text-white/40 uppercase tracking-wider block">Chọn ảnh mẫu đại diện</label>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-3">
               {presetGradients.map((gradient) => {
                 const isSelected = inputAvatar === gradient.value;
                 return (
@@ -125,11 +165,24 @@ export function ProfilePage() {
                     onClick={() => setInputAvatar(gradient.value)}
                     className="flex flex-col items-center gap-1.5 focus:outline-none group cursor-pointer"
                   >
-                    <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${gradient.value} border-2 transition duration-300 ${isSelected ? "border-[#e50914] scale-105 shadow-lg" : "border-white/10 hover:border-white/50"}`} />
+                    <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${gradient.value} border-2 transition duration-300 ${isSelected ? "border-[#e50914] scale-105 shadow-lg" : "border-white/10 hover:border-white/50"} aspect-square`} />
                     <span className="text-[10px] text-white/50 group-hover:text-white transition font-medium">{gradient.name}</span>
                   </button>
                 );
               })}
+
+              {uploadedPhoto && (
+                <button
+                  type="button"
+                  onClick={() => setInputAvatar(uploadedPhoto)}
+                  className="flex flex-col items-center gap-1.5 focus:outline-none group cursor-pointer"
+                >
+                  <div className={`h-12 w-12 rounded-xl border-2 transition duration-300 ${inputAvatar === uploadedPhoto ? "border-[#e50914] scale-105 shadow-lg" : "border-white/10 hover:border-white/50"} aspect-square overflow-hidden`}>
+                    <img src={uploadedPhoto} className="h-full w-full object-cover aspect-square" alt="Uploaded Avatar" />
+                  </div>
+                  <span className="text-[10px] text-white/50 group-hover:text-white transition font-medium">Ảnh tải lên</span>
+                </button>
+              )}
             </div>
           </div>
 

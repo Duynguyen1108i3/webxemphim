@@ -747,9 +747,9 @@ export function AppShell() {
                 aria-label="Profile Menu"
               >
                 {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
-                  <img src={avatarUrl} className="h-7 w-7 rounded-full object-cover border border-white/20" alt="Avatar" />
+                  <img src={avatarUrl} className="h-8 w-8 rounded-full object-cover border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300" alt="Avatar" />
                 ) : (
-                  <span className={`grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br ${avatarUrl || "from-blue-500 to-cyan-300"}`}>
+                  <span className={`grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br ${avatarUrl || "from-blue-500 to-cyan-300"} border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300`}>
                     <span className="text-xs font-black text-white">
                       {user?.username ? user.username[0].toUpperCase() : "M"}
                     </span>
