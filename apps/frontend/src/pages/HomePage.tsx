@@ -83,7 +83,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
           <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent z-[1]" />
           
           <motion.div
-            className="relative z-10 flex h-full max-w-xl md:max-w-[40%] flex-col justify-center pl-6 pr-4 sm:pl-12 md:pl-16 pb-8"
+            className="relative z-10 flex h-full max-w-xl md:max-w-[40%] flex-col justify-center pt-16 pl-6 pr-4 sm:pl-12 md:pl-16 pb-8"
             initial="hidden"
             animate="visible"
             transition={{ staggerChildren: 0.08, delayChildren: 0.12 }}

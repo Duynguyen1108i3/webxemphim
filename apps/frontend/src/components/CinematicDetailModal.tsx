@@ -226,18 +226,20 @@ export function CinematicDetailModal() {
         transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
         tabIndex={0}
       >
+        {/* Floating Close Button (X) - Liquid Glass styled for both mobile and desktop */}
+        <button
+          onClick={closeDetailModal}
+          className="absolute top-4 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full liquid-glass text-white shadow-lg active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/70 cursor-pointer"
+          aria-label="Close details"
+        >
+          <X size={20} className="transition-transform duration-200 hover:rotate-90" />
+        </button>
+
         {/* Sticky Header Top Navigation inside Modal */}
         <header className="sticky top-0 z-40 flex h-14 items-center justify-between bg-gradient-to-b from-[#181818] to-[#181818]/0 px-6 backdrop-blur-sm pointer-events-none">
           <span className="text-sm font-bold tracking-wider text-white/50 uppercase pointer-events-auto">
             {displayMovie.title}
           </span>
-          <button
-            onClick={closeDetailModal}
-            className="nf-icon glass-button grid h-9 w-9 place-items-center rounded-full text-white pointer-events-auto focus:ring-2 focus:ring-white/70 focus:outline-none"
-            aria-label="Close details"
-          >
-            <X size={20} className="transition-transform duration-200 hover:rotate-90" />
-          </button>
         </header>
 
         {/* Backdrop Visual (FLIP Transition Image & Autoplay Video) */}
