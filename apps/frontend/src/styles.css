@@ -218,7 +218,7 @@ img { max-width: 100%; display: block; }
 }
 
 /* Keep menus and controls above the decorative refraction layer. */
-.liquid-glass > * {
+.liquid-glass > :not(.absolute):not(.fixed) {
   position: relative;
   z-index: 1;
 }

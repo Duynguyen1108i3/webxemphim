@@ -229,7 +229,7 @@ export function CinematicDetailModal() {
         {/* Floating Close Button (X) - Liquid Glass styled for both mobile and desktop */}
         <button
           onClick={closeDetailModal}
-          className="absolute top-4 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full liquid-glass text-white shadow-lg active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/70 cursor-pointer"
+          className="!absolute top-4 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full glass-button text-white shadow-lg active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/70 cursor-pointer"
           aria-label="Close details"
         >
           <X size={20} className="transition-transform duration-200 hover:rotate-90" />
