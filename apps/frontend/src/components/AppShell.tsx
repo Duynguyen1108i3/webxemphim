@@ -22,7 +22,7 @@ const iosSpringTransition = {
 
 export function AppShell() {
   const { activeMovieDetail, activePlayback, activeEpisodeId, watchHistory } = usePlaybackStore();
-  const { user, profileId, initialized, setProfileId, logout, initialize } = useAuthStore();
+  const { user, profileId, avatarUrl, initialized, setProfileId, logout, initialize } = useAuthStore();
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRestoringState, setIsRestoringState] = useState(false);
@@ -746,14 +746,15 @@ export function AppShell() {
                 className={`glass-capsule pl-2 pr-3 rounded-full flex items-center gap-2 ${isProfileOpen ? "active" : ""}`}
                 aria-label="Profile Menu"
               >
-                <span className={`grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br ${
-                  profileId === "Kids" ? "from-yellow-400 to-orange-500" :
-                  profileId === "Guest" ? "from-purple-500 to-pink-500" :
-                  profileId === "Private" ? "from-zinc-600 to-zinc-900" :
-                  "from-blue-500 to-cyan-300"
-                }`}>
-                  {profileId === "Private" ? <Lock size={12} className="text-white/80" /> : <span className="text-xs font-black text-white">{profileId ? profileId[0].toUpperCase() : (user?.username ? user.username[0].toUpperCase() : "M")}</span>}
-                </span>
+                {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
+                  <img src={avatarUrl} className="h-7 w-7 rounded-full object-cover border border-white/20" alt="Avatar" />
+                ) : (
+                  <span className={`grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br ${avatarUrl || "from-blue-500 to-cyan-300"}`}>
+                    <span className="text-xs font-black text-white">
+                      {user?.username ? user.username[0].toUpperCase() : "M"}
+                    </span>
+                  </span>
+                )}
                 <span className={`border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 ${isProfileOpen ? "rotate-180" : ""}`} />
               </button>
 
@@ -766,45 +767,15 @@ export function AppShell() {
                     transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
                     className="absolute right-0 top-full mt-2 w-52 origin-top-right overflow-hidden rounded-2xl liquid-glass py-2 shadow-2xl z-[120]"
                   >
-                    {/* Profile List */}
-                    <div className="flex flex-col gap-1 px-2 py-1">
-                      {[
-                        [user?.username || "Main", "from-blue-500 to-cyan-300"],
-                        ["Kids", "from-yellow-400 to-orange-500"],
-                        ["Guest", "from-purple-500 to-pink-500"],
-                        ["Private", "from-zinc-600 to-zinc-900"]
-                      ].filter(([name]) => name !== profileId).map(([name, color]) => (
-                        <button
-                          key={name}
-                          onClick={() => {
-                            setIsProfileOpen(false);
-                            if (name === "Private") {
-                              const pin = prompt("Nhập mã PIN bảo mật cho hồ sơ riêng tư (mặc định: 1234):");
-                              if (pin !== "1234") {
-                                alert("Mã PIN không chính xác!");
-                                return;
-                              }
-                            }
-                            setProfileId(name);
-                            navigate("/");
-                          }}
-                          className="flex items-center gap-2.5 w-full rounded px-2.5 py-1.5 hover:bg-white/10 transition text-left text-xs font-semibold cursor-pointer text-white/80 hover:text-white"
-                        >
-                          <span className={`grid h-6 w-6 place-items-center rounded bg-gradient-to-br ${color}`}>
-                            {name === "Private" ? <Lock size={10} className="text-white/80" /> : <span className="text-[10px] font-black text-white">{name[0]}</span>}
-                          </span>
-                          <span>{name}</span>
-                        </button>
-                      ))}
+                    <div className="px-4 py-2 text-xs font-bold text-white/50 border-b border-white/10 uppercase tracking-wider">
+                      Hồ sơ của tôi
                     </div>
 
-                    <hr className="border-white/10 my-1.5" />
-
-                    <NavLink to="/profile" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2.5 px-4 py-1.5 hover:bg-white/10 transition text-xs font-semibold text-white/70 hover:text-white">
-                      Quản lý hồ sơ
+                    <NavLink to="/profile" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-white/10 transition text-xs font-semibold text-white/70 hover:text-white mt-1">
+                      Cài đặt hồ sơ
                     </NavLink>
                     
-                    <hr className="border-white/10 my-1.5" />
+                    <hr className="border-white/10 my-1" />
 
                     <button
                       onClick={() => {
@@ -812,7 +783,7 @@ export function AppShell() {
                         logout();
                         navigate("/login");
                       }}
-                      className="flex items-center gap-2.5 w-full px-4 py-1.5 hover:bg-white/10 transition text-xs font-bold text-[#e50914] text-left cursor-pointer"
+                      className="flex items-center gap-2.5 w-full px-4 py-2 hover:bg-white/10 transition text-xs font-bold text-[#e50914] text-left cursor-pointer"
                     >
                       Đăng xuất khỏi StreamForge
                     </button>
@@ -947,10 +918,16 @@ export function AppShell() {
                     }}
                     className="flex items-center gap-2.5 text-left text-sm font-semibold text-white/60 hover:text-white"
                   >
-                    <span className="grid h-6 w-6 place-items-center rounded bg-gradient-to-br from-blue-500 to-cyan-300 text-[10px] font-black text-white">
-                      {profileId ? profileId[0].toUpperCase() : "M"}
-                    </span>
-                    <span>Chuyển hồ sơ ({profileId || "Main"})</span>
+                    {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
+                      <img src={avatarUrl} className="h-6 w-6 rounded object-cover border border-white/20" alt="Avatar" />
+                    ) : (
+                      <span className={`grid h-6 w-6 place-items-center rounded bg-gradient-to-br ${avatarUrl || "from-blue-500 to-cyan-300"}`}>
+                        <span className="text-[10px] font-black text-white">
+                          {user?.username ? user.username[0].toUpperCase() : "M"}
+                        </span>
+                      </span>
+                    )}
+                    <span>Cài đặt hồ sơ</span>
                   </button>
 
                   <button 

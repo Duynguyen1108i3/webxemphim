@@ -16,9 +16,11 @@ type CsrfResponse = { csrfToken: string };
 interface AuthState {
   user: AuthUser | null;
   profileId: string | null;
+  avatarUrl: string | null;
   initialized: boolean;
   setUser: (user: AuthUser | null) => void;
   setProfileId: (profileId: string | null) => void;
+  setAvatarUrl: (avatarUrl: string | null) => void;
   initialize: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -77,13 +79,15 @@ function resetLocalAuth(set: (state: Partial<AuthState>) => void) {
   csrfToken = null;
   localStorage.removeItem("streamforge:auth:user");
   localStorage.removeItem("streamforge:auth:profileId");
-  set({ user: null, profileId: null });
+  localStorage.removeItem("streamforge:profile:avatar");
+  set({ user: null, profileId: null, avatarUrl: null });
   usePlaybackStore.getState().loadUserData();
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   profileId: null,
+  avatarUrl: localStorage.getItem("streamforge:profile:avatar"),
   initialized: false,
   setUser: (user) => {
     if (user) {
@@ -99,6 +103,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     else localStorage.removeItem("streamforge:auth:profileId");
     set({ profileId });
     usePlaybackStore.getState().loadUserData();
+  },
+  setAvatarUrl: (avatarUrl) => {
+    if (avatarUrl) localStorage.setItem("streamforge:profile:avatar", avatarUrl);
+    else localStorage.removeItem("streamforge:profile:avatar");
+    set({ avatarUrl });
   },
   initialize: async () => {
     // Fast path: try to restore from localStorage first for instant UI
