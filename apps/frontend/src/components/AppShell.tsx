@@ -1,4 +1,4 @@
-import { Bell, Lock, Menu, Search, X, Sliders, ChevronDown } from "lucide-react";
+import { Bell, Lock, Menu, Search, X, Sliders, ChevronDown, Globe } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -12,6 +12,13 @@ import { Button, Skeleton } from "@streamforge/ui";
 import type { MovieCardDto } from "@streamforge/shared-types";
 
 import { useAuthStore } from "../store/auth";
+
+const iosSpringTransition = {
+  type: "spring",
+  stiffness: 300,
+  damping: 28,
+  mass: 0.85,
+};
 
 export function AppShell() {
   const { activeMovieDetail, activePlayback, activeEpisodeId, watchHistory } = usePlaybackStore();
@@ -485,10 +492,10 @@ export function AppShell() {
           className={`fixed inset-x-0 top-0 z-50 flex h-[68px] items-center justify-between px-4 sm:px-8 md:px-14 lg:px-16 liquid-glass-header ${scrolled ? "scrolled" : ""}`}
         >
           <div className="flex items-center gap-2 sm:gap-7">
-            {/* Hamburger menu button for mobile */}
+            {/* Hamburger menu button for mobile / collapsed navigation */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="nf-icon md:hidden rounded-full hover:bg-white/10"
+              className={`nf-icon rounded-full hover:bg-white/10 ${searchExpanded ? "xl:hidden" : "md:hidden"}`}
               aria-label="Open navigation menu"
             >
               <Menu size={22} />
@@ -536,7 +543,7 @@ export function AppShell() {
               <motion.div
                 initial={false}
                 animate={{
-                  width: searchExpanded ? 270 : "100%",
+                  width: searchExpanded ? (window.innerWidth < 768 ? 160 : 270) : "100%",
                   borderColor: searchExpanded ? "rgba(255, 255, 255, 0.22)" : "rgba(255, 255, 255, 0.12)",
                   paddingLeft: searchExpanded ? 12 : 0,
                   paddingRight: searchExpanded ? 12 : 0,
@@ -555,7 +562,7 @@ export function AppShell() {
                     setSearchExpanded(false);
                   }
                 }}
-                className={`absolute right-0 top-0 z-20 flex h-full items-center gap-1.5 overflow-hidden rounded-full border select-none cursor-pointer glass-search ${searchExpanded ? "px-3.5" : "justify-center"}`}
+                className={`absolute right-0 top-0 z-20 flex h-full items-center overflow-hidden rounded-full border select-none cursor-pointer glass-search ${searchExpanded ? "px-3.5 gap-1.5" : "justify-center gap-0"}`}
               >
                 <Search
                   size={22}
@@ -612,7 +619,7 @@ export function AppShell() {
             <NavLink to="/search" className="glass-capsule hidden lg:flex items-center justify-center px-5">Kids</NavLink>
 
             {/* Liquid Glass Settings Slider Button */}
-            <div ref={settingsRef} className="relative">
+            <div ref={settingsRef} className="relative hidden md:block">
               <button
                 onClick={toggleSettings}
                 className={`glass-capsule glass-capsule--icon ${settingsOpen ? "active" : ""}`}
@@ -672,7 +679,7 @@ export function AppShell() {
             </div>
 
             {/* Live Updates Notification Bell Icon */}
-            <div ref={notificationRef} className="relative">
+            <div ref={notificationRef} className="relative hidden md:block">
               <button
                 onClick={toggleNotification}
                 className={`glass-capsule glass-capsule--icon ${notificationOpen ? "active" : ""}`}
@@ -877,7 +884,14 @@ export function AppShell() {
           )}
         </main>
       ) : (
-        <Outlet />
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={iosSpringTransition}
+        >
+          <Outlet />
+        </motion.div>
       )}
       
       {/* Footer component */}

@@ -31,6 +31,8 @@
   
   --ios-spring: cubic-bezier(0.16, 1, 0.3, 1);
   --ios-spring-elastic: cubic-bezier(0.25, 1.1, 0.3, 1);
+  --ios-spring-soft: cubic-bezier(0.25, 1, 0.2, 1);
+  --ios-spring-slow: cubic-bezier(0.15, 1, 0.2, 1);
 }
 
 /* Fz QuaffingTogether for large titles (Vietnamese diacritics optimized) */
@@ -559,5 +561,58 @@ img { max-width: 100%; display: block; }
   background-clip: padding-box;
 }
 
+.glass-capsule,
+.glass-button,
+.glass-search,
+.nf-icon,
+.nf-button {
+  display: inline-flex;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
 
+.glass-capsule > svg,
+.glass-button > svg,
+.glass-search > svg,
+.nf-icon > svg,
+.nf-button > svg {
+  display: block !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Ensure motion.div wraps inside buttons are also centered */
+.glass-button > div,
+.nf-icon > div {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Tactile spring tap scale feedback for buttons & interactive elements */
+.glass-button,
+.glass-capsule,
+.nf-icon,
+.nf-button,
+button,
+a.nf-button {
+  transition: transform 260ms var(--ios-spring-elastic), 
+              background-color 260ms var(--ios-spring),
+              border-color 260ms var(--ios-spring),
+              box-shadow 260ms var(--ios-spring),
+              opacity 260ms var(--ios-spring) !important;
+}
+
+.glass-button:active,
+.glass-capsule:active,
+.nf-icon:active,
+.nf-button:active,
+button:active {
+  transform: scale(0.94) !important;
+}
 

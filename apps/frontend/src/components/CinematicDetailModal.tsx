@@ -8,6 +8,7 @@ import { Badge, Button } from "@streamforge/ui";
 import { formatRuntime, getEpisodes } from "@streamforge/utils";
 import { MovieTile, HoverPreview } from "./MovieRow";
 import { ParallaxTilt } from "./ParallaxTilt";
+import { decodeHtml } from "../lib/htmlUtils";
 
 export function CinematicDetailModal() {
   const { activeMovieDetail, clickedElementId, closeDetailModal, openPlayback, myList, toggleMyList, activePlayback } = usePlaybackStore();
@@ -356,7 +357,7 @@ export function CinematicDetailModal() {
             )}
             
             <motion.p className="synopsis text-sm leading-6 text-white/85 md:text-base" variants={itemVariants}>
-              {displayMovie.synopsis}
+              {decodeHtml(displayMovie.synopsis)}
             </motion.p>
           </div>
 
@@ -446,7 +447,7 @@ export function CinematicDetailModal() {
                       {episode.title}
                     </h5>
                     <p className="line-clamp-2 text-xs text-white/60 md:text-sm leading-relaxed">
-                      {episode.synopsis}
+                      {decodeHtml(episode.synopsis)}
                     </p>
                   </div>
                   <span className="hidden md:block whitespace-nowrap text-xs font-semibold text-white/50">

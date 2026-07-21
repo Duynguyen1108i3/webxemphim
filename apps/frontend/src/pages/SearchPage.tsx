@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ChevronDown, Globe } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { movieApi, type NormalizedMovie } from "../lib/movieApi";
@@ -11,7 +11,7 @@ export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") ?? "";
   const lang = searchParams.get("lang") ?? "";
-  const { openDetailModal, openPlayback } = usePlaybackStore();
+  const { openDetailModal, openPlayback, activeMovieDetail, activePlayback } = usePlaybackStore();
 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -27,6 +27,14 @@ export function SearchPage() {
   }, []);
 
   const [hovered, setHovered] = useState<{ movie: MovieCardDto; anchor: HTMLElement; rect: DOMRect } | null>(null);
+
+  useEffect(() => {
+    if (activeMovieDetail || activePlayback) {
+      setHovered(null);
+      clearOpenTimer();
+      clearCloseTimer();
+    }
+  }, [activeMovieDetail, activePlayback]);
 
   const openHoverTimer = useRef<number | null>(null);
   const closeHoverTimer = useRef<number | null>(null);
@@ -207,51 +215,77 @@ export function SearchPage() {
       {/* Language / Region Custom Dropdown */}
       <div className="mt-6 flex flex-col gap-1.5" ref={dropdownRef}>
         <span className="text-xs uppercase tracking-wider text-white/40 font-bold">Browse by Language / Region</span>
-        <div className="relative inline-block w-full sm:w-64">
-          <button
+        <div className="flex flex-wrap items-center gap-2 w-full">
+          <motion.button
             onClick={() => setIsOpen(!isOpen)}
-            className="flex w-full items-center justify-between rounded-xl glass-button px-4 py-2.5 text-sm font-semibold text-white focus:outline-none cursor-pointer"
+            animate={{
+              width: isOpen ? 200 : 40,
+              paddingLeft: isOpen ? 14 : 0,
+              paddingRight: isOpen ? 14 : 0,
+            }}
+            transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
+            className="flex h-10 items-center justify-center rounded-full glass-button text-sm font-semibold text-white focus:outline-none cursor-pointer overflow-hidden border border-white/10 shrink-0"
           >
-            <span>{activeLanguageName ? activeLanguageName : "Tất cả ngôn ngữ / vùng"}</span>
-            <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-          </button>
-
-          <AnimatePresence>
-            {isOpen && (
-              <motion.ul
-                initial={{ opacity: 0, scale: 0.96, y: 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96, y: 8 }}
-                transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
-                className="absolute left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-2xl liquid-glass py-1.5 shadow-2xl"
-              >
-                <li
-                  onClick={() => {
-                    setSearchParams({});
-                    setIsOpen(false);
-                  }}
-                  className={`px-4 py-2 text-sm font-medium transition cursor-pointer hover:bg-white/15 hover:text-white ${!lang ? "text-[#e50914] font-bold" : "text-white/80"}`}
+            <div className="flex items-center justify-center gap-2 shrink-0">
+              <Globe size={18} className="shrink-0" />
+              {isOpen && (
+                <motion.span
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  className="whitespace-nowrap font-bold text-white text-xs"
                 >
-                  Tất cả ngôn ngữ / vùng
-                </li>
-                {languagesList.map((l) => {
-                  const isSelected = lang === l.slug;
-                  return (
-                    <li
-                      key={l.slug}
-                      onClick={() => {
-                        setSearchParams({ lang: l.slug });
-                        setIsOpen(false);
-                      }}
-                      className={`px-4 py-2 text-sm font-medium transition cursor-pointer hover:bg-white/15 hover:text-white ${isSelected ? "text-[#e50914] font-bold" : "text-white/80"}`}
-                    >
-                      {l.name}
-                    </li>
-                  );
-                })}
-              </motion.ul>
-            )}
-          </AnimatePresence>
+                  {activeLanguageName ? activeLanguageName : "Tất cả ngôn ngữ / vùng"}
+                </motion.span>
+              )}
+            </div>
+          </motion.button>
+
+          <motion.div
+            initial={false}
+            animate={{
+              height: isOpen ? "auto" : 0,
+              opacity: isOpen ? 1 : 0,
+              pointerEvents: isOpen ? "auto" : "none",
+            }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            className="overflow-hidden w-full"
+          >
+            <div className="flex flex-wrap items-center gap-1.5 py-1 pr-4">
+              <button
+                onClick={() => {
+                  setSearchParams({});
+                  setIsOpen(false);
+                }}
+                className={`px-4 py-2 h-9 rounded-full text-xs font-semibold border transition shrink-0 cursor-pointer ${
+                  !lang
+                    ? "bg-[#e50914] border-[#e50914] text-white"
+                    : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                Tất cả ngôn ngữ / vùng
+              </button>
+              {languagesList.map((l) => {
+                const isSelected = lang === l.slug;
+                return (
+                  <button
+                    key={l.slug}
+                    onClick={() => {
+                      setSearchParams({ lang: l.slug });
+                      setIsOpen(false);
+                    }}
+                    className={`px-4 py-2 h-9 rounded-full text-xs font-semibold border transition shrink-0 cursor-pointer ${
+                      isSelected
+                        ? "bg-[#e50914] border-[#e50914] text-white"
+                        : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    {l.name}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
         </div>
       </div>
 
@@ -281,6 +315,7 @@ export function SearchPage() {
                   className="group relative w-full cursor-pointer rounded-[16px] transition"
                   onOpen={() => handleOpen(movie as any)}
                   onHover={(anchor) => {
+                    if (activeMovieDetail || activePlayback) return;
                     clearCloseTimer();
                     clearOpenTimer();
                     openHoverTimer.current = window.setTimeout(() => {

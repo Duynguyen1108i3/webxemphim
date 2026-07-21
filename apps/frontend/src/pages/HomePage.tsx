@@ -8,6 +8,7 @@ import { MovieRow } from "../components/MovieRow";
 import type { MovieCardDto } from "@streamforge/shared-types";
 import { movieApi, type MovieRowsResponse, type NormalizedMovie } from "../lib/movieApi";
 import { usePlaybackStore } from "../store/playbackStore";
+import { decodeHtml } from "../lib/htmlUtils";
 
 export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "new-popular" }) {
   const { openDetailModal, openPlayback } = usePlaybackStore();
@@ -112,7 +113,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
             </motion.div>
             
             <motion.p variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="synopsis mt-4 line-clamp-3 text-sm leading-relaxed text-white/80 md:text-base">
-              {hero?.synopsis}
+              {decodeHtml(hero?.synopsis ?? "")}
             </motion.p>
             
             <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-6 flex flex-wrap gap-2.5">

@@ -5,6 +5,7 @@ import { Play, Plus, ThumbsUp, Volume2 } from "lucide-react";
 import { Badge, Button } from "@streamforge/ui";
 import { MovieRow } from "../components/MovieRow";
 import { movieApi, type NormalizedMovie } from "../lib/movieApi";
+import { decodeHtml } from "../lib/htmlUtils";
 
 const tabs = ["Overview", "Episodes", "Cast", "Reviews", "Similar Titles"] as const;
 
@@ -63,7 +64,7 @@ export function MovieDetailPage() {
         <div className="py-8 text-white/80">
           {tab === "Overview" && (
             <div className="grid gap-8 md:grid-cols-[1.4fr_.8fr]">
-              <p className="max-w-3xl text-lg leading-8">{movie.synopsis}</p>
+              <p className="max-w-3xl text-lg leading-8">{decodeHtml(movie.synopsis)}</p>
               <div className="space-y-3 text-sm">
                 <p><span className="text-white/45">Cast:</span> {movie.cast?.join(", ") || "Updating"}</p>
                 <p><span className="text-white/45">Director:</span> {movie.director || "Updating"}</p>
@@ -71,7 +72,7 @@ export function MovieDetailPage() {
               </div>
             </div>
           )}
-          {tab === "Episodes" && <div className="grid gap-3 md:grid-cols-2">{movie.seasons?.flatMap((s) => s.episodes ?? []).map((e, index) => <article key={e.id} className="flex gap-4 border-b border-white/10 bg-white/[.03] p-3 transition hover:bg-white/10"><span className="grid w-8 shrink-0 place-items-center text-2xl text-white/45">{index + 1}</span><img src={e.posterUrl} alt="" loading="lazy" className="h-24 w-36 rounded object-cover" /><div><div className="flex justify-between gap-4"><h3 className="font-bold text-white">{e.title}</h3><span className="text-sm">{e.runtimeMinutes}m</span></div><p className="mt-1 line-clamp-2 text-sm">{e.synopsis}</p></div></article>) ?? <p>No episodes for this title.</p>}</div>}
+          {tab === "Episodes" && <div className="grid gap-3 md:grid-cols-2">{movie.seasons?.flatMap((s) => s.episodes ?? []).map((e, index) => <article key={e.id} className="flex gap-4 border-b border-white/10 bg-white/[.03] p-3 transition hover:bg-white/10"><span className="grid w-8 shrink-0 place-items-center text-2xl text-white/45">{index + 1}</span><img src={e.posterUrl} alt="" loading="lazy" className="h-24 w-36 rounded object-cover" /><div><div className="flex justify-between gap-4"><h3 className="font-bold text-white">{e.title}</h3><span className="text-sm">{e.runtimeMinutes}m</span></div><p className="mt-1 line-clamp-2 text-sm">{decodeHtml(e.synopsis)}</p></div></article>) ?? <p>No episodes for this title.</p>}</div>}
           {tab === "Cast" && <p>{movie.cast?.join(", ") || "Updating"}</p>}
           {tab === "Reviews" && <div className="space-y-3">{(movie.reviews?.length ? movie.reviews : [{ id: "seed-review", body: "A sharp, premium streaming experience with strong discovery, clean detail pages and reliable playback." }]).map((r) => <p key={r.id} className="rounded bg-white/5 p-4">{r.body}</p>)}</div>}
           {tab === "Similar Titles" && <MovieRow title="More Like This" items={similarTitles} compact />}

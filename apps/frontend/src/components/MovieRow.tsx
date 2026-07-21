@@ -162,10 +162,10 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
       <motion.section
         id={title ? `row-${slugify(title)}` : undefined}
         className={`relative z-20 space-y-2 ${compact ? "px-0" : "px-4 sm:px-8 md:px-14 lg:px-16"}`}
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-8% 0px" }}
-        transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        viewport={{ once: true, margin: "-10% 0px" }}
+        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* Dynamic ambient background reflection of the row's movie posters */}
         <div 
@@ -208,6 +208,7 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
               <MovieTile
                 key={movie.id}
                 movie={movie}
+                index={index}
                 rank={ranked ? index + 1 : undefined}
                 isContinueWatching={isContinueWatching}
                 onOpen={() => {
@@ -279,7 +280,8 @@ export const MovieTile = React.memo(function MovieTile({
   onOpen,
   onHover,
   onHoverEnd,
-  className
+  className,
+  index = 0
 }: {
   movie: MovieCardDto;
   rank?: number;
@@ -288,14 +290,20 @@ export const MovieTile = React.memo(function MovieTile({
   onHover: (anchor: HTMLElement) => void;
   onHoverEnd: () => void;
   className?: string;
+  index?: number;
 }) {
   const removeFromWatchHistory = usePlaybackStore((state) => state.removeFromWatchHistory);
 
   return (
     <motion.article
-      whileHover={{ y: -4, scale: 1.015 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ type: "spring", stiffness: 280, damping: 30, mass: 0.7 }}
+      whileHover={{ y: -6, scale: 1.025 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{
+        type: "spring",
+        stiffness: 300,
+        damping: 24,
+        mass: 0.8
+      }}
       className={className || "group relative z-10 w-[148px] shrink-0 rounded-[16px] transition sm:w-[180px] md:w-[214px] lg:w-[238px]"}
       onMouseEnter={(event) => onHover(event.currentTarget)}
       onPointerEnter={(event) => onHover(event.currentTarget)}
@@ -373,7 +381,7 @@ export const HoverPreview = React.memo(function HoverPreview({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.8 }}
-          className="liquid-glass overflow-hidden rounded-md text-white shadow-[0_22px_64px_rgba(0,0,0,.78)] will-change-transform"
+          className="liquid-glass overflow-hidden rounded-2xl text-white shadow-[0_22px_64px_rgba(0,0,0,.78)] will-change-transform"
           style={{ transformOrigin: "center top", transformStyle: "preserve-3d" }}
         >
           <div className="relative w-full overflow-hidden bg-zinc-950 text-left">
