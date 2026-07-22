@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import { ApiError } from "../middleware/error.js";
 
 const router = Router();
 router.use(requireAuth, requireRole("ADMIN", "SUPER_ADMIN"));
@@ -50,6 +51,71 @@ router.delete("/movies/:id", async (req, res, next) => {
   try {
     await prisma.movie.delete({ where: { id: req.params.id } });
     res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/users", async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const search = (req.query.search as string || "").trim();
+
+    const where = search
+      ? {
+          OR: [
+            { email: { contains: search, mode: "insensitive" as const } },
+            { username: { contains: search, mode: "insensitive" as const } }
+          ]
+        }
+      : {};
+
+    const [total, users] = await Promise.all([
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          role: true,
+          avatarUrl: true,
+          createdAt: true,
+          bannedAt: true,
+          suspendedUntil: true,
+          subscriptions: { orderBy: { currentPeriodEnd: "desc" }, take: 1, select: { status: true, tier: true } }
+        },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit
+      })
+    ]);
+
+    res.json({ total, users, page, totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/users/:id", async (req, res, next) => {
+  try {
+    const targetUserId = req.params.id;
+    
+    // Prevent admin from deleting themselves accidentally
+    if (targetUserId === req.user!.id) {
+      throw new ApiError(400, "Bạn không thể tự xóa tài khoản Quản trị viên của chính mình tại đây.", "CANNOT_DELETE_SELF");
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!user) {
+      throw new ApiError(404, "Tài khoản không tồn tại", "USER_NOT_FOUND");
+    }
+
+    // Cascade delete user from DB (Prisma handles all onDelete: Cascade relations)
+    await prisma.user.delete({ where: { id: targetUserId } });
+
+    res.json({ success: true, message: "Đã xóa tài khoản vĩnh viễn" });
   } catch (error) {
     next(error);
   }

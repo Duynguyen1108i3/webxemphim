@@ -162,6 +162,21 @@ router.put("/me/email", async (req, res, next) => {
   }
 });
 
+// DELETE self account
+router.delete("/me", async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+
+    await prisma.user.delete({ where: { id: userId } });
+
+    res.clearCookie("rytoxgroup-csrf");
+    res.clearCookie("streamforge-csrf");
+    res.json({ success: true, message: "Tài khoản của bạn đã được xóa thành công" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET user favorites (My List)
 router.get("/profiles/:profileId/my-list", async (req, res, next) => {
   try {

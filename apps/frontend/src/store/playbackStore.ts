@@ -95,6 +95,14 @@ export interface PlaybackState {
   loadUserData: () => void;
 }
 
+const getWatchHistoryStorageKeys = () => {
+  const user = useAuthStore.getState().user;
+  const email = user?.email || "";
+  const key = email ? `rytoxgroup:${email}:watchhistory` : "rytoxgroup:guest:watchhistory";
+  const fallbackKey = email ? `streamforge:${email}:watchhistory` : "streamforge:guest:watchhistory";
+  return { key, fallbackKey };
+};
+
 export const usePlaybackStore = create<PlaybackState>((set) => ({
   activeMovieDetail: null,
   activePlayback: null,
@@ -106,16 +114,23 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
 
   loadUserData: () => {
     try {
+      const { key: historyKey, fallbackKey: fallbackHistoryKey } = getWatchHistoryStorageKeys();
+      const storedHistory = localStorage.getItem(historyKey) || localStorage.getItem(fallbackHistoryKey) || localStorage.getItem("streamforge:watchhistory");
+      const parsedHistory = storedHistory ? JSON.parse(storedHistory) : [];
+
       const user = useAuthStore.getState().user;
       if (!user) {
-        set({ myList: [], watchHistory: [] });
+        set({ myList: [], watchHistory: parsedHistory });
         return;
       }
 
       const profileName = useAuthStore.getState().profileId || user.username;
       const dbProfileId = user.profiles.find((profile) => profile.name === profileName)?.id ?? user.profiles[0]?.id;
 
-      if (!dbProfileId) return;
+      if (!dbProfileId) {
+        set({ watchHistory: parsedHistory });
+        return;
+      }
 
       const email = user.email || "";
       const mylistKey = `rytoxgroup:${email}:mylist`;
@@ -139,7 +154,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         .then((data) => {
           if (data?.favorites) {
             const mapped = mapFavorites(data.favorites);
-            set({ myList: mapped });
+            set({ myList: mapped, watchHistory: parsedHistory });
             localStorage.setItem(mylistKey, JSON.stringify(mapped)); // Sync cache
             localStorage.setItem(fallbackMylistKey, JSON.stringify(mapped));
           }
@@ -147,14 +162,8 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         .catch(() => {
           const storedList = localStorage.getItem(mylistKey) || localStorage.getItem(fallbackMylistKey);
           const parsed = storedList ? JSON.parse(storedList) : [];
-          set({ myList: mapFavorites(parsed) });
+          set({ myList: mapFavorites(parsed), watchHistory: parsedHistory });
         });
-
-      // 2. Fetch watch history (standard local storage fallback)
-      const historyKey = `rytoxgroup:${email}:watchhistory`;
-      const fallbackHistoryKey = `streamforge:${email}:watchhistory`;
-      const storedHistory = localStorage.getItem(historyKey) || localStorage.getItem(fallbackHistoryKey);
-      set({ watchHistory: storedHistory ? JSON.parse(storedHistory) : [] });
     } catch {
     }
   },
@@ -252,9 +261,8 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       episodeId = elementId.replace("episode-", "");
     } else {
       try {
-        const user = useAuthStore.getState().user;
-        const historyKey = user?.email ? `streamforge:${user.email}:watchhistory` : "streamforge:watchhistory";
-        const stored = localStorage.getItem(historyKey);
+        const { key: historyKey, fallbackKey: fallbackHistoryKey } = getWatchHistoryStorageKeys();
+        const stored = localStorage.getItem(historyKey) || localStorage.getItem(fallbackHistoryKey) || localStorage.getItem("streamforge:watchhistory");
         const history: any[] = stored ? JSON.parse(stored) : [];
         const item = history.find((x) => x.id === movie.id);
         if (item && item.episodeId) {
@@ -264,12 +272,28 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       }
     }
 
-    set({
-      activePlayback: movie,
-      activeEpisodeId: episodeId,
-      clickedElementId: elementId,
-      scrollPosition: scrollY,
-      activeCustomUrl: customUrl || null
+    // Set active playback state
+    set((state) => {
+      const { key: historyKey, fallbackKey: fallbackHistoryKey } = getWatchHistoryStorageKeys();
+      const existing = state.watchHistory.find((item) => item.id === movie.id);
+      
+      let updatedHistory = state.watchHistory;
+      // If user is reopening a previously watched movie, bump it to the top of Continue Watching
+      if (existing) {
+        const filtered = state.watchHistory.filter((item) => item.id !== movie.id);
+        updatedHistory = [existing, ...filtered];
+        localStorage.setItem(historyKey, JSON.stringify(updatedHistory));
+        localStorage.setItem(fallbackHistoryKey, JSON.stringify(updatedHistory));
+      }
+
+      return {
+        activePlayback: movie,
+        activeEpisodeId: episodeId,
+        clickedElementId: elementId,
+        scrollPosition: scrollY,
+        activeCustomUrl: customUrl || null,
+        watchHistory: updatedHistory,
+      };
     });
   },
 
@@ -295,33 +319,36 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
   updateWatchHistory: (movie, currentTime, duration, episodeId, episodeTitle) => {
     set((state) => {
       if (!movie) return {};
-      // Calculate progress percentage
-      const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
       
-      const user = useAuthStore.getState().user;
-      const historyKey = user?.email ? `streamforge:${user.email}:watchhistory` : "streamforge:watchhistory";
-
-      // Don't record very short views or completed videos (e.g. within 10 seconds of end)
-      if (currentTime < 5 || (duration > 0 && currentTime > duration - 10)) {
-        // Just remove from history if finished!
-        const updated = state.watchHistory.filter((item) => item.id !== movie.id);
-        localStorage.setItem(historyKey, JSON.stringify(updated));
-        return { watchHistory: updated };
+      // Ignore invalid or 0-duration updates
+      if (!currentTime || currentTime < 1 || !duration || duration <= 0) {
+        return {};
       }
+
+      // Calculate EXACT real progress percentage
+      const progress = Math.min(100, Math.max(1, (currentTime / duration) * 100));
+      const { key: historyKey, fallbackKey: fallbackHistoryKey } = getWatchHistoryStorageKeys();
 
       // Filter out existing item
       const filtered = state.watchHistory.filter((item) => item.id !== movie.id);
-      
-      // Construct item
+
+      // If completed (> 95% or within 15s of end when duration > 30s), remove from continue watching
+      if (duration > 30 && currentTime > duration - 15) {
+        localStorage.setItem(historyKey, JSON.stringify(filtered));
+        localStorage.setItem(fallbackHistoryKey, JSON.stringify(filtered));
+        return { watchHistory: filtered };
+      }
+
+      // Construct item with REAL currentTime & REAL duration & REAL progress
       const newItem: WatchHistoryItem = {
         id: movie.id,
         slug: movie.slug,
         title: movie.title,
         backdropUrl: movie.backdropUrl,
         posterUrl: movie.posterUrl,
-        currentTime,
-        duration,
-        progress,
+        currentTime: Math.floor(currentTime),
+        duration: Math.floor(duration),
+        progress: Math.round(progress),
         movieData: movie,
         episodeId,
         episodeTitle,
@@ -330,17 +357,21 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       // Put at the beginning
       const updated = [newItem, ...filtered].slice(0, 12);
       localStorage.setItem(historyKey, JSON.stringify(updated));
+      localStorage.setItem(fallbackHistoryKey, JSON.stringify(updated));
       return { watchHistory: updated };
     });
   },
 
   removeFromWatchHistory: (movieId) => {
     set((state) => {
-      const user = useAuthStore.getState().user;
-      const historyKey = user?.email ? `streamforge:${user.email}:watchhistory` : "streamforge:watchhistory";
+      const { key: historyKey, fallbackKey: fallbackHistoryKey } = getWatchHistoryStorageKeys();
       const updated = state.watchHistory.filter((item) => item.id !== movieId);
       localStorage.setItem(historyKey, JSON.stringify(updated));
+      localStorage.setItem(fallbackHistoryKey, JSON.stringify(updated));
       return { watchHistory: updated };
     });
   },
 }));
+
+// Load initial user watch history & list on module load
+usePlaybackStore.getState().loadUserData();

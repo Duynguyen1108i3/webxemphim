@@ -63,10 +63,11 @@ export function VideoPlayer({
     if (isEmbed) {
       const timer = setTimeout(() => {
         onPlayStarted?.();
+        onProgress?.(30, 120, source?.currentEpisodeId, source?.title);
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [isEmbed, onPlayStarted]);
+  }, [isEmbed, onPlayStarted, onProgress, source]);
 
 
 
@@ -292,11 +293,11 @@ export function VideoPlayer({
     if (!video) return;
     const handler = () => {
       const currentSource = latestSourceRef.current;
-      if (currentSource) {
-        onProgressRef.current?.(Math.floor(video.currentTime), Math.floor(video.duration || 0), currentSource.currentEpisodeId, currentSource.title);
+      if (currentSource && video.currentTime > 1 && video.duration > 0) {
+        onProgressRef.current?.(Math.floor(video.currentTime), Math.floor(video.duration), currentSource.currentEpisodeId, currentSource.title);
       }
     };
-    const interval = window.setInterval(handler, 10_000);
+    const interval = window.setInterval(handler, 3_000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -338,7 +339,7 @@ export function VideoPlayer({
       }
     };
 
-    const onMetadata = () => {
+    const onMetadata = () => {
       setDuration(video.duration || 0);
     };
 
@@ -346,7 +347,7 @@ export function VideoPlayer({
       setPlaying(true);
       onPlayStartedRef.current?.();
     };
-    
+
     const onPlaying = () => {
       setPlaying(true);
       onPlayStartedRef.current?.();

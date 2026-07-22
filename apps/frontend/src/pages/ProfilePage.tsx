@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { ArrowLeft, Check, Camera, LogOut, Save, User, Mail, Lock, KeyRound, Send, ShieldCheck, Sparkles, HelpCircle, RefreshCw, X } from "lucide-react";
+import { ArrowLeft, Check, Camera, LogOut, Save, User, Mail, Lock, KeyRound, Send, ShieldCheck, Sparkles, HelpCircle, RefreshCw, X, Trash2 } from "lucide-react";
 import { useAuthStore, authApi } from "../store/auth";
 import { useNavigate } from "react-router-dom";
 
@@ -752,16 +752,36 @@ export function ProfilePage() {
           </div>
         )}
 
-        {/* Footer Logout Option */}
+        {/* Footer Actions: Logout and Delete Account */}
         <div className="border-t border-white/10 mt-6 pt-4 flex items-center justify-between">
           <span className="text-[10px] text-white/30">ID Tài khoản: {user?.id || "N/A"}</span>
-          <button 
-            type="button"
-            onClick={handleSignOut}
-            className="flex items-center gap-1.5 text-white/40 hover:text-[#e50914] transition text-xs font-semibold cursor-pointer focus:outline-none"
-          >
-            <LogOut size={13} /> Đăng xuất
-          </button>
+          <div className="flex items-center gap-4">
+            <button 
+              type="button"
+              onClick={() => {
+                if (window.confirm("⚠️ Bạn có chắc chắn muốn XÓA VĨNH VIỄN tài khoản của mình không?\nToàn bộ dữ liệu, danh sách yêu thích và lịch sử xem phim sẽ bị xóa hoàn toàn khỏi hệ thống.")) {
+                  authApi.request("/users/me", { method: "DELETE" })
+                    .then(() => {
+                      logout();
+                      navigate("/login");
+                    })
+                    .catch((err) => {
+                      alert(err?.response?.data?.message || "Lỗi xóa tài khoản");
+                    });
+                }
+              }}
+              className="flex items-center gap-1.5 text-rose-400/70 hover:text-rose-500 transition text-xs font-semibold cursor-pointer focus:outline-none"
+            >
+              <Trash2 size={13} /> Xóa tài khoản
+            </button>
+            <button 
+              type="button"
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 text-white/40 hover:text-[#e50914] transition text-xs font-semibold cursor-pointer focus:outline-none"
+            >
+              <LogOut size={13} /> Đăng xuất
+            </button>
+          </div>
         </div>
 
       </div>

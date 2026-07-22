@@ -8,10 +8,13 @@ import { MovieRow } from "../components/MovieRow";
 import type { MovieCardDto } from "@streamforge/shared-types";
 import { movieApi, type MovieRowsResponse, type NormalizedMovie } from "../lib/movieApi";
 import { usePlaybackStore } from "../store/playbackStore";
+import { useAuthStore } from "../store/auth";
 import { decodeHtml } from "../lib/htmlUtils";
 
 export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "new-popular" }) {
   const { openDetailModal, openPlayback } = usePlaybackStore();
+  const { user, profileId } = useAuthStore();
+  const currentProfileName = profileId || user?.username || "bạn";
   const { data, isLoading } = useQuery<MovieRowsResponse>({
     queryKey: ["home-rows", type || "all"],
     staleTime: 30_000,
@@ -189,7 +192,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
       <Suspense fallback={<RowSkeleton />}>
         <div className="space-y-8 px-4 sm:px-8 md:px-14 lg:px-16">
           {continueWatchingItems.length > 0 && (
-            <MovieRow title="Continue Watching for Celine" items={continueWatchingItems as any[]} />
+            <MovieRow title={`Continue Watching for ${currentProfileName}`} items={continueWatchingItems as any[]} />
           )}
           {isLoading ? (
             <RowSkeleton />

@@ -52,7 +52,7 @@ function slugify(value: string) {
 
 export function MovieRow({ title, items, ranked = false, compact = false }: { title: string; items: MovieCardDto[]; ranked?: boolean; compact?: boolean }) {
   const { openDetailModal, openPlayback, activeMovieDetail, activePlayback } = usePlaybackStore();
-  const isContinueWatching = title === "Continue Watching for Celine";
+  const isContinueWatching = title.startsWith("Continue Watching") || title.startsWith("Tiếp tục xem");
   const [hovered, setHovered] = useState<{ movie: MovieCardDto; anchor: HTMLElement; rect: DOMRect } | null>(null);
   
   const rowRef = useRef<HTMLDivElement>(null);
