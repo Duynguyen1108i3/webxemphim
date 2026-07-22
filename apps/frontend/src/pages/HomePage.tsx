@@ -77,18 +77,17 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
 
   return (
     <main className="bg-transparent pb-16">
-      <div className="px-4 sm:px-8 md:px-14 lg:px-16 pt-[76px] pb-8">
-        <section className="relative h-[78vh] overflow-hidden rounded-2xl bg-[#141414]/80 shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_40px_rgba(0,0,0,0.5)] border border-white/10 backdrop-blur-xl">
+      <div className="px-4 sm:px-8 md:px-14 lg:px-16 pt-[76px] pb-3">
+        <section className="relative min-h-[84vh] h-[85vh] overflow-hidden rounded-2xl bg-[#141414] shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/10">
           {hero?.trailerUrl ? (
-            <motion.video layoutId="hero" className="absolute inset-0 h-full w-full object-cover opacity-60" autoPlay muted={isHeroMuted} loop playsInline poster={hero.backdropUrl} src={hero.trailerUrl} />
+            <motion.video layoutId="hero" className="absolute inset-0 h-full w-full object-cover opacity-90 brightness-105" autoPlay muted={isHeroMuted} loop playsInline poster={hero.backdropUrl} src={hero.trailerUrl} />
           ) : (
-            hero && <motion.img layoutId="hero" src={hero.backdropUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
+            hero && <motion.img layoutId="hero" src={hero.backdropUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-95 brightness-105 contrast-105" />
           )}
           
-          {/* Smooth blending gradients matching page background #141414 */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/50 to-transparent z-[2]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/40 to-transparent z-[2]" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-[#141414]/60 z-[1]" />
+          {/* Elegant text readability gradients - crisp clear visual on right side */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/65 via-45% to-transparent z-[2]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-black/30 z-[2]" />
           
           <motion.div
             className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-20 pb-12 pl-6 pr-4 sm:pl-12 md:pl-16"
