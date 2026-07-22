@@ -25,7 +25,19 @@ const { doubleCsrfProtection } = doubleCsrf({
 
 export function applySecurity(app: Express) {
   app.set("trust proxy", 1);
-  app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+  
+  // 1. Comprehensive Helmet HTTP Security Headers
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    hidePoweredBy: true,
+    xssFilter: true,
+    noSniff: true,
+    frameguard: { action: "deny" },
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" }
+  }));
+
+  // 2. Strict CORS Whitelisting
   app.use(cors({
     origin(origin, callback) {
       if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
@@ -39,12 +51,41 @@ export function applySecurity(app: Express) {
     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
     optionsSuccessStatus: 204
   }));
-  app.use(express.json({ limit: "10mb" }) as RequestHandler);
-  app.use(express.urlencoded({ extended: true, limit: "10mb" }) as RequestHandler);
+
+  // 3. Payload Limits (Anti Memory Exhaustion DoS)
+  app.use(express.json({ limit: "5mb" }) as RequestHandler);
+  app.use(express.urlencoded({ extended: true, limit: "5mb" }) as RequestHandler);
   app.use(cookieParser(env.COOKIE_SECRET) as RequestHandler);
   app.use(compression() as RequestHandler);
   app.use(morgan("combined"));
-  app.use(rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false }) as RequestHandler);
-  app.use("/api/auth", rateLimit({ windowMs: 15 * 60_000, limit: 30, standardHeaders: true, legacyHeaders: false }) as RequestHandler);
+
+  // 4. Rate Limiting & Anti-Brute-Force
+  // Global Limiter: 300 requests per minute
+  app.use(rateLimit({ 
+    windowMs: 60_000, 
+    limit: 300, 
+    standardHeaders: true, 
+    legacyHeaders: false,
+    message: { error: "Quá nhiều yêu cầu từ IP này. Vui lòng thử lại sau 1 phút.", code: "TOO_MANY_REQUESTS" }
+  }) as RequestHandler);
+
+  // Auth Limiter: 20 requests per 15 minutes on sensitive authentication routes
+  app.use("/api/auth", rateLimit({ 
+    windowMs: 15 * 60_000, 
+    limit: 20, 
+    standardHeaders: true, 
+    legacyHeaders: false,
+    message: { error: "Thao tác quá nhiều lần. Vui lòng thử lại sau 15 phút.", code: "AUTH_RATE_LIMITED" }
+  }) as RequestHandler);
+
+  // User Profile Mutations Limiter: 30 requests per 15 minutes
+  app.use("/api/users", rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 60,
+    standardHeaders: true,
+    legacyHeaders: false
+  }) as RequestHandler);
+
+  // 5. CSRF Token Protection
   app.use(doubleCsrfProtection as RequestHandler);
 }
