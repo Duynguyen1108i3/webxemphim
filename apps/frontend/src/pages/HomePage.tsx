@@ -69,109 +69,107 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
 
   return (
     <main className="bg-transparent pb-16">
-      <div className="px-4 sm:px-8 md:px-14 lg:px-16 pt-0 pb-8">
-        <section className="relative h-[80vh] overflow-hidden rounded-b-[20px] rounded-t-none bg-zinc-950 shadow-2xl">
-          {hero?.trailerUrl ? (
-            <motion.video layoutId="hero" className="absolute inset-0 h-full w-full object-cover opacity-60" autoPlay muted={isHeroMuted} loop playsInline poster={hero.backdropUrl} src={hero.trailerUrl} />
+      <section className="relative h-[85vh] w-full overflow-hidden bg-zinc-950 shadow-2xl">
+        {hero?.trailerUrl ? (
+          <motion.video layoutId="hero" className="absolute inset-0 h-full w-full object-cover opacity-60" autoPlay muted={isHeroMuted} loop playsInline poster={hero.backdropUrl} src={hero.trailerUrl} />
+        ) : (
+          hero && <motion.img layoutId="hero" src={hero.backdropUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
+        )}
+        
+        {/* Netflix style left and bottom gradients */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent z-[2]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/30 to-transparent z-[2]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-transparent to-transparent z-[1]" />
+        
+        <motion.div
+          className="relative z-10 flex h-full max-w-xl md:max-w-[55%] lg:max-w-[60%] flex-col justify-end pt-28 pb-16 px-4 sm:px-8 md:px-14 lg:px-16"
+          initial="hidden"
+          animate="visible"
+          transition={{ staggerChildren: 0.08, delayChildren: 0.12 }}
+        >
+          {isLoading ? (
+            <Skeleton className="h-12 w-80" />
           ) : (
-            hero && <motion.img layoutId="hero" src={hero.backdropUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
+            <motion.h1 
+              variants={heroCopy} 
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} 
+              className="max-w-3xl text-2xl font-black leading-tight sm:text-4xl md:text-5xl lg:text-5xl text-shadow text-white line-clamp-3"
+            >
+              {hero?.title ?? "StreamForge"}
+            </motion.h1>
           )}
           
-          {/* Netflix style left and bottom gradients */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent z-[2]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141414]/90 via-transparent to-transparent z-[2]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent z-[1]" />
-          
-          <motion.div
-            className="relative z-10 flex h-full max-w-xl md:max-w-[40%] flex-col justify-center pt-16 pl-6 pr-4 sm:pl-12 md:pl-16 pb-8"
-            initial="hidden"
-            animate="visible"
-            transition={{ staggerChildren: 0.08, delayChildren: 0.12 }}
-          >
-            {isLoading ? (
-              <Skeleton className="h-12 w-80" />
-            ) : (
-              <motion.h1 
-                variants={heroCopy} 
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} 
-                className="max-w-3xl text-3xl font-black leading-tight md:text-5xl lg:text-6xl text-shadow text-white"
-              >
-                {hero?.title ?? "StreamForge"}
-              </motion.h1>
-            )}
-            
-            <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-3.5 flex items-center gap-2 text-xs font-semibold text-white/85">
-              <span className="text-[#46d369]">{hero && "98% Match"}</span>
-              <span className="text-white/30">•</span>
-              <span>{hero?.releaseYear}</span>
-              <span className="text-white/30">•</span>
-              <span className="rounded border border-white/30 px-1.5 py-0.2 text-[10px] font-bold">{hero?.maturityRating?.replace("_", "-")}</span>
-              <span className="text-white/30">•</span>
-              <span>{hero?.runtimeMinutes}m</span>
-              <span className="text-white/30">•</span>
-              <span className="rounded bg-white/20 px-1.5 py-0.2 text-[10px] font-bold">HD</span>
-            </motion.div>
-            
-            <motion.p variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="synopsis mt-4 line-clamp-3 text-sm leading-relaxed text-white/80 md:text-base">
-              {decodeHtml(hero?.synopsis ?? "")}
-            </motion.p>
-            
-            <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-6 flex flex-wrap gap-2.5">
-              {hero && (hero as any).animeUrl && (
-                <a
-                  href="https://animevietsub.id/"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="nf-button inline-flex h-11 items-center justify-center rounded-full glass-button px-5 text-xs font-bold text-white transition focus:outline-none"
-                >
-                  Nguồn AnimeVietsub
-                </a>
-              )}
-              {hero && (
-                <button
-                  onClick={() => openPlayback(hero as NormalizedMovie, "hero")}
-                  className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-lg active:scale-95 duration-300"
-                >
-                  <Play size={18} fill="currentColor" /> Play
-                </button>
-              )}
-              {hero && (
-                <button
-                  onClick={() => openDetailModal(hero as NormalizedMovie, "hero")}
-                  className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded-full glass-button px-6 text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300"
-                >
-                  <Info size={18} /> More Info
-                </button>
-              )}
-              {hero && (
-                <Button
-                  variant="ghost"
-                  onClick={() => toggleMyList(hero as NormalizedMovie)}
-                  className="nf-button h-11 rounded-full px-6 glass-button text-white flex items-center justify-center gap-1.5 text-sm font-bold active:scale-95 duration-300"
-                >
-                  {inMyList ? <Check size={16} className="text-[#46d369]" /> : <Plus size={16} />}
-                  {inMyList ? "In My List" : "My List"}
-                </Button>
-              )}
-            </motion.div>
+          <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-3.5 flex items-center gap-2 text-xs font-semibold text-white/85">
+            <span className="text-[#46d369]">{hero && "98% Match"}</span>
+            <span className="text-white/30">•</span>
+            <span>{hero?.releaseYear}</span>
+            <span className="text-white/30">•</span>
+            <span className="rounded border border-white/30 px-1.5 py-0.2 text-[10px] font-bold">{hero?.maturityRating?.replace("_", "-")}</span>
+            <span className="text-white/30">•</span>
+            <span>{hero?.runtimeMinutes}m</span>
+            <span className="text-white/30">•</span>
+            <span className="rounded bg-white/20 px-1.5 py-0.2 text-[10px] font-bold">HD</span>
           </motion.div>
           
-          {hero && (
-            <div className="absolute bottom-10 right-0 z-20 flex items-center gap-3.5 select-none pr-4 sm:pr-8 md:pr-12">
-              <button
-                onClick={() => setIsHeroMuted(!isHeroMuted)}
-                className="grid h-9 w-9 place-items-center rounded-full border border-white/60 bg-black/35 text-white hover:bg-white/10 transition hover:border-white focus:outline-none cursor-pointer"
-                aria-label={isHeroMuted ? "Unmute preview" : "Mute preview"}
+          <motion.p variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="synopsis mt-4 line-clamp-3 text-sm leading-relaxed text-white/80 md:text-base">
+            {decodeHtml(hero?.synopsis ?? "")}
+          </motion.p>
+          
+          <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-6 flex flex-wrap gap-2.5">
+            {hero && (hero as any).animeUrl && (
+              <a
+                href="https://animevietsub.id/"
+                target="_blank"
+                rel="noreferrer"
+                className="nf-button inline-flex h-11 items-center justify-center rounded-full glass-button px-5 text-xs font-bold text-white transition focus:outline-none"
               >
-                {isHeroMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                Nguồn AnimeVietsub
+              </a>
+            )}
+            {hero && (
+              <button
+                onClick={() => openPlayback(hero as NormalizedMovie, "hero")}
+                className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-lg active:scale-95 duration-300"
+              >
+                <Play size={18} fill="currentColor" /> Play
               </button>
-              <div className="border-l-4 border-white/70 bg-black/45 px-5 py-1 text-xs font-semibold text-white">
-                {hero.maturityRating?.replace("_", "-")}
-              </div>
+            )}
+            {hero && (
+              <button
+                onClick={() => openDetailModal(hero as NormalizedMovie, "hero")}
+                className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded-full glass-button px-6 text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300"
+              >
+                <Info size={18} /> More Info
+              </button>
+            )}
+            {hero && (
+              <Button
+                variant="ghost"
+                onClick={() => toggleMyList(hero as NormalizedMovie)}
+                className="nf-button h-11 rounded-full px-6 glass-button text-white flex items-center justify-center gap-1.5 text-sm font-bold active:scale-95 duration-300"
+              >
+                {inMyList ? <Check size={16} className="text-[#46d369]" /> : <Plus size={16} />}
+                {inMyList ? "In My List" : "My List"}
+              </Button>
+            )}
+          </motion.div>
+        </motion.div>
+        
+        {hero && (
+          <div className="absolute bottom-10 right-0 z-20 flex items-center gap-3.5 select-none pr-4 sm:pr-8 md:pr-12">
+            <button
+              onClick={() => setIsHeroMuted(!isHeroMuted)}
+              className="grid h-9 w-9 place-items-center rounded-full border border-white/60 bg-black/35 text-white hover:bg-white/10 transition hover:border-white focus:outline-none cursor-pointer"
+              aria-label={isHeroMuted ? "Unmute preview" : "Mute preview"}
+            >
+              {isHeroMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </button>
+            <div className="border-l-4 border-white/70 bg-black/45 px-5 py-1 text-xs font-semibold text-white">
+              {hero.maturityRating?.replace("_", "-")}
             </div>
-          )}
-        </section>
-      </div>
+          </div>
+        )}
+      </section>
 
       <Suspense fallback={<RowSkeleton />}>
         <div className="space-y-8 px-4 sm:px-8 md:px-14 lg:px-16">
