@@ -279,7 +279,7 @@ export function AppShell() {
       if (!active || !movies || movies.length === 0) return;
       setLatestMovies(movies.slice(0, 5));
       
-      const lastSeen = localStorage.getItem("streamforge:lastSeenMovieSlug");
+      const lastSeen = localStorage.getItem("rytoxgroup:lastSeenMovieSlug") || localStorage.getItem("streamforge:lastSeenMovieSlug");
       const newestSlug = movies[0].slug;
       
       if (lastSeen) {
@@ -287,6 +287,7 @@ export function AppShell() {
           setHasNotification(true);
         }
       } else {
+        localStorage.setItem("rytoxgroup:lastSeenMovieSlug", newestSlug);
         localStorage.setItem("streamforge:lastSeenMovieSlug", newestSlug);
       }
     }).catch((err) => console.error("Notification check failed:", err));
@@ -297,6 +298,7 @@ export function AppShell() {
   const toggleNotification = () => {
     setNotificationOpen(!notificationOpen);
     if (latestMovies.length > 0) {
+      localStorage.setItem("rytoxgroup:lastSeenMovieSlug", latestMovies[0].slug);
       localStorage.setItem("streamforge:lastSeenMovieSlug", latestMovies[0].slug);
       setHasNotification(false);
     }
@@ -785,7 +787,7 @@ export function AppShell() {
                       }}
                       className="flex items-center gap-2.5 w-full px-4 py-2 hover:bg-white/10 transition text-xs font-bold text-[#e50914] text-left cursor-pointer"
                     >
-                      Đăng xuất khỏi StreamForge
+                      Đăng xuất khỏi RytoxGroup
                     </button>
                   </motion.div>
                 )}
@@ -836,15 +838,15 @@ export function AppShell() {
                 ))}
               </div>
               {!isSearching && hasMoreSearch && (
-                <div className="flex justify-center mt-4">
-                  <Button
+                <div className="flex justify-center mt-6 mb-4">
+                  <button
                     onClick={handleLoadMoreSearch}
                     disabled={isSearching}
-                    className="flex items-center gap-2 px-6 py-2 rounded-full border border-white/20 bg-zinc-900/60 hover:bg-white hover:text-black hover:border-white text-white text-sm font-semibold transition-all duration-300 shadow-md cursor-pointer disabled:opacity-50"
+                    className="group relative inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm tracking-wide transition-all duration-300 border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.6)] hover:border-white/40 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md disabled:opacity-50"
                   >
                     <span>Xem thêm</span>
-                    <ChevronDown size={16} />
-                  </Button>
+                    <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-[#e50914]" />
+                  </button>
                 </div>
               )}
             </div>
@@ -882,7 +884,7 @@ export function AppShell() {
             />
             {/* Left slide-in drawer */}
             <motion.nav
-              className="fixed bottom-0 left-0 top-0 z-[101] w-72 bg-[#141414] p-6 shadow-2xl flex flex-col gap-6"
+              className="fixed bottom-0 left-0 top-0 z-[101] w-72 bg-[#141414] p-6 pb-16 shadow-2xl flex flex-col gap-6 overflow-y-auto max-h-[100dvh] overscroll-contain touch-pan-y"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}

@@ -151,7 +151,7 @@ export function LoginPage() {
           {/* Register Redirect info */}
           <div className="mt-12 text-sm text-zinc-500 font-medium">
             <p>
-              Bạn mới sử dụng StreamForge?{" "}
+              Bạn mới sử dụng RytoxGroup?{" "}
               <Link to="/register" className="text-white hover:underline font-bold ml-1">
                 Đăng ký ngay bây giờ.
               </Link>

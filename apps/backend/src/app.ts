@@ -10,8 +10,8 @@ import adminRoutes from "./routes/admin.routes.js";
 export function createApp() {
   const app = express();
   applySecurity(app);
-  app.get("/health", (_req, res) => res.json({ ok: true, service: "streamforge-api" }));
-  app.get("/api/health", (_req, res) => res.json({ ok: true, service: "streamforge-api" }));
+  app.get("/health", (_req, res) => res.json({ ok: true, service: "rytoxgroup-api" }));
+  app.get("/api/health", (_req, res) => res.json({ ok: true, service: "rytoxgroup-api" }));
   app.use("/api/auth", authRoutes);
   app.use("/api/movies", movieRoutes);
   app.use("/api/users", userRoutes);

@@ -1,60 +1,42 @@
-import { Facebook, Instagram, Twitter, Youtube } from "lucide-react";
+import { Facebook, Heart, Instagram, Twitter, Youtube } from "lucide-react";
 
 export function Footer() {
-  const links = [
-    { label: "Audio Description", href: "#" },
-    { label: "Help Center", href: "#" },
-    { label: "Gift Cards", href: "#" },
-    { label: "Media Center", href: "#" },
-    { label: "Investor Relations", href: "#" },
-    { label: "Jobs", href: "#" },
-    { label: "Terms of Use", href: "#" },
-    { label: "Privacy", href: "#" },
-    { label: "Legal Notices", href: "#" },
-    { label: "Cookie Preferences", href: "#" },
-    { label: "Corporate Information", href: "#" },
-    { label: "Contact Us", href: "#" },
-  ];
-
   return (
-    <footer className="mx-auto max-w-5xl px-4 py-12 text-zinc-500 sm:px-6 md:px-8">
-      {/* Social Icons */}
-      <div className="flex gap-6 mb-6">
+    <footer className="mx-auto max-w-5xl px-4 py-10 text-zinc-400 sm:px-6 md:px-8 flex flex-col items-center justify-center gap-5 text-center">
+      {/* Social Logos */}
+      <div className="flex items-center justify-center gap-6">
         <a href="#" className="hover:text-white transition duration-200" aria-label="Facebook">
-          <Facebook size={24} />
+          <Facebook size={22} />
         </a>
         <a href="#" className="hover:text-white transition duration-200" aria-label="Instagram">
-          <Instagram size={24} />
+          <Instagram size={22} />
         </a>
         <a href="#" className="hover:text-white transition duration-200" aria-label="Twitter">
-          <Twitter size={24} />
+          <Twitter size={22} />
         </a>
-        <a href="#" className="hover:text-white transition duration-200" aria-label="YouTube">
-          <Youtube size={24} />
+        <a 
+          href="https://www.youtube.com/@toxijp2364" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="hover:text-[#e50914] transition duration-200" 
+          aria-label="YouTube"
+        >
+          <Youtube size={22} />
         </a>
       </div>
 
-      {/* Footer Links Grid */}
-      <div className="grid grid-cols-2 gap-4 mb-8 sm:grid-cols-3 md:grid-cols-4 text-xs">
-        {links.map((link) => (
-          <a
-            key={link.label}
-            href={link.href}
-            className="hover:underline transition duration-200"
-          >
-            {link.label}
-          </a>
-        ))}
+      {/* Donate Line */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-xs font-medium text-zinc-300 bg-white/5 border border-white/10 px-5 py-2.5 rounded-full backdrop-blur-md shadow-lg">
+        <span className="flex items-center gap-1.5 text-white font-bold">
+          <Heart size={15} className="text-[#e50914] fill-[#e50914] animate-pulse" />
+          Ủng hộ máy chủ (Donate):
+        </span>
+        <span>MB Bank — STK: <strong className="text-white font-bold">010764831289</strong> (RytoxGroup)</span>
       </div>
-
-      {/* Service Code Button */}
-      <button className="border border-zinc-500 px-3 py-1.5 text-xs hover:text-white hover:border-white transition duration-200 mb-6">
-        Service Code
-      </button>
 
       {/* Copyright */}
-      <div className="text-[10px] text-zinc-600">
-        © 2026 StreamForge, Inc.
+      <div className="text-[11px] text-zinc-600 font-medium">
+        © 2026 RytoxGroup, Inc.
       </div>
     </footer>
   );

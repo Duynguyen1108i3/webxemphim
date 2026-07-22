@@ -76,11 +76,23 @@ async function refreshAccessToken(): Promise<AuthUser | null> {
   return refreshInFlight;
 }
 
+function getStoredItem(key: string): string | null {
+  return localStorage.getItem(`rytoxgroup:${key}`) || localStorage.getItem(`streamforge:${key}`);
+}
+function setStoredItem(key: string, val: string) {
+  localStorage.setItem(`rytoxgroup:${key}`, val);
+  localStorage.setItem(`streamforge:${key}`, val);
+}
+function removeStoredItem(key: string) {
+  localStorage.removeItem(`rytoxgroup:${key}`);
+  localStorage.removeItem(`streamforge:${key}`);
+}
+
 function resetLocalAuth(set: (state: Partial<AuthState>) => void) {
   csrfToken = null;
-  localStorage.removeItem("streamforge:auth:user");
-  localStorage.removeItem("streamforge:auth:profileId");
-  localStorage.removeItem("streamforge:profile:avatar");
+  removeStoredItem("auth:user");
+  removeStoredItem("auth:profileId");
+  removeStoredItem("profile:avatar");
   set({ user: null, profileId: null, avatarUrl: null });
   usePlaybackStore.getState().loadUserData();
 }
@@ -88,44 +100,44 @@ function resetLocalAuth(set: (state: Partial<AuthState>) => void) {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   profileId: null,
-  avatarUrl: localStorage.getItem("streamforge:profile:avatar"),
+  avatarUrl: getStoredItem("profile:avatar"),
   initialized: false,
   setUser: (user) => {
     if (user) {
-      localStorage.setItem("streamforge:auth:user", JSON.stringify(user));
+      setStoredItem("auth:user", JSON.stringify(user));
       if (user.avatarUrl) {
-        localStorage.setItem("streamforge:profile:avatar", user.avatarUrl);
+        setStoredItem("profile:avatar", user.avatarUrl);
         set({ user, avatarUrl: user.avatarUrl });
       } else {
         set({ user });
       }
     } else {
-      localStorage.removeItem("streamforge:auth:user");
+      removeStoredItem("auth:user");
       set({ user });
     }
     usePlaybackStore.getState().loadUserData();
   },
   setProfileId: (profileId) => {
-    if (profileId) localStorage.setItem("streamforge:auth:profileId", profileId);
-    else localStorage.removeItem("streamforge:auth:profileId");
+    if (profileId) setStoredItem("auth:profileId", profileId);
+    else removeStoredItem("auth:profileId");
     set({ profileId });
     usePlaybackStore.getState().loadUserData();
   },
   setAvatarUrl: (avatarUrl) => {
-    if (avatarUrl) localStorage.setItem("streamforge:profile:avatar", avatarUrl);
-    else localStorage.removeItem("streamforge:profile:avatar");
+    if (avatarUrl) setStoredItem("profile:avatar", avatarUrl);
+    else removeStoredItem("profile:avatar");
     set({ avatarUrl });
   },
   initialize: async () => {
     // Fast path: try to restore from localStorage first for instant UI
-    const cachedUserStr = localStorage.getItem("streamforge:auth:user");
+    const cachedUserStr = getStoredItem("auth:user");
     if (cachedUserStr) {
       try {
         const cachedUser = JSON.parse(cachedUserStr) as AuthUser;
         if (cachedUser.id?.startsWith("offline-")) {
           throw new Error("Reject legacy offline user");
         }
-        const profileId = localStorage.getItem("streamforge:auth:profileId") || cachedUser.username;
+        const profileId = getStoredItem("auth:profileId") || cachedUser.username;
         // Show cached user immediately while we verify with backend
         set({ user: cachedUser, profileId, initialized: true });
         usePlaybackStore.getState().loadUserData();
@@ -133,9 +145,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         // Background verify: try to refresh from backend
         try {
           const user = await authApi.getCurrentUser();
-          localStorage.setItem("streamforge:auth:user", JSON.stringify(user));
+          setStoredItem("auth:user", JSON.stringify(user));
           if (user.avatarUrl) {
-            localStorage.setItem("streamforge:profile:avatar", user.avatarUrl);
+            setStoredItem("profile:avatar", user.avatarUrl);
             set({ user, avatarUrl: user.avatarUrl });
           } else {
             set({ user });
@@ -150,17 +162,17 @@ export const useAuthStore = create<AuthState>((set) => ({
         return;
       } catch {
         // Invalid cached data, fall through to normal flow
-        localStorage.removeItem("streamforge:auth:user");
+        removeStoredItem("auth:user");
       }
     }
 
     // Normal flow: try to authenticate with backend
     try {
       const user = await authApi.getCurrentUser();
-      const profileId = localStorage.getItem("streamforge:auth:profileId") || user.username;
-      localStorage.setItem("streamforge:auth:user", JSON.stringify(user));
+      const profileId = getStoredItem("auth:profileId") || user.username;
+      setStoredItem("auth:user", JSON.stringify(user));
       if (user.avatarUrl) {
-        localStorage.setItem("streamforge:profile:avatar", user.avatarUrl);
+        setStoredItem("profile:avatar", user.avatarUrl);
         set({ user, profileId, avatarUrl: user.avatarUrl, initialized: true });
       } else {
         set({ user, profileId, initialized: true });
@@ -246,6 +258,42 @@ export const authApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
       body: JSON.stringify({ avatarUrl })
+    }, false);
+    useAuthStore.getState().setUser(data.user);
+    return data.user;
+  },
+  async updateUsername(username: string): Promise<AuthUser> {
+    const token = await ensureCsrfToken(true);
+    const data = await protectedRequest<{ user: AuthUser }>("/users/me/username", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
+      body: JSON.stringify({ username })
+    }, false);
+    useAuthStore.getState().setUser(data.user);
+    return data.user;
+  },
+  async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const token = await ensureCsrfToken(true);
+    await protectedRequest<{ success: boolean }>("/users/me/password", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
+      body: JSON.stringify({ currentPassword, newPassword })
+    }, false);
+  },
+  async sendChangeEmailOtp(newEmail: string): Promise<void> {
+    const token = await ensureCsrfToken(true);
+    await apiRequest<void>("/users/me/send-email-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
+      body: JSON.stringify({ newEmail })
+    }, 30_000);
+  },
+  async updateEmail(newEmail: string, otp: string): Promise<AuthUser> {
+    const token = await ensureCsrfToken(true);
+    const data = await protectedRequest<{ user: AuthUser }>("/users/me/email", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
+      body: JSON.stringify({ newEmail, otp })
     }, false);
     useAuthStore.getState().setUser(data.user);
     return data.user;

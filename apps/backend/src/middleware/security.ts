@@ -13,7 +13,7 @@ const { doubleCsrfProtection } = doubleCsrf({
   getSecret: () => env.COOKIE_SECRET,
   // __Host- cookies must always be Secure. Using that prefix in HTTP development
   // makes browsers silently reject the cookie and every protected request fails.
-  cookieName: "streamforge-csrf",
+  cookieName: "rytoxgroup-csrf",
   cookieOptions: {
     httpOnly: true,
     sameSite: env.AUTH_COOKIE_SAME_SITE,
@@ -39,8 +39,8 @@ export function applySecurity(app: Express) {
     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
     optionsSuccessStatus: 204
   }));
-  app.use(express.json({ limit: "1mb" }) as RequestHandler);
-  app.use(express.urlencoded({ extended: true, limit: "1mb" }) as RequestHandler);
+  app.use(express.json({ limit: "10mb" }) as RequestHandler);
+  app.use(express.urlencoded({ extended: true, limit: "10mb" }) as RequestHandler);
   app.use(cookieParser(env.COOKIE_SECRET) as RequestHandler);
   app.use(compression() as RequestHandler);
   app.use(morgan("combined"));

@@ -36,10 +36,32 @@
 }
 
 /* Fz QuaffingTogether for large titles (Vietnamese diacritics optimized) */
-h1, .large-title, .brand-logo {
+h1, .large-title {
   font-family: 'Fz QuaffingTogether', 'Dela Gothic One', 'Anton', cursive, sans-serif;
   font-weight: 400;
   letter-spacing: 0.01em;
+}
+
+.brand-logo {
+  font-family: 'League Spartan', sans-serif !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+}
+
+.hero-title {
+  font-family: 'League Spartan', 'Poppins', sans-serif !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.02em;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.stacked-hero-title {
+  font-family: 'League Spartan', 'Poppins', sans-serif !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.04em;
+  line-height: 0.88 !important;
+  text-transform: uppercase;
+  text-shadow: 0 8px 32px rgba(0, 0, 0, 0.95), 0 3px 6px rgba(0, 0, 0, 1);
 }
 
 /* Playfair Display for descriptions and synopsis */

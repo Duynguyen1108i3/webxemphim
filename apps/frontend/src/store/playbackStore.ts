@@ -8,14 +8,16 @@ interface SyncAction {
   movie?: NormalizedMovie;
 }
 
-const getSyncQueueKey = (profileId: string) => `streamforge:${profileId}:mylist_sync_queue`;
+const getSyncQueueKey = (profileId: string) => `rytoxgroup:${profileId}:mylist_sync_queue`;
 
 const queueSyncAction = (profileId: string, action: SyncAction) => {
   try {
     const key = getSyncQueueKey(profileId);
-    const queue = JSON.parse(localStorage.getItem(key) || "[]");
+    const fallbackKey = `streamforge:${profileId}:mylist_sync_queue`;
+    const queue = JSON.parse(localStorage.getItem(key) || localStorage.getItem(fallbackKey) || "[]");
     queue.push(action);
     localStorage.setItem(key, JSON.stringify(queue));
+    localStorage.setItem(fallbackKey, JSON.stringify(queue));
   } catch (e) {
     console.error("Failed to queue sync action:", e);
   }
@@ -23,9 +25,10 @@ const queueSyncAction = (profileId: string, action: SyncAction) => {
 
 const flushSyncQueue = async (profileId: string): Promise<void> => {
   const key = getSyncQueueKey(profileId);
+  const fallbackKey = `streamforge:${profileId}:mylist_sync_queue`;
   let queue: SyncAction[] = [];
   try {
-    queue = JSON.parse(localStorage.getItem(key) || "[]");
+    queue = JSON.parse(localStorage.getItem(key) || localStorage.getItem(fallbackKey) || "[]");
   } catch {
     return;
   }
@@ -51,10 +54,12 @@ const flushSyncQueue = async (profileId: string): Promise<void> => {
       // Keep remaining items in the queue and stop flushing
       const remaining = queue.slice(i);
       localStorage.setItem(key, JSON.stringify(remaining));
+      localStorage.setItem(fallbackKey, JSON.stringify(remaining));
       return;
     }
   }
   localStorage.removeItem(key);
+  localStorage.removeItem(fallbackKey);
 };
 
 export interface WatchHistoryItem {
@@ -71,7 +76,7 @@ export interface WatchHistoryItem {
   episodeTitle?: string;
 }
 
-interface PlaybackState {
+export interface PlaybackState {
   activeMovieDetail: NormalizedMovie | null;
   activePlayback: NormalizedMovie | null;
   activeEpisodeId: string | null;
@@ -113,7 +118,8 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       if (!dbProfileId) return;
 
       const email = user.email || "";
-      const mylistKey = `streamforge:${email}:mylist`;
+      const mylistKey = `rytoxgroup:${email}:mylist`;
+      const fallbackMylistKey = `streamforge:${email}:mylist`;
 
       // 1. Fetch My List from PostgreSQL DB via Express backend
       const mapFavorites = (favorites: NormalizedMovie[]) => {
@@ -135,17 +141,19 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
             const mapped = mapFavorites(data.favorites);
             set({ myList: mapped });
             localStorage.setItem(mylistKey, JSON.stringify(mapped)); // Sync cache
+            localStorage.setItem(fallbackMylistKey, JSON.stringify(mapped));
           }
         })
         .catch(() => {
-          const storedList = localStorage.getItem(mylistKey);
+          const storedList = localStorage.getItem(mylistKey) || localStorage.getItem(fallbackMylistKey);
           const parsed = storedList ? JSON.parse(storedList) : [];
           set({ myList: mapFavorites(parsed) });
         });
 
       // 2. Fetch watch history (standard local storage fallback)
-      const historyKey = `streamforge:${email}:watchhistory`;
-      const storedHistory = localStorage.getItem(historyKey);
+      const historyKey = `rytoxgroup:${email}:watchhistory`;
+      const fallbackHistoryKey = `streamforge:${email}:watchhistory`;
+      const storedHistory = localStorage.getItem(historyKey) || localStorage.getItem(fallbackHistoryKey);
       set({ watchHistory: storedHistory ? JSON.parse(storedHistory) : [] });
     } catch {
     }
@@ -160,7 +168,8 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
     if (!dbProfileId) return;
 
     const email = user.email || "";
-    const mylistKey = `streamforge:${email}:mylist`;
+    const mylistKey = `rytoxgroup:${email}:mylist`;
+    const fallbackMylistKey = `streamforge:${email}:mylist`;
 
     set((state) => {
       const exists = state.myList.some((item) => item.id === movie.id);

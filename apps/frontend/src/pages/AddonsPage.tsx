@@ -231,7 +231,7 @@ export function AddonsPage() {
           <div className="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
             <div className="max-w-2xl">
               <div className="flex items-center gap-2 text-xs font-bold text-red-500 uppercase tracking-widest mb-3">
-                <Sparkles size={14} /> StreamForge Extension Catalog
+                <Sparkles size={14} /> RytoxGroup Extension Catalog
               </div>
               <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-4 bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
                 Stremio Addons

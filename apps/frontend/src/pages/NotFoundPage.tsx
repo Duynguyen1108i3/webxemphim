@@ -19,7 +19,7 @@ export function NotFoundPage() {
             to="/"
             className="nf-button inline-flex h-12 items-center justify-center rounded bg-white px-8 text-sm font-black text-black hover:bg-white/85 transition"
           >
-            StreamForge Home
+            RytoxGroup Home
           </Link>
         </div>
         <div className="pt-8 border-t border-zinc-800 text-xs tracking-widest text-zinc-500 font-mono">

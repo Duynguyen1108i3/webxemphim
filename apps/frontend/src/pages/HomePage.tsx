@@ -52,10 +52,18 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
     }
   });
   const rows = data?.rows ?? [];
+  const [visibleCount, setVisibleCount] = useState(6);
   const hero = rows[0]?.items[0];
   const { myList, toggleMyList, watchHistory } = usePlaybackStore();
   const inMyList = hero ? myList.some((item) => item.id === hero.id) : false;
   const [isHeroMuted, setIsHeroMuted] = useState(true);
+
+  const visibleRows = rows.slice(0, visibleCount);
+  const hasMoreRows = visibleCount < rows.length;
+
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => Math.min(prev + 4, rows.length));
+  };
 
   // Map watch history to cards with progress bars
   const continueWatchingItems = watchHistory.map((item) => ({
@@ -69,60 +77,66 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
 
   return (
     <main className="bg-transparent pb-16">
-      <div className="px-4 sm:px-8 md:px-14 lg:px-16 pt-20 pb-8">
-        <section className="relative h-[78vh] overflow-hidden rounded-2xl bg-zinc-950 shadow-2xl">
+      <div className="px-4 sm:px-8 md:px-14 lg:px-16 pt-[76px] pb-8">
+        <section className="relative h-[78vh] overflow-hidden rounded-2xl bg-[#141414]/80 shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_40px_rgba(0,0,0,0.5)] border border-white/10 backdrop-blur-xl">
           {hero?.trailerUrl ? (
             <motion.video layoutId="hero" className="absolute inset-0 h-full w-full object-cover opacity-60" autoPlay muted={isHeroMuted} loop playsInline poster={hero.backdropUrl} src={hero.trailerUrl} />
           ) : (
             hero && <motion.img layoutId="hero" src={hero.backdropUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
           )}
           
-          {/* Netflix style left and bottom gradients */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-transparent z-[2]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141414]/90 via-transparent to-transparent z-[2]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent z-[1]" />
+          {/* Smooth blending gradients matching page background #141414 */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/50 to-transparent z-[2]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/40 to-transparent z-[2]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-[#141414]/60 z-[1]" />
           
           <motion.div
-            className="relative z-10 flex h-full max-w-xl md:max-w-[55%] lg:max-w-[60%] flex-col justify-end pt-24 pb-14 pl-6 pr-4 sm:pl-12 md:pl-16"
+            className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-20 pb-12 pl-6 pr-4 sm:pl-12 md:pl-16"
             initial="hidden"
             animate="visible"
             transition={{ staggerChildren: 0.08, delayChildren: 0.12 }}
           >
+            {/* RytoxGroup Original Pill Badge */}
+            <motion.div variants={heroCopy} transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }} className="mb-2 flex items-center gap-2">
+              <span className="brand-logo text-base sm:text-lg font-extrabold tracking-tight text-[#e50914]">RYTOXGROUP</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/60 bg-white/10 px-2 py-0.5 rounded border border-white/10">ORIGINAL</span>
+            </motion.div>
+
             {isLoading ? (
-              <Skeleton className="h-12 w-80" />
+              <Skeleton className="h-14 w-80 rounded-lg" />
             ) : (
               <motion.h1 
                 variants={heroCopy} 
                 transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} 
-                className="max-w-3xl text-2xl font-black leading-tight sm:text-4xl md:text-5xl lg:text-5xl text-shadow text-white line-clamp-3"
+                className="hero-title text-2xl font-black leading-tight sm:text-4xl md:text-5xl lg:text-6xl text-white text-shadow line-clamp-2 max-w-3xl"
               >
-                {hero?.title ?? "StreamForge"}
+                {hero?.title ?? "RytoxGroup"}
               </motion.h1>
             )}
             
-            <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-3.5 flex items-center gap-2 text-xs font-semibold text-white/85">
-              <span className="text-[#46d369]">{hero && "98% Match"}</span>
+            <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-4 flex flex-wrap items-center gap-2.5 text-xs sm:text-sm font-semibold text-white/90">
+              <span className="text-[#46d369] font-bold">{hero && "98% Match"}</span>
               <span className="text-white/30">•</span>
               <span>{hero?.releaseYear}</span>
               <span className="text-white/30">•</span>
-              <span className="rounded border border-white/30 px-1.5 py-0.2 text-[10px] font-bold">{hero?.maturityRating?.replace("_", "-")}</span>
+              <span className="rounded border border-white/35 px-2 py-0.5 text-[11px] font-bold tracking-wider">{hero?.maturityRating?.replace("_", "-")}</span>
               <span className="text-white/30">•</span>
               <span>{hero?.runtimeMinutes}m</span>
               <span className="text-white/30">•</span>
-              <span className="rounded bg-white/20 px-1.5 py-0.2 text-[10px] font-bold">HD</span>
+              <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wider">HD</span>
             </motion.div>
             
-            <motion.p variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="synopsis mt-4 line-clamp-3 text-sm leading-relaxed text-white/80 md:text-base">
+            <motion.p variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="synopsis mt-3.5 line-clamp-2 sm:line-clamp-3 text-sm leading-relaxed text-white/80 md:text-base max-w-2xl">
               {decodeHtml(hero?.synopsis ?? "")}
             </motion.p>
             
-            <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-6 flex flex-wrap gap-2.5">
+            <motion.div variants={heroCopy} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }} className="mt-6 flex flex-wrap items-center gap-3">
               {hero && (hero as any).animeUrl && (
                 <a
                   href="https://animevietsub.id/"
                   target="_blank"
                   rel="noreferrer"
-                  className="nf-button inline-flex h-11 items-center justify-center rounded-full glass-button px-5 text-xs font-bold text-white transition focus:outline-none"
+                  className="nf-button inline-flex h-12 items-center justify-center rounded-full glass-button px-5 text-xs font-bold text-white transition focus:outline-none"
                 >
                   Nguồn AnimeVietsub
                 </a>
@@ -130,7 +144,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
               {hero && (
                 <button
                   onClick={() => openPlayback(hero as NormalizedMovie, "hero")}
-                  className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-lg active:scale-95 duration-300"
+                  className="nf-button inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-7 text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-xl active:scale-95 duration-300 cursor-pointer"
                 >
                   <Play size={18} fill="currentColor" /> Play
                 </button>
@@ -138,7 +152,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
               {hero && (
                 <button
                   onClick={() => openDetailModal(hero as NormalizedMovie, "hero")}
-                  className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded-full glass-button px-6 text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300"
+                  className="nf-button inline-flex h-12 items-center justify-center gap-2 rounded-full glass-button px-7 text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
                 >
                   <Info size={18} /> More Info
                 </button>
@@ -147,9 +161,9 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                 <Button
                   variant="ghost"
                   onClick={() => toggleMyList(hero as NormalizedMovie)}
-                  className="nf-button h-11 rounded-full px-6 glass-button text-white flex items-center justify-center gap-1.5 text-sm font-bold active:scale-95 duration-300"
+                  className="nf-button h-12 rounded-full px-7 glass-button text-white flex items-center justify-center gap-2 text-sm font-bold active:scale-95 duration-300 cursor-pointer"
                 >
-                  {inMyList ? <Check size={16} className="text-[#46d369]" /> : <Plus size={16} />}
+                  {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
                   {inMyList ? "In My List" : "My List"}
                 </Button>
               )}
@@ -178,7 +192,25 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
           {continueWatchingItems.length > 0 && (
             <MovieRow title="Continue Watching for Celine" items={continueWatchingItems as any[]} />
           )}
-          {isLoading ? <RowSkeleton /> : rows.map((row) => <MovieRow key={row.title} title={row.title} items={row.items as MovieCardDto[]} ranked={row.ranked} />)}
+          {isLoading ? (
+            <RowSkeleton />
+          ) : (
+            visibleRows.map((row) => (
+              <MovieRow key={row.title} title={row.title} items={row.items as MovieCardDto[]} ranked={row.ranked} />
+            ))
+          )}
+
+          {!isLoading && hasMoreRows && (
+            <div className="flex justify-center pt-6 pb-2">
+              <button
+                onClick={handleLoadMore}
+                className="group relative inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm tracking-wide transition-all duration-300 border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.6)] hover:border-white/40 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
+              >
+                <span>Xem thêm phim & thể loại</span>
+                <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-[#e50914]" />
+              </button>
+            </div>
+          )}
         </div>
       </Suspense>
     </main>

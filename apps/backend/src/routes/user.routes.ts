@@ -44,6 +44,9 @@ router.get("/me", async (req, res, next) => {
   }
 });
 
+import bcrypt from "bcryptjs";
+import { sendSignupOtp, signupOtpMap } from "../services/auth.service.js";
+
 router.put("/me/avatar", async (req, res, next) => {
   try {
     const { avatarUrl } = z.object({ avatarUrl: z.string() }).parse(req.body);
@@ -53,6 +56,106 @@ router.put("/me/avatar", async (req, res, next) => {
       data: { avatarUrl },
       select: { id: true, email: true, username: true, role: true, avatarUrl: true }
     });
+    res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/me/username", async (req, res, next) => {
+  try {
+    const { username } = z.object({
+      username: z.string()
+        .min(3, "Tên người dùng phải có tối thiểu 3 ký tự")
+        .max(32, "Tên người dùng không được vượt quá 32 ký tự")
+        .regex(/^[a-zA-Z0-9_]+$/, "Tên người dùng chỉ chứa chữ cái, chữ số và dấu gạch dưới")
+    }).parse(req.body);
+    const userId = req.user!.id;
+
+    const exists = await prisma.user.findFirst({ where: { username, NOT: { id: userId } } });
+    if (exists) throw new ApiError(409, "Tên người dùng này đã được sử dụng", "USERNAME_EXISTS");
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { username },
+      select: { id: true, email: true, username: true, role: true, avatarUrl: true }
+    });
+    res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/me/password", async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = z.object({
+      currentPassword: z.string().min(1, "Vui lòng nhập mật khẩu hiện tại"),
+      newPassword: z.string()
+        .min(8, "Mật khẩu phải có tối thiểu 8 ký tự")
+        .regex(/[A-Z]/, "Mật khẩu phải chứa ít nhất 1 chữ cái viết hoa")
+        .regex(/[a-z]/, "Mật khẩu phải chứa ít nhất 1 chữ cái viết thường")
+        .regex(/[0-9]/, "Mật khẩu phải chứa ít nhất 1 chữ số")
+        .regex(/[^a-zA-Z0-9]/, "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt")
+    }).parse(req.body);
+    const userId = req.user!.id;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      throw new ApiError(400, "Mật khẩu hiện tại không chính xác", "INVALID_PASSWORD");
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash }
+    });
+    res.json({ success: true, message: "Đổi mật khẩu thành công" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/me/send-email-otp", async (req, res, next) => {
+  try {
+    const { newEmail } = z.object({ newEmail: z.string().email("Địa chỉ email không hợp lệ") }).parse(req.body);
+    const userId = req.user!.id;
+
+    const exists = await prisma.user.findFirst({ where: { email: newEmail.toLowerCase() } });
+    if (exists && exists.id !== userId) {
+      throw new ApiError(409, "Email này đã được sử dụng bởi tài khoản khác", "EMAIL_EXISTS");
+    }
+
+    const result = await sendSignupOtp(newEmail);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/me/email", async (req, res, next) => {
+  try {
+    const { newEmail, otp } = z.object({
+      newEmail: z.string().email("Địa chỉ email không hợp lệ"),
+      otp: z.string().length(6, "Mã xác thực OTP phải gồm 6 chữ số")
+    }).parse(req.body);
+    const userId = req.user!.id;
+    const emailKey = newEmail.toLowerCase();
+
+    const otpData = signupOtpMap.get(emailKey);
+    if (!otpData || otpData.code !== otp || Date.now() > otpData.expires) {
+      throw new ApiError(400, "Mã xác thực OTP không chính xác hoặc đã hết hạn", "OTP_INVALID");
+    }
+
+    const exists = await prisma.user.findFirst({ where: { email: emailKey, NOT: { id: userId } } });
+    if (exists) throw new ApiError(409, "Email này đã được sử dụng bởi tài khoản khác", "EMAIL_EXISTS");
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { email: emailKey, emailVerifiedAt: new Date() },
+      select: { id: true, email: true, username: true, role: true, avatarUrl: true }
+    });
+
+    signupOtpMap.delete(emailKey);
     res.json({ user });
   } catch (error) {
     next(error);

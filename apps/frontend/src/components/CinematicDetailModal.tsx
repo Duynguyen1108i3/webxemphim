@@ -234,7 +234,7 @@ export function CinematicDetailModal() {
             className="absolute top-4 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full glass-button text-white shadow-xl active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/70 cursor-pointer"
             aria-label="Close details"
           >
-            <X size={20} className="transition-transform duration-200 hover:rotate-90" />
+            <X size={20} />
           </button>
           <AnimatePresence mode="wait">
             {showTrailer && displayMovie.trailerUrl ? (
@@ -492,15 +492,17 @@ export function CinematicDetailModal() {
               <div className="flex justify-center mt-6">
                 <button
                   onClick={() => setShowAllSimilar(!showAllSimilar)}
-                  className="px-6 py-2 border border-white/30 rounded-full text-sm font-semibold flex items-center gap-2 hover:border-white hover:bg-white/10 transition duration-200"
+                  className="group relative inline-flex items-center gap-2 px-7 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm tracking-wide transition-all duration-300 border border-white/20 shadow-[0_8px_25px_rgba(0,0,0,0.5)] hover:border-white/40 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
                 >
                   {showAllSimilar ? (
                     <>
-                      Thu gọn <ChevronUp size={16} />
+                      <span>Thu gọn</span>
+                      <ChevronUp size={18} className="transition-transform duration-300 group-hover:-translate-y-1 text-[#e50914]" />
                     </>
                   ) : (
                     <>
-                      Xem thêm <ChevronDown size={16} />
+                      <span>Xem thêm</span>
+                      <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-[#e50914]" />
                     </>
                   )}
                 </button>

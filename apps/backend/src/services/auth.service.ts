@@ -18,28 +18,28 @@ const transporter = nodemailer.createTransport({
 });
 
 async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset") {
-  const subject = type === "signup" ? "[StreamForge] Mã xác thực đăng ký tài khoản" : "[StreamForge] Mã khôi phục mật khẩu";
+  const subject = type === "signup" ? "[RytoxGroup] Mã xác thực đăng ký tài khoản" : "[RytoxGroup] Mã khôi phục mật khẩu";
   const textContent = type === "signup"
-    ? `Mã xác thực đăng ký StreamForge của bạn là: ${otp}`
-    : `Mã khôi phục mật khẩu StreamForge của bạn là: ${otp}`;
+    ? `Mã xác thực đăng ký RytoxGroup của bạn là: ${otp}`
+    : `Mã khôi phục mật khẩu RytoxGroup của bạn là: ${otp}`;
   const htmlContent = `<div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px; background-color: #ffffff; color: #333333;">
-      <h2 style="color: #e50914; margin-top: 0; font-weight: 800; letter-spacing: -0.05em;">STREAMFORGE</h2>
+      <h2 style="color: #e50914; margin-top: 0; font-weight: 800; letter-spacing: -0.05em;">RYTOXGROUP</h2>
       <p style="font-size: 15px; line-height: 1.5;">Chào bạn,</p>
       <p style="font-size: 15px; line-height: 1.5;">
-        ${type === "signup" ? "Cảm ơn bạn đã lựa chọn StreamForge. Mã xác thực đăng ký tài khoản của bạn là:" : "Bạn đã yêu cầu đặt lại mật khẩu. Mã khôi phục tài khoản của bạn là:"}
+        ${type === "signup" ? "Cảm ơn bạn đã lựa chọn RytoxGroup. Mã xác thực đăng ký tài khoản của bạn là:" : "Bạn đã yêu cầu đặt lại mật khẩu. Mã khôi phục tài khoản của bạn là:"}
       </p>
       <div style="background-color: #f4f4f5; padding: 16px; text-align: center; font-size: 26px; font-weight: 800; letter-spacing: 6px; color: #111111; border-radius: 6px; margin: 24px 0; border: 1px solid #e4e4e7;">
         ${otp}
       </div>
       <p style="font-size: 13px; color: #71717a; line-height: 1.4;">Mã này có hiệu lực trong vòng 5 phút. Nếu bạn không yêu cầu mã này, vui lòng bỏ qua email này.</p>
       <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;" />
-      <p style="font-size: 12px; color: #a1a1aa; text-align: center;">Đây là email tự động từ StreamForge. Vui lòng không phản hồi.</p>
+      <p style="font-size: 12px; color: #a1a1aa; text-align: center;">Đây là email tự động từ RytoxGroup. Vui lòng không phản hồi.</p>
     </div>`;
 
   // Priority 1: Google Apps Script webhook (sends from actual Gmail servers — 100% inbox delivery)
   if (process.env.GMAIL_WEBHOOK_URL) {
     const payload = JSON.stringify({
-      secret: process.env.GMAIL_WEBHOOK_SECRET || "STREAMFORGE_SECRET_2026",
+      secret: process.env.GMAIL_WEBHOOK_SECRET || "RYTOXGROUP_SECRET_2026",
       to: email,
       subject,
       text: textContent,
@@ -50,18 +50,12 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: payload,
-      // Apps Script responds with a redirect to a Google-hosted result page.
-      // Following it from a server-to-server request can end at a 403 despite
-      // the webhook having already accepted the POST and sent the email.
       redirect: "manual"
     });
 
     const responseText = await response.text();
-    console.log("=== GMAIL WEBHOOK RESPONSE ===", responseText);
-
     const acceptedRedirect = response.status >= 300 && response.status < 400;
     if (!response.ok && !acceptedRedirect) {
-      console.error("=== GMAIL WEBHOOK HTTP ERROR ===", response.status, responseText);
       throw new ApiError(500, `Gửi email thất bại (${response.status}). Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
     }
 
@@ -71,71 +65,14 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
     try {
       result = JSON.parse(responseText) as { success?: boolean; error?: string };
     } catch {
-      // If response is not JSON but status is OK, assume success (GAS redirect page)
       return;
     }
 
     if (result.error || result.success === false) {
-      console.error("=== GMAIL WEBHOOK ERROR ===", result.error || "Webhook reported failure");
       throw new ApiError(500, "Gửi email thất bại. Vui lòng thử lại.", "EMAIL_SEND_FAILED");
     }
     return;
   }
-
-  // Priority 2: Brevo HTTP API (fallback)
-  if (process.env.BREVO_API_KEY) {
-    const senderEmail = process.env.SMTP_USER || "duycute11082005@gmail.com";
-    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        "api-key": process.env.BREVO_API_KEY.trim(),
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({
-        sender: { name: "StreamForge", email: senderEmail },
-        to: [{ email }],
-        subject,
-        textContent,
-        htmlContent
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("=== BREVO API ERROR ===");
-      console.error("Status:", response.status);
-      console.error("Response:", errorText);
-      console.error("=======================");
-      throw new ApiError(500, `Gửi email thất bại (${response.status}). Vui lòng thử lại.`, "EMAIL_SEND_FAILED");
-    }
-    return;
-  }
-
-  // Priority 3: Resend API (fallback)
-  if (process.env.RESEND_API_KEY) {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.RESEND_API_KEY.trim()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "StreamForge <onboarding@resend.dev>",
-        to: email,
-        subject,
-        text: textContent,
-        html: htmlContent,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new ApiError(500, `Resend API Error: ${errorText}`, "EMAIL_SEND_FAILED");
-    }
-    return;
-  }
-
   throw new ApiError(
     500,
     "Chưa cấu hình thông tin gửi Email (SMTP_USER/SMTP_PASS, BREVO_API_KEY hoặc RESEND_API_KEY) trong file .env.",

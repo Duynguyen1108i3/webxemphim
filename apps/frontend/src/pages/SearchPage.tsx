@@ -50,6 +50,7 @@ export function SearchPage() {
   }
   
   const hasTmdb = Boolean(
+    localStorage.getItem("rytoxgroup:settings:tmdb_key") || 
     localStorage.getItem("streamforge:settings:tmdb_key") || 
     (import.meta.env && import.meta.env.VITE_TMDB_API_KEY)
   );
@@ -334,13 +335,13 @@ export function SearchPage() {
             ))}
           </div>
           {!loading && hasMore && (
-            <div className="flex justify-center mt-4">
+            <div className="flex justify-center mt-6 mb-4">
               <button
                 onClick={handleLoadMore}
-                className="flex items-center gap-2 px-6 py-2 rounded-full border border-white/20 bg-zinc-900/60 hover:bg-white hover:text-black hover:border-white text-white text-sm font-semibold transition-all duration-300 shadow-md cursor-pointer"
+                className="group relative inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm tracking-wide transition-all duration-300 border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.6)] hover:border-white/40 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
               >
                 <span>Xem thêm</span>
-                <ChevronDown size={16} />
+                <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-[#e50914]" />
               </button>
             </div>
           )}
