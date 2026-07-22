@@ -17,6 +17,12 @@ jobs:
       redis:
         image: redis:7-alpine
         ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgresql://streamforge:streamforge@localhost:5432/streamforge_test
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: ci-access-secret-ci-access-secret
+      JWT_REFRESH_SECRET: ci-refresh-secret-ci-refresh-secret
+      COOKIE_SECRET: ci-cookie-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,9 +33,3 @@ jobs:
       - run: npm run db:generate
       - run: npm run build
       - run: npm test
-        env:
-          DATABASE_URL: postgresql://streamforge:streamforge@localhost:5432/streamforge_test
-          REDIS_URL: redis://localhost:6379
-          JWT_ACCESS_SECRET: ci-access-secret-ci-access-secret
-          JWT_REFRESH_SECRET: ci-refresh-secret-ci-refresh-secret
-          COOKIE_SECRET: ci-cookie-secret
