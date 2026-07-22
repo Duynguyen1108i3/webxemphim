@@ -118,9 +118,35 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       const storedHistory = localStorage.getItem(historyKey) || localStorage.getItem(fallbackHistoryKey) || localStorage.getItem("streamforge:watchhistory");
       const parsedHistory = storedHistory ? JSON.parse(storedHistory) : [];
 
+      // Rehydrate active playback session on F5 refresh if stored in sessionStorage
+      let activePlaybackFromSession: NormalizedMovie | null = null;
+      let activeEpisodeIdFromSession: string | null = null;
+      let clickedElementIdFromSession: string | null = null;
+      let activeCustomUrlFromSession: string | null = null;
+
+      try {
+        const activeSessionStr = sessionStorage.getItem("streamforge:activePlayback");
+        if (activeSessionStr) {
+          const activeData = JSON.parse(activeSessionStr);
+          if (activeData?.movie) {
+            activePlaybackFromSession = activeData.movie;
+            activeEpisodeIdFromSession = activeData.episodeId || null;
+            clickedElementIdFromSession = activeData.elementId || null;
+            activeCustomUrlFromSession = activeData.customUrl || null;
+          }
+        }
+      } catch {}
+
       const user = useAuthStore.getState().user;
       if (!user) {
-        set({ myList: [], watchHistory: parsedHistory });
+        set({
+          myList: [],
+          watchHistory: parsedHistory,
+          activePlayback: activePlaybackFromSession,
+          activeEpisodeId: activeEpisodeIdFromSession,
+          clickedElementId: clickedElementIdFromSession,
+          activeCustomUrl: activeCustomUrlFromSession
+        });
         return;
       }
 
@@ -128,7 +154,13 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       const dbProfileId = user.profiles.find((profile) => profile.name === profileName)?.id ?? user.profiles[0]?.id;
 
       if (!dbProfileId) {
-        set({ watchHistory: parsedHistory });
+        set({
+          watchHistory: parsedHistory,
+          activePlayback: activePlaybackFromSession,
+          activeEpisodeId: activeEpisodeIdFromSession,
+          clickedElementId: clickedElementIdFromSession,
+          activeCustomUrl: activeCustomUrlFromSession
+        });
         return;
       }
 
@@ -154,7 +186,14 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         .then((data) => {
           if (data?.favorites) {
             const mapped = mapFavorites(data.favorites);
-            set({ myList: mapped, watchHistory: parsedHistory });
+            set({
+              myList: mapped,
+              watchHistory: parsedHistory,
+              activePlayback: activePlaybackFromSession,
+              activeEpisodeId: activeEpisodeIdFromSession,
+              clickedElementId: clickedElementIdFromSession,
+              activeCustomUrl: activeCustomUrlFromSession
+            });
             localStorage.setItem(mylistKey, JSON.stringify(mapped)); // Sync cache
             localStorage.setItem(fallbackMylistKey, JSON.stringify(mapped));
           }
@@ -162,7 +201,14 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         .catch(() => {
           const storedList = localStorage.getItem(mylistKey) || localStorage.getItem(fallbackMylistKey);
           const parsed = storedList ? JSON.parse(storedList) : [];
-          set({ myList: mapFavorites(parsed), watchHistory: parsedHistory });
+          set({
+            myList: mapFavorites(parsed),
+            watchHistory: parsedHistory,
+            activePlayback: activePlaybackFromSession,
+            activeEpisodeId: activeEpisodeIdFromSession,
+            clickedElementId: clickedElementIdFromSession,
+            activeCustomUrl: activeCustomUrlFromSession
+          });
         });
     } catch {
     }
@@ -272,6 +318,15 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       }
     }
 
+    try {
+      sessionStorage.setItem("streamforge:activePlayback", JSON.stringify({
+        movie,
+        episodeId,
+        elementId,
+        customUrl: customUrl || null
+      }));
+    } catch {}
+
     // Set active playback state
     set((state) => {
       const { key: historyKey, fallbackKey: fallbackHistoryKey } = getWatchHistoryStorageKeys();
@@ -298,6 +353,10 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
   },
 
   closePlayback: () => {
+    try {
+      sessionStorage.removeItem("streamforge:activePlayback");
+    } catch {}
+
     set((state) => {
       // Restore body scrolling
       document.body.style.position = "";

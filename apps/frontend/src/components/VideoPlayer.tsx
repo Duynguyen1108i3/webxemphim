@@ -192,6 +192,8 @@ export function VideoPlayer({
             onPlayStartedRef.current?.();
           })
           .catch((err) => {
+          })
+          .catch((err) => {
             console.log("Autoplay blocked:", err);
             setPlaying(false);
           });
@@ -201,8 +203,10 @@ export function VideoPlayer({
     const restorePosition = () => {
       try {
         const user = useAuthStore.getState().user;
-        const historyKey = user?.email ? `streamforge:${user.email}:watchhistory` : "streamforge:watchhistory";
-        const stored = localStorage.getItem(historyKey);
+        const email = user?.email || "";
+        const historyKey = email ? `rytoxgroup:${email}:watchhistory` : "rytoxgroup:guest:watchhistory";
+        const fallbackHistoryKey = email ? `streamforge:${email}:watchhistory` : "streamforge:guest:watchhistory";
+        const stored = localStorage.getItem(historyKey) || localStorage.getItem(fallbackHistoryKey) || localStorage.getItem("streamforge:watchhistory");
         const history = stored ? JSON.parse(stored) : [];
         const item = history.find((x: any) => x.id === latestSourceRef.current?.movieId);
         if (item && item.currentTime > 5 && item.currentTime < item.duration - 10) {
@@ -226,9 +230,9 @@ export function VideoPlayer({
         // aggressively evict/replace media buffers and presents as a brief
         // black frame on Chromium while seeking or recovering a segment.
         lowLatencyMode: false,
-        backBufferLength: 120,
-        maxBufferLength: 60,
-        maxMaxBufferLength: 120
+        backBufferLength: 300,
+        maxBufferLength: 120,
+        maxMaxBufferLength: 240
       });
       hls.loadSource(activeUrl);
       hls.attachMedia(video);
@@ -237,6 +241,12 @@ export function VideoPlayer({
         startPlayback();
       });
       hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR || data.details === Hls.ErrorDetails.BUFFER_NUDGE_ON_STALL) {
+          console.warn("HLS buffer stalled error detected. Restarting load and resuming playback...");
+          hls?.startLoad();
+          void video.play().catch(() => {});
+          return;
+        }
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:

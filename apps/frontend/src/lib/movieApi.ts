@@ -486,7 +486,25 @@ export const movieApi = {
       };
     }
 
-    const { movie, episodes } = await this.getMovieDetail(slug);
+    let movie: any = null;
+    let episodes: any[] = [];
+    try {
+      const detail = await this.getMovieDetail(slug);
+      movie = detail.movie;
+      episodes = detail.episodes || [];
+    } catch {
+      movie = {
+        id: slug,
+        slug,
+        title: slug,
+        mediaType: "movie",
+        posterUrl: "",
+        backdropUrl: "",
+        tmdbId: slug,
+        imdbId: slug.startsWith("tt") ? slug : ""
+      };
+    }
+
     const mediaType = movie.mediaType || "movie";
     const tmdbId = movie.tmdbId || movie.id;
     const imdbId = movie.imdbId || movie.id || "";
