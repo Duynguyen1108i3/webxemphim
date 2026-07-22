@@ -589,12 +589,13 @@ export const movieApi = {
       }
       
       if (matchedEpisode && matchedEpisode.link) {
+        const isDirectVideo = /\.(m3u8|mp4)($|\?)/i.test(matchedEpisode.link);
         phim4kStreams.push({
           name: `Phim4K Thuyết Minh / Vietsub (${serverName})`,
           url: matchedEpisode.link,
           quality: movie.quality || "FHD",
           addon: "Phim4K API",
-          streamType: "http"
+          streamType: isDirectVideo ? "http" : "embed"
         });
       }
     }
