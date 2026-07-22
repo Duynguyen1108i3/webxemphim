@@ -234,9 +234,13 @@ export function VideoPlayer({
         backBufferLength: 600,
         maxBufferLength: 600,
         maxMaxBufferLength: 1200,
-        maxBufferHole: 0.5,
-        highBufferWatchdogPeriod: 2,
-        nudgeMaxRetry: 5
+        maxBufferHole: 0.1,
+        highBufferWatchdogPeriod: 1,
+        nudgeMaxRetry: 10,
+        stretchShortVideoTrack: true,
+        maxAudioFramesDrift: 1,
+        fragLoadingTimeOut: 20000,
+        fragLoadingMaxRetry: 6
       });
       hlsRef.current = hls;
       hls.loadSource(activeUrl);
