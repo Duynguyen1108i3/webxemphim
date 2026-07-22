@@ -80,6 +80,7 @@ export function VideoPlayer({
   const latestSourceRef = useRef(source);
   const onPlayStartedRef = useRef(onPlayStarted);
   const onProgressRef = useRef(onProgress);
+  const hlsRef = useRef<Hls | null>(null);
 
   useEffect(() => {
     latestSourceRef.current = source;
