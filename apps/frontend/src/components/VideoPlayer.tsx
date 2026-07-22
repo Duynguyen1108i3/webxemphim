@@ -230,10 +230,14 @@ export function VideoPlayer({
         // aggressively evict/replace media buffers and presents as a brief
         // black frame on Chromium while seeking or recovering a segment.
         lowLatencyMode: false,
-        backBufferLength: 300,
-        maxBufferLength: 120,
-        maxMaxBufferLength: 240
+        backBufferLength: 600,
+        maxBufferLength: 600,
+        maxMaxBufferLength: 1200,
+        maxBufferHole: 0.5,
+        highBufferWatchdogPeriod: 2,
+        nudgeMaxRetry: 5
       });
+      hlsRef.current = hls;
       hls.loadSource(activeUrl);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
