@@ -8,7 +8,7 @@ import { useAuthStore } from "../store/auth";
 function isEmbedUrl(url: string): boolean {
   if (!url) return false;
   const lower = url.toLowerCase();
-  if (lower.includes("dramahay.xyz") || lower.includes("phim4k.dpdns.org") || lower.includes("/stream/hls")) {
+  if (lower.includes(".m3u8") || lower.includes("kkphim") || lower.includes("dramahay.xyz") || lower.includes("phim4k.dpdns.org") || lower.includes("/stream/hls")) {
     return false;
   }
   return (

@@ -105,10 +105,10 @@ router.put("/me/password", async (req, res, next) => {
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
-    await prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash }
-    });
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+      prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } })
+    ]);
     res.json({ success: true, message: "Đổi mật khẩu thành công" });
   } catch (error) {
     next(error);

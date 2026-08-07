@@ -107,7 +107,7 @@ export const movieApi = {
       const data = await fetchTmdb<any>(`/trending/all/day?page=${page}`);
       return normalizeList(data?.results || []);
     } else {
-      const res = await fetch(`https://free1.phim4k.lol/danh-sach/phim-moi-cap-nhat-v3?page=${page}`);
+      const res = await fetch(`https://phimapi.com/danh-sach/phim-moi-cap-nhat?page=${page}`);
       if (!res.ok) return [];
       const data = await res.json();
       return normalizePhim4kList(data?.items || []);
@@ -149,7 +149,7 @@ export const movieApi = {
         "tai-lieu": "tai-lieu"
       };
       const category = genreMap[slug] || "hanh-dong";
-      const res = await fetch(`https://free1.phim4k.lol/v1/api/the-loai/${category}?page=${page}`);
+      const res = await fetch(`https://phimapi.com/v1/api/the-loai/${category}?page=${page}`);
       if (!res.ok) return [];
       const data = await res.json();
       return normalizePhim4kList(data?.data?.items || [], data?.data?.APP_DOMAIN_CDN_IMAGE);
@@ -183,7 +183,7 @@ export const movieApi = {
         "viet-nam": "viet-nam"
       };
       const region = countryMap[slug] || "au-my";
-      const res = await fetch(`https://free1.phim4k.lol/v1/api/quoc-gia/${region}?page=${page}`);
+      const res = await fetch(`https://phimapi.com/v1/api/quoc-gia/${region}?page=${page}`);
       if (!res.ok) return [];
       const data = await res.json();
       return normalizePhim4kList(data?.data?.items || [], data?.data?.APP_DOMAIN_CDN_IMAGE);
@@ -195,7 +195,19 @@ export const movieApi = {
       const data = await fetchTmdb<any>(`/discover/movie?primary_release_year=${year}&sort_by=popularity.desc&page=${page}`);
       return normalizeList(data?.results || []);
     } else {
-      const res = await fetch(`https://free1.phim4k.lol/danh-sach/phim-moi-cap-nhat-v3?page=${page}`);
+      try {
+        const res = await fetch(`https://phimapi.com/v1/api/nam/${year}?page=${page}&limit=24`);
+        if (res.ok) {
+          const data = await res.json();
+          const items = data?.data?.items || [];
+          if (items.length > 0) {
+            return normalizePhim4kList(items, data?.data?.APP_DOMAIN_CDN_IMAGE || "https://phimimg.com");
+          }
+        }
+      } catch (e) {
+        console.warn("phimapi.com getByYear failed, falling back to phim4k:", e);
+      }
+      const res = await fetch(`https://phimapi.com/danh-sach/phim-moi-cap-nhat?page=${page}`);
       if (!res.ok) return [];
       const data = await res.json();
       return normalizePhim4kList(data?.items || []);
@@ -220,6 +232,19 @@ export const movieApi = {
       const data = await fetchTmdb<any>(`/trending/all/day?page=${page}`);
       return normalizeList(data?.results || []);
     } else {
+      try {
+        const listName = type === "tv-shows" ? "phim-bo" : type;
+        const res = await fetch(`https://phimapi.com/v1/api/danh-sach/${listName}?page=${page}&limit=24&sort_field=modified.time&sort_type=desc`);
+        if (res.ok) {
+          const data = await res.json();
+          const items = data?.data?.items || [];
+          if (items.length > 0) {
+            return normalizePhim4kList(items, data?.data?.APP_DOMAIN_CDN_IMAGE || "https://phimimg.com");
+          }
+        }
+      } catch (e) {
+        console.warn("phimapi.com getByList failed, falling back to phim4k:", e);
+      }
       let listName = "phim-moi-cap-nhat-v3";
       let isV1 = true;
       if (type === "phim-bo" || type === "tv-shows") {
@@ -233,12 +258,12 @@ export const movieApi = {
       }
 
       if (isV1) {
-        const res = await fetch(`https://free1.phim4k.lol/v1/api/danh-sach/${listName}?page=${page}`);
+        const res = await fetch(`https://phimapi.com/v1/api/danh-sach/${listName}?page=${page}`);
         if (!res.ok) return [];
         const data = await res.json();
         return normalizePhim4kList(data?.data?.items || [], data?.data?.APP_DOMAIN_CDN_IMAGE);
       } else {
-        const res = await fetch(`https://free1.phim4k.lol/danh-sach/phim-moi-cap-nhat-v3?page=${page}`);
+        const res = await fetch(`https://phimapi.com/danh-sach/phim-moi-cap-nhat?page=${page}`);
         if (!res.ok) return [];
         const data = await res.json();
         return normalizePhim4kList(data?.items || []);
@@ -251,7 +276,19 @@ export const movieApi = {
       const data = await fetchTmdb<any>(`/search/multi?query=${encodeURIComponent(keyword)}&page=${page}`);
       return normalizeList(data?.results || []);
     } else {
-      const res = await fetch(`https://free1.phim4k.lol/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=${page}`);
+      try {
+        const res = await fetch(`https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=${page}`);
+        if (res.ok) {
+          const data = await res.json();
+          const items = data?.data?.items || [];
+          if (items.length > 0) {
+            return normalizePhim4kList(items, data?.data?.APP_DOMAIN_CDN_IMAGE || "https://phimimg.com");
+          }
+        }
+      } catch (e) {
+        console.warn("phimapi.com searchMovies failed, falling back to phim4k:", e);
+      }
+      const res = await fetch(`https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=${page}`);
       if (!res.ok) return [];
       const data = await res.json();
       return normalizePhim4kList(data?.data?.items || [], data?.data?.APP_DOMAIN_CDN_IMAGE);
@@ -394,7 +431,24 @@ export const movieApi = {
         };
       }
 
-      const res = await fetch(`https://free1.phim4k.lol/phim/${slug}`);
+      try {
+        const res = await fetch(`https://phimapi.com/phim/${slug}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.movie) {
+            const movieObj = { ...data.movie, episodes: data.episodes };
+            const movie = normalizePhim4kMovie(movieObj, true, "https://phimimg.com");
+            return {
+              movie,
+              episodes: data.episodes || []
+            };
+          }
+        }
+      } catch (e) {
+        console.warn("phimapi.com getMovieDetail failed, falling back to phim4k:", e);
+      }
+
+      const res = await fetch(`https://phimapi.com/phim/${slug}`);
       if (!res.ok) throw new Error(`Phim4K details failed for: ${slug}`);
       const data = await res.json();
       if (!data || !data.movie) throw new Error("Metadata is empty");
@@ -544,11 +598,10 @@ export const movieApi = {
     
     const alternateSources: { name: string; url: string; quality: string; addon?: string; size?: string; seeders?: number; streamType?: "http" | "torrent" | "external" | "embed"; fileIdx?: number; infoHash?: string }[] = [];
     
-    // Add embed servers FIRST as fallbacks
+    // Add fallback embed servers (secondary backup)
     const playId = imdbId || tmdbId;
     const embedSources: typeof alternateSources = [];
     if (mediaType === "movie") {
-      embedSources.push({ name: "Embed.su", url: `https://embed.su/embed/movie/${playId}`, quality: "1080p", streamType: "embed" });
       embedSources.push({ name: "Vidsrc.cc", url: `https://vidsrc.cc/v2/embed/movie/${playId}`, quality: "1080p", streamType: "embed" });
       embedSources.push({ name: "SuperEmbed", url: `https://multiembed.mov/?video_id=${playId}${imdbId ? "" : "&tmdb=1"}`, quality: "1080p", streamType: "embed" });
       if (imdbId) {
@@ -556,9 +609,7 @@ export const movieApi = {
       }
       embedSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
       embedSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/movie/${playId}`, quality: "4K", streamType: "embed" });
-      embedSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/movie/${playId}`, quality: "720p", streamType: "embed" });
     } else {
-      embedSources.push({ name: "Embed.su", url: `https://embed.su/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       embedSources.push({ name: "Vidsrc.cc", url: `https://vidsrc.cc/v2/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       embedSources.push({ name: "SuperEmbed", url: `https://multiembed.mov/?video_id=${playId}${imdbId ? "" : "&tmdb=1"}&s=${selectedSeason}&e=${selectedEpisode}`, quality: "1080p", streamType: "embed" });
       if (imdbId) {
@@ -566,47 +617,63 @@ export const movieApi = {
       }
       embedSources.push({ name: "Vidsrc.pro", url: `https://vidsrc.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
       embedSources.push({ name: "VidLink", url: `https://vidlink.pro/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "4K", streamType: "embed" });
-      embedSources.push({ name: "Vidsrc.xyz", url: `https://vidsrc.xyz/embed/tv/${playId}/${selectedSeason}/${selectedEpisode}`, quality: "720p", streamType: "embed" });
     }
 
-    // Extract Phim4K direct streams inline from pre-fetched detail episodes
-    const phim4kStreams: any[] = [];
+    // Extract PhimAPI Vietsub / Thuyết minh direct streams inline from pre-fetched detail episodes
+    const vietsubStreams: typeof alternateSources = [];
     const rawEpisodes = episodes || [];
     
     for (const server of rawEpisodes) {
       const serverName = server.server_name || "Vietsub";
-      const serverData = server.server_data || [];
+      const serverData: any[] = server.server_data || [];
       
       let matchedEpisode: any = null;
-      if (mediaType === "movie") {
+      if (episodeId) {
+        matchedEpisode = serverData.find((ep: any) => ep.slug === episodeId || ep.name === episodeId || ep.slug === `tap-${episodeId}`);
+      }
+      if (!matchedEpisode && mediaType === "movie") {
         matchedEpisode = serverData.find((ep: any) => ep.slug === "full" || ep.name?.toLowerCase().includes("full")) || serverData[0];
-      } else {
+      }
+      if (!matchedEpisode) {
         const targetEpStr = String(selectedEpisode).padStart(2, "0");
         matchedEpisode = serverData.find((ep: any) => {
           const epNameClean = (ep.name || "").replace(/\D/g, "");
-          return epNameClean === targetEpStr || epNameClean === String(selectedEpisode) || ep.slug === `tap-${targetEpStr}`;
-        });
+          return epNameClean === targetEpStr || epNameClean === String(selectedEpisode) || ep.slug === `tap-${targetEpStr}` || ep.slug === `tap-${selectedEpisode}`;
+        }) || serverData[0];
       }
       
-      if (matchedEpisode && matchedEpisode.link) {
-        const isDirectVideo = /\.(m3u8|mp4)($|\?)/i.test(matchedEpisode.link);
-        phim4kStreams.push({
-          name: `Phim4K Thuyết Minh / Vietsub (${serverName})`,
-          url: matchedEpisode.link,
-          quality: movie.quality || "FHD",
-          addon: "Phim4K API",
-          streamType: isDirectVideo ? "http" : "embed"
-        });
+      if (matchedEpisode) {
+        const m3u8Url = matchedEpisode.link_m3u8 || (/\.m3u8($|\?)/i.test(matchedEpisode.link) ? matchedEpisode.link : "");
+        const embedUrl = matchedEpisode.link_embed || (!m3u8Url ? matchedEpisode.link : "");
+
+        if (m3u8Url) {
+          vietsubStreams.push({
+            name: `${serverName} - Trực Tiếp HLS (Vietsub / Thuyết Minh)`,
+            url: m3u8Url,
+            quality: movie.quality || "FHD",
+            addon: "PhimAPI Vietsub",
+            streamType: "http"
+          });
+        }
+        
+        if (embedUrl) {
+          vietsubStreams.push({
+            name: `${serverName} - Player Embed (Vietsub / Thuyết Minh)`,
+            url: embedUrl,
+            quality: movie.quality || "FHD",
+            addon: "PhimAPI Player",
+            streamType: "embed"
+          });
+        }
       }
     }
 
-    // Final order: Phim4K streams first (direct play) -> Embed fallbacks
-    const isMobile = typeof navigator !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const finalSources = (isMobile && phim4kStreams.length > 0) ? phim4kStreams : [...phim4kStreams, ...embedSources];
+    // Final order: Vietsub / Thuyết minh streams ALWAYS first -> Backup foreign embeds
+    const finalSources = [...vietsubStreams, ...embedSources];
     finalSources.forEach(s => alternateSources.push(s));
 
-    // Choose first working stream as primary (prefer Direct HLS from Phim4K if available)
-    selectedStreamUrl = phim4kStreams[0]?.url || embedSources[0]?.url || alternateSources[0]?.url || "";
+    // Choose first working Vietsub stream as primary player source
+    selectedStreamUrl = vietsubStreams[0]?.url || embedSources[0]?.url || alternateSources[0]?.url || "";
 
     // ── Fetch subtitles from subtitle addons ──
     const subtitlesList: any[] = [];
@@ -909,7 +976,7 @@ function normalizeCinemetaEpisodes(videos: any[], movieSlug: string, synopsis: s
 function proxyImageUrl(url: string): string {
   if (!url) return "";
   if (url.startsWith("data:")) return url;
-  return `https://wsrv.nl/?url=${encodeURIComponent(url)}&default=${encodeURIComponent(url)}`;
+  return url;
 }
 
 function absolutePhim4kImageUrl(url: unknown, imageCdnUrl?: unknown): string {
@@ -998,7 +1065,7 @@ function normalizePhim4kMovie(item: any, isDetail = false, imageCdnUrl?: unknown
   const slug = item.slug || "";
   const posterUrl = normalizePhim4kImageUrl(item.poster_url || item.poster || item.image, imageCdnUrl) || createFallbackImage(title);
   const thumbUrl = normalizePhim4kImageUrl(item.thumb_url || item.backdrop_url || item.backdrop, imageCdnUrl);
-  const backdropUrl = isDetail ? thumbUrl || posterUrl : posterUrl;
+  const backdropUrl = thumbUrl || posterUrl;
   const year = item.year || new Date().getFullYear();
   const rating = item.imdb?.vote_average ? parseFloat(item.imdb.vote_average) : 8.0;
   const parsedRuntime = item.time ? (parseInt(item.time.match(/\d+/)?.[0] || "45", 10)) : 45;

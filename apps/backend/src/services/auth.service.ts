@@ -1,21 +1,8 @@
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
-import { promises as dnsPromises } from "node:dns";
-import fs from "node:fs";
-import nodemailer from "nodemailer";
 import { prisma } from "../lib/prisma.js";
 import { ApiError } from "../middleware/error.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../middleware/auth.js";
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: process.env.SMTP_SECURE === "true", // true for port 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: (process.env.SMTP_PASS || "").replace(/\s+/g, ""),
-  },
-});
 
 async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset") {
   const subject = type === "signup" ? "[RytoxGroup] Mã xác thực đăng ký tài khoản" : "[RytoxGroup] Mã khôi phục mật khẩu";
@@ -38,8 +25,10 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
 
   // Priority 1: Google Apps Script webhook (sends from actual Gmail servers — 100% inbox delivery)
   if (process.env.GMAIL_WEBHOOK_URL) {
+    const webhookSecret = process.env.GMAIL_WEBHOOK_SECRET;
+    if (!webhookSecret) throw new ApiError(500, "Email delivery is not configured", "EMAIL_CONFIG_MISSING");
     const payload = JSON.stringify({
-      secret: process.env.GMAIL_WEBHOOK_SECRET || "RYTOXGROUP_SECRET_2026",
+      secret: webhookSecret,
       to: email,
       subject,
       text: textContent,
@@ -96,21 +85,13 @@ export async function sendSignupOtp(email: string) {
     throw new ApiError(409, "Địa chỉ email đã được đăng ký", "EMAIL_EXISTS");
   }
 
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpCode = crypto.randomInt(100_000, 1_000_000).toString();
   const expires = Date.now() + 5 * 60 * 1000;
 
   signupOtpMap.set(email.toLowerCase(), {
     code: otpCode,
     expires
   });
-
-  console.log(`\n\n========================================\n[OTP VERIFICATION] code for ${email} is: ${otpCode}\n========================================\n\n`);
-
-  try {
-    fs.writeFileSync("otp_code.txt", `Email: ${email}\nOTP Code (Signup): ${otpCode}\nGeneratedAt: ${new Date().toISOString()}`);
-  } catch (err) {
-    console.error("Failed to write OTP code file", err);
-  }
 
   // Send real email OTP
   await sendEmailOtp(email, otpCode, "signup");
@@ -257,7 +238,7 @@ export async function sendOtp(input: { email: string; username: string; password
     throw new ApiError(409, "Tên tài khoản (username) đã tồn tại", "USERNAME_EXISTS");
   }
 
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpCode = crypto.randomInt(100_000, 1_000_000).toString();
   const passwordHash = await bcrypt.hash(input.password, 12);
   const expires = Date.now() + 5 * 60 * 1000;
 
@@ -267,14 +248,6 @@ export async function sendOtp(input: { email: string; username: string; password
     passwordHash,
     expires
   });
-
-  console.log(`\n\n========================================\n[OTP VERIFICATION] code for ${input.email} is: ${otpCode}\n========================================\n\n`);
-
-  try {
-    fs.writeFileSync("otp_code.txt", `Email: ${input.email}\nOTP Code (Signup): ${otpCode}\nGeneratedAt: ${new Date().toISOString()}`);
-  } catch (err) {
-    console.error("Failed to write OTP code file", err);
-  }
 
   return { success: true, message: "Mã xác thực đăng ký đã được gửi." };
 }
@@ -328,18 +301,10 @@ export async function sendResetCode(email: string) {
     throw new ApiError(404, "Không tìm thấy tài khoản với email này", "EMAIL_NOT_FOUND");
   }
 
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const code = crypto.randomInt(100_000, 1_000_000).toString();
   const expires = Date.now() + 5 * 60 * 1000;
 
   resetMap.set(email.toLowerCase(), { code, expires });
-
-  console.log(`\n\n========================================\n[RESET PASSWORD OTP] code for ${email} is: ${code}\n========================================\n\n`);
-
-  try {
-    fs.writeFileSync("otp_code.txt", `Email: ${email}\nOTP Code (Reset): ${code}\nGeneratedAt: ${new Date().toISOString()}`);
-  } catch (err) {
-    console.error("Failed to write reset code file", err);
-  }
 
   // Send real email OTP
   await sendEmailOtp(email, code, "reset");
@@ -365,9 +330,9 @@ export async function verifyResetCodeAndChangePassword(input: { email: string, c
   }
 
   const passwordHash = await bcrypt.hash(input.newPassword, 12);
-  await prisma.user.update({
-    where: { email: emailKey },
-    data: { passwordHash }
+  await prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({ where: { email: emailKey }, data: { passwordHash }, select: { id: true } });
+    await tx.session.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });
   });
 
   resetMap.delete(emailKey);
