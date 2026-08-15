@@ -60,7 +60,7 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
           "Accept": "application/json"
         },
         body: JSON.stringify({
-          sender: { name: "RytoxGroup", email: "duycute11082005@gmail.com" },
+          sender: { name: "RytoxGroup", email: process.env.BREVO_SENDER_EMAIL || "nuibabyno@gmail.com" },
           to: [{ email }],
           subject,
           htmlContent
