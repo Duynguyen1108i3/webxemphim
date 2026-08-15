@@ -991,8 +991,8 @@ export function AppShell() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {activeMovieDetail && <CinematicDetailModal />}
+      <AnimatePresence mode="wait">
+        {activeMovieDetail && <CinematicDetailModal key={activeMovieDetail.id || activeMovieDetail.slug} />}
       </AnimatePresence>
       <AnimatePresence>
         {activePlayback && <CinematicPlayerOverlay />}

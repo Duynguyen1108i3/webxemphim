@@ -1,6 +1,6 @@
 import Hls from "hls.js";
-import { Download, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForward, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Check, ChevronUp, Download, Gauge, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@streamforge/ui";
 import type { PlaybackSourceDto } from "@streamforge/shared-types";
 import { useAuthStore } from "../store/auth";
@@ -91,11 +91,103 @@ export function VideoPlayer({
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const speedMenuRef = useRef<HTMLDivElement>(null);
+
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [bufferedProgress, setBufferedProgress] = useState(0);
+
+  // Close speed menu when clicking outside
+  useEffect(() => {
+    if (!showSpeedMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (speedMenuRef.current && !speedMenuRef.current.contains(e.target as Node)) {
+        setShowSpeedMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSpeedMenu]);
+
+  // Scrubbing & Hover States for Smooth Dragging Progress Bar
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [hoverPercent, setHoverPercent] = useState<number>(0);
+
+  const calculateScrubPosition = useCallback((clientX: number) => {
+    const bar = progressBarRef.current;
+    const video = videoRef.current;
+    if (!bar || !video || !video.duration) return { pct: 0, time: 0 };
+    const rect = bar.getBoundingClientRect();
+    const offsetX = Math.max(0, Math.min(rect.width, clientX - rect.left));
+    const pct = (offsetX / rect.width) * 100;
+    const time = (offsetX / rect.width) * video.duration;
+    return { pct, time };
+  }, []);
+
+  const handleScrubMove = useCallback((clientX: number) => {
+    const { pct, time } = calculateScrubPosition(clientX);
+    setProgress(pct);
+    setCurrentTime(time);
+    if (videoRef.current) {
+      videoRef.current.currentTime = time;
+    }
+  }, [calculateScrubPosition]);
+
+  // Mouse drag handlers
+  const handleSeekMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsScrubbing(true);
+    handleScrubMove(e.clientX);
+  };
+
+  useEffect(() => {
+    if (!isScrubbing) return;
+    const onMouseMove = (e: MouseEvent) => {
+      handleScrubMove(e.clientX);
+    };
+    const onMouseUp = () => {
+      setIsScrubbing(false);
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [isScrubbing, handleScrubMove]);
+
+  // Touch drag handlers
+  const handleSeekTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length > 0) {
+      setIsScrubbing(true);
+      handleScrubMove(e.touches[0].clientX);
+    }
+  };
+
+  const handleSeekTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length > 0) {
+      handleScrubMove(e.touches[0].clientX);
+    }
+  };
+
+  const handleSeekTouchEnd = () => {
+    setIsScrubbing(false);
+  };
+
+  // Hover handlers for seekbar tooltip
+  const handleSeekMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const { pct, time } = calculateScrubPosition(e.clientX);
+    setHoverPercent(pct);
+    setHoverTime(time);
+  };
+
+  const handleSeekMouseLeave = () => {
+    setHoverTime(null);
+  };
 
   // Resume playback position from watch history on mount
   // Watch history resume position is now deferred and managed safely inside the media ready handlers below to prevent resets
@@ -627,105 +719,164 @@ export function VideoPlayer({
         </div>
       )}
 
-
-      
       {/* Controls Container Overlay */}
-      <div className="absolute inset-x-0 bottom-16 md:bottom-0 space-y-4 bg-gradient-to-t from-black via-black/80 to-transparent p-4 opacity-100 transition md:p-8 md:opacity-0 md:group-hover:opacity-100">
-        
-        {/* Clickable Seekbar Wrapper */}
-        <div 
-          ref={progressBarRef}
-          onClick={handleSeek}
-          onTouchStart={handleSeek}
-          className="relative h-1.5 w-full bg-white/20 cursor-pointer group/progress transition-all hover:h-2"
-        >
-          {/* Buffered progress */}
+      <div className="absolute inset-x-0 bottom-0 z-30 space-y-3 bg-gradient-to-t from-black/95 via-black/75 to-transparent p-4 sm:p-6 opacity-100 transition-opacity duration-300 md:opacity-0 md:group-hover:opacity-100">
+        <div className="max-w-7xl mx-auto w-full space-y-3">
+          
+          {/* Clickable & Draggable Seekbar Wrapper */}
           <div 
-            className="absolute h-full bg-white/30" 
-            style={{ width: `${bufferedProgress}%` }} 
-          />
-          {/* Playback progress */}
-          <div 
-            className="absolute h-full bg-[#e50914]" 
-            style={{ width: `${progress}%` }} 
-          />
-          {/* Playhead thumb (Netflix dot) */}
-          <div 
-            className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 rounded-full bg-[#e50914] opacity-0 group-hover/progress:opacity-100 transition-opacity" 
-            style={{ left: `calc(${progress}% - 7px)` }} 
-          />
-        </div>
+            ref={progressBarRef}
+            onMouseDown={handleSeekMouseDown}
+            onTouchStart={handleSeekTouchStart}
+            onTouchMove={handleSeekTouchMove}
+            onTouchEnd={handleSeekTouchEnd}
+            onMouseMove={handleSeekMouseMove}
+            onMouseLeave={handleSeekMouseLeave}
+            className="relative h-4 w-full cursor-pointer group/progress py-1 flex items-center select-none"
+          >
+            {/* Base Gray Bar */}
+            <div className="h-1.5 w-full rounded-full bg-white/25 overflow-hidden transition-all group-hover/progress:h-2">
+              {/* Buffered progress */}
+              <div className="h-full bg-white/40 transition-all duration-150" style={{ width: `${bufferedProgress}%` }} />
+            </div>
 
-        {/* Control Button bar */}
-        <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 w-full">
-          <div className="flex flex-wrap items-center gap-1.5 md:gap-3">
-            {/* Play/Pause */}
-            <Button onClick={toggle} className="h-10 w-10 md:h-12 md:w-12 rounded-full p-0 shrink-0 glass-button" aria-label={playing ? "Pause" : "Play"}>
-              {playing ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
-            </Button>
-            
-            {/* Rewind 10s */}
-            <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label="Rewind 10 seconds">
-              <RotateCcw size={16} />
-            </Button>
+            {/* Red Playback Progress Bar */}
+            <div 
+              className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-[#e50914] transition-all group-hover/progress:h-2 pointer-events-none" 
+              style={{ width: `${progress}%` }} 
+            />
 
-            {/* Forward 10s */}
-            <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label="Forward 10 seconds">
-              <RotateCw size={16} />
-            </Button>
-
-            {/* Next Episode */}
-            {hasNextEpisode && onNextEpisode && (
-              <Button variant="ghost" onClick={onNextEpisode} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#46d369] shrink-0 glass-button" aria-label="Next Episode">
-                <SkipForward size={18} fill="currentColor" />
-              </Button>
-            )}
-
-            {/* Skip Intro */}
-            {source && typeof source.introEndSeconds === "number" && source.introEndSeconds > 0 && (
-              <Button variant="ghost" className="h-9 px-3 text-xs shrink-0" onClick={() => { if (videoRef.current) videoRef.current.currentTime = source.introEndSeconds!; }}>
-                <SkipForward size={14} /> Skip Intro
-              </Button>
-            )}
-
-            {/* Volume bar */}
-            <div className="flex items-center gap-1.5 md:gap-2 ml-1">
-              <Button variant="ghost" onClick={toggleMute} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label={muted ? "Unmute" : "Mute"}>
-                {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-              </Button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={muted ? 0 : volume}
-                onChange={handleVolumeChange}
-                className="h-1 w-12 sm:w-16 cursor-pointer rounded-lg bg-zinc-600 accent-[#e50914] appearance-none"
-                aria-label="Volume level"
+            {/* Hover preview indicator line */}
+            {hoverTime !== null && (
+              <div
+                className="absolute top-1/2 -translate-y-1/2 h-2.5 w-0.5 bg-white/90 pointer-events-none z-10"
+                style={{ left: `${hoverPercent}%` }}
               />
-            </div>
+            )}
 
-            {/* Time display */}
-            <div className="text-[11px] md:text-sm font-semibold tracking-wider text-zinc-300 ml-1 whitespace-nowrap">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </div>
+            {/* Red Handle Circle (Expands on hover or during drag) */}
+            <div 
+              className={`absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-[#e50914] border-2 border-white shadow-[0_0_10px_rgba(229,9,20,0.9)] transition-transform duration-100 pointer-events-none z-20 ${
+                isScrubbing ? "scale-125 opacity-100" : "scale-0 opacity-0 group-hover/progress:scale-100 group-hover/progress:opacity-100"
+              }`} 
+              style={{ left: `calc(${progress}% - 8px)` }} 
+            />
+
+            {/* Hover Time Tooltip Box */}
+            {hoverTime !== null && (
+              <div
+                className="absolute -top-9 -translate-x-1/2 rounded-lg bg-black/90 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl border border-white/15 pointer-events-none select-none z-30"
+                style={{ left: `${hoverPercent}%` }}
+              >
+                {formatTime(hoverTime)}
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
-            {/* Speed selection */}
-            <select value={speed} onChange={(e) => changeSpeed(Number(e.target.value))} className="rounded-lg liquid-glass px-1 py-1 sm:px-2 sm:py-2 text-xs sm:text-sm text-white focus:outline-none">
-              {[0.5, 1, 1.25, 1.5, 2].map((value) => <option key={value} value={value} className="bg-zinc-900">{value}x</option>)}
-            </select>
-            
-            {/* Picture-in-Picture */}
-            <Button variant="ghost" onClick={() => videoRef.current?.requestPictureInPicture()} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 flex items-center justify-center glass-button" aria-label="Picture in picture">
-              <PictureInPicture2 size={16} />
-            </Button>
-            
-            {/* Fullscreen */}
-            <Button variant="ghost" onClick={handleFullscreen} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#e50914] glass-button" aria-label="Fullscreen">
-              <Maximize size={20} />
-            </Button>
+          {/* Control Button bar */}
+          <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 w-full pt-1 select-none">
+            <div className="flex flex-wrap items-center gap-1.5 md:gap-3">
+              {/* Play/Pause */}
+              <Button onClick={toggle} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label={playing ? "Pause" : "Play"}>
+                {playing ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
+              </Button>
+              
+              {/* Rewind 10s */}
+              <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label="Rewind 10 seconds">
+                <RotateCcw size={16} />
+              </Button>
+
+              {/* Forward 10s */}
+              <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label="Forward 10 seconds">
+                <RotateCw size={16} />
+              </Button>
+
+              {/* Next Episode */}
+              {hasNextEpisode && onNextEpisode && (
+                <Button variant="ghost" onClick={onNextEpisode} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#46d369] shrink-0 glass-button" aria-label="Next Episode">
+                  <SkipForward size={18} fill="currentColor" />
+                </Button>
+              )}
+
+              {/* Skip Intro */}
+              {source && typeof source.introEndSeconds === "number" && source.introEndSeconds > 0 && (
+                <Button variant="ghost" className="h-9 px-3 text-xs shrink-0 glass-button" onClick={() => { if (videoRef.current) videoRef.current.currentTime = source.introEndSeconds!; }}>
+                  <SkipForward size={14} /> Skip Intro
+                </Button>
+              )}
+
+              {/* Volume bar */}
+              <div className="flex items-center gap-1.5 md:gap-2 ml-1">
+                <Button variant="ghost" onClick={toggleMute} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label={muted ? "Unmute" : "Mute"}>
+                  {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                </Button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={muted ? 0 : volume}
+                  onChange={handleVolumeChange}
+                  className="h-1.5 w-14 sm:w-20 cursor-pointer rounded-lg bg-white/20 accent-[#e50914] appearance-none"
+                  aria-label="Volume level"
+                />
+              </div>
+
+              {/* Time display */}
+              <div className="text-xs font-bold tracking-wider text-white/80 ml-2 whitespace-nowrap">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 relative">
+              {/* Speed selection - Custom Liquid Glass Popover */}
+              <div ref={speedMenuRef} className="relative z-50">
+                <button
+                  type="button"
+                  onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                  className="flex items-center gap-1.5 h-10 px-3.5 rounded-full glass-button text-xs sm:text-sm font-bold text-white transition active:scale-95 cursor-pointer hover:border-white/40 shadow-lg"
+                  aria-label="Playback speed"
+                >
+                  <Gauge size={15} className="text-white/90" />
+                  <span>{speed}x</span>
+                  <ChevronUp size={13} className={`text-white/70 transition-transform duration-200 ${showSpeedMenu ? "rotate-180" : ""}`} />
+                </button>
+
+                {showSpeedMenu && (
+                  <div className="absolute bottom-12 right-0 z-[150] flex flex-col w-32 rounded-2xl bg-zinc-950/90 border border-white/20 backdrop-blur-2xl p-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
+                    <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/50 border-b border-white/10 mb-1">
+                      Tốc độ
+                    </div>
+                    {[0.5, 1, 1.25, 1.5, 2].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => {
+                          changeSpeed(v);
+                          setShowSpeedMenu(false);
+                        }}
+                        className={`flex items-center justify-between px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                          speed === v ? "bg-[#e50914] text-white shadow-lg shadow-red-600/40" : "text-white/80 hover:bg-white/15 hover:text-white"
+                        }`}
+                      >
+                        <span>{v}x</span>
+                        {speed === v && <Check size={13} />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Picture-in-Picture */}
+              <Button variant="ghost" onClick={() => videoRef.current?.requestPictureInPicture()} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 flex items-center justify-center glass-button" aria-label="Picture in picture">
+                <PictureInPicture2 size={16} />
+              </Button>
+              
+              {/* Fullscreen */}
+              <Button variant="ghost" onClick={handleFullscreen} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#e50914] glass-button" aria-label="Fullscreen">
+                <Maximize size={20} />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

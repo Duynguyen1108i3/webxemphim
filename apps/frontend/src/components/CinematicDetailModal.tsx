@@ -19,6 +19,7 @@ export function CinematicDetailModal() {
   const [isInitiallyOpening, setIsInitiallyOpening] = useState(true);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>("");
   const modalContainerRef = useRef<HTMLDivElement>(null);
+  const outerContainerRef = useRef<HTMLDivElement>(null);
 
   const [hovered, setHovered] = useState<{ movie: any; anchor: HTMLElement; rect: DOMRect } | null>(null);
   const [showAllSimilar, setShowAllSimilar] = useState(false);
@@ -87,6 +88,16 @@ export function CinematicDetailModal() {
   }, [hovered?.anchor]);
 
   const movie = activeMovieDetail;
+
+  useEffect(() => {
+    if (!movie?.id && !movie?.slug) return;
+    setShowTrailer(false);
+    setSelectedSeasonId("");
+    setHovered(null);
+    if (outerContainerRef.current) {
+      outerContainerRef.current.scrollTop = 0;
+    }
+  }, [movie?.id, movie?.slug]);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsInitiallyOpening(false), 500);
@@ -213,6 +224,7 @@ export function CinematicDetailModal() {
 
   return (
     <div
+      ref={outerContainerRef}
       className="fixed inset-0 z-[90] flex justify-center items-start overflow-y-auto bg-[#0a0a0a]/35 p-0 sm:p-4 sm:pt-10 backdrop-blur-[24px] saturate-[180%] transition-all duration-500 ease-out"
       onClick={closeDetailModal}
     >
@@ -253,14 +265,15 @@ export function CinematicDetailModal() {
               />
             ) : (
               <motion.img
-                key="poster"
+                key={displayMovie.id || displayMovie.slug}
                 layoutId={isInitiallyOpening ? (clickedElementId || undefined) : undefined}
                 src={displayMovie.backdropUrl || displayMovie.posterUrl}
                 alt={displayMovie.title}
                 className="h-full w-full object-cover"
-                initial={{ filter: "brightness(0.9)" }}
-                animate={{ filter: "brightness(1)" }}
-                exit={{ filter: "brightness(0.9)" }}
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
               />
             )}
           </AnimatePresence>
@@ -327,6 +340,7 @@ export function CinematicDetailModal() {
 
         {/* Staggered Content Reveal */}
         <motion.div
+          key={displayMovie.id || displayMovie.slug}
           className="grid gap-8 p-6 md:p-8 md:grid-cols-[1.4fr_.8fr]"
           variants={containerVariants}
           initial="hidden"
@@ -468,8 +482,9 @@ export function CinematicDetailModal() {
                     movie={item as any}
                     className="group relative w-full cursor-pointer rounded-md transition"
                     onOpen={() => {
-                      if (modalContainerRef.current) {
-                        modalContainerRef.current.scrollTop = 0;
+                      setHovered(null);
+                      if (outerContainerRef.current) {
+                        outerContainerRef.current.scrollTop = 0;
                       }
                       usePlaybackStore.getState().openDetailModal(item as any, `card-${item.id}`);
                     }}
@@ -551,8 +566,9 @@ export function CinematicDetailModal() {
             movie={hovered.movie}
             rect={hovered.rect}
             onOpen={() => {
-              if (modalContainerRef.current) {
-                modalContainerRef.current.scrollTop = 0;
+              setHovered(null);
+              if (outerContainerRef.current) {
+                outerContainerRef.current.scrollTop = 0;
               }
               usePlaybackStore.getState().openDetailModal(hovered.movie, `card-${hovered.movie.id}`);
             }}

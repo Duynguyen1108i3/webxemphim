@@ -372,6 +372,7 @@ export const HoverPreview = React.memo(function HoverPreview({
     <div
       className="fixed left-0 top-0 z-[100] will-change-transform"
       style={{ width, transform: `translate3d(${left}px, ${top}px, 0)` }}
+      onClick={(e) => e.stopPropagation()}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -385,7 +386,14 @@ export const HoverPreview = React.memo(function HoverPreview({
           style={{ transformOrigin: "center top", transformStyle: "preserve-3d" }}
         >
           <div className="relative w-full overflow-hidden bg-zinc-950 text-left">
-            <button onClick={onOpen} className="block w-full text-left relative" aria-label={`Open ${movie.title} preview`}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen();
+              }}
+              className="block w-full text-left relative"
+              aria-label={`Open ${movie.title} preview`}
+            >
               <img src={movie.backdropUrl || movie.posterUrl} alt={movie.title} onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover" />
               {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
                 <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-zinc-700 z-10">
@@ -436,7 +444,7 @@ export const HoverPreview = React.memo(function HoverPreview({
               <Button variant="ghost" className="nf-icon glass-button h-10 w-10 rounded-full p-0" aria-label="Like"><ThumbsUp size={17} /></Button>
               <button onClick={(e) => {
                 e.stopPropagation();
-                openDetailModal(movie as NormalizedMovie, `card-${movie.id}`);
+                onOpen();
               }} className="nf-icon glass-button ml-auto grid h-10 w-10 place-items-center rounded-full text-white" aria-label="Episodes and info"><ChevronDown size={20} /></button>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-sm text-white/75">
