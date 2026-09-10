@@ -297,6 +297,12 @@ export const imdbApi = {
     const cached = getCached<{ rows: Array<{ title: string; items: NormalizedMovie[]; ranked?: boolean }> }>(cacheKey);
     if (cached) return cached;
 
+    const filterRated = (list: ImdbItem[]) =>
+      list.filter((m) => {
+        const r = parseFloat(m.imdbRating || "0");
+        return !isNaN(r) && r > 0;
+      });
+
     if (selectedGenre === "All") {
       const [topTrendingMovies, topRatedMovies, topSeries, actionMovies, animationMovies, sciFiMovies] = await Promise.all([
         this.fetchCatalog({ type: "movie", sort: "top" }),
@@ -307,16 +313,20 @@ export const imdbApi = {
         this.fetchCatalog({ type: "movie", sort: "top", genre: "Sci-Fi" })
       ]);
 
-      const sortedTopRated = [...topRatedMovies]
+      const ratedTrending = filterRated(topTrendingMovies);
+      const sortedTopRated = filterRated(topRatedMovies)
         .sort((a, b) => parseFloat(b.imdbRating || "0") - parseFloat(a.imdbRating || "0"));
-      const sortedTopSeries = [...topSeries]
+      const sortedTopSeries = filterRated(topSeries)
         .sort((a, b) => parseFloat(b.imdbRating || "0") - parseFloat(a.imdbRating || "0"));
+      const ratedAction = filterRated(actionMovies);
+      const ratedAnimation = filterRated(animationMovies);
+      const ratedSciFi = filterRated(sciFiMovies);
 
       const res = {
         rows: [
           {
             title: "Top 10 Phim Thịnh Hành Trên IMDb Hôm Nay",
-            items: topTrendingMovies.slice(0, 10).map(imdbToNormalizedMovie),
+            items: (ratedTrending.length >= 8 ? ratedTrending : topTrendingMovies).slice(0, 10).map(imdbToNormalizedMovie),
             ranked: true
           },
           {
@@ -330,15 +340,15 @@ export const imdbApi = {
           },
           {
             title: "Phim Hành Động Kịch Tính Nổi Bật Trên IMDb",
-            items: actionMovies.slice(0, 15).map(imdbToNormalizedMovie)
+            items: (ratedAction.length > 0 ? ratedAction : actionMovies).slice(0, 15).map(imdbToNormalizedMovie)
           },
           {
             title: "Phim Hoạt Hình & Anime Đỉnh Cao",
-            items: animationMovies.slice(0, 15).map(imdbToNormalizedMovie)
+            items: (ratedAnimation.length > 0 ? ratedAnimation : animationMovies).slice(0, 15).map(imdbToNormalizedMovie)
           },
           {
             title: "Phim Khoa Học Viễn Tưởng Tuyển Chọn",
-            items: sciFiMovies.slice(0, 15).map(imdbToNormalizedMovie)
+            items: (ratedSciFi.length > 0 ? ratedSciFi : sciFiMovies).slice(0, 15).map(imdbToNormalizedMovie)
           }
         ].filter((r) => r.items.length > 0)
       };
@@ -353,14 +363,16 @@ export const imdbApi = {
         this.fetchCatalog({ type: "series", sort: "imdbRating", genre: selectedGenre })
       ]);
 
-      const sortedGenreTopRated = [...genreTopRated]
+      const ratedGenreTrending = filterRated(genreTrending);
+      const sortedGenreTopRated = filterRated(genreTopRated)
         .sort((a, b) => parseFloat(b.imdbRating || "0") - parseFloat(a.imdbRating || "0"));
+      const ratedGenreSeries = filterRated(genreSeries);
 
       const res = {
         rows: [
           {
             title: `Top 10 Phim ${viName} Thịnh Hành Trên IMDb`,
-            items: genreTrending.slice(0, 10).map(imdbToNormalizedMovie),
+            items: (ratedGenreTrending.length >= 6 ? ratedGenreTrending : genreTrending).slice(0, 10).map(imdbToNormalizedMovie),
             ranked: true
           },
           {
@@ -369,7 +381,7 @@ export const imdbApi = {
           },
           {
             title: `TV Series & Phim Bộ ${viName} Được Yêu Thích`,
-            items: genreSeries.slice(0, 15).map(imdbToNormalizedMovie)
+            items: (ratedGenreSeries.length > 0 ? ratedGenreSeries : genreSeries).slice(0, 15).map(imdbToNormalizedMovie)
           }
         ].filter((r) => r.items.length > 0)
       };
