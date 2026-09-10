@@ -12,6 +12,7 @@ const MyListPage = lazy(() => import("../pages/MyListPage").then((module) => ({ 
 const LoginPage = lazy(() => import("../pages/LoginPage").then((module) => ({ default: module.LoginPage })));
 const RegisterPage = lazy(() => import("../pages/RegisterPage").then((module) => ({ default: module.RegisterPage })));
 const ForgotPasswordPage = lazy(() => import("../pages/ForgotPasswordPage").then((module) => ({ default: module.ForgotPasswordPage })));
+const NewAndPopularPage = lazy(() => import("../pages/NewAndPopularPage").then((module) => ({ default: module.NewAndPopularPage })));
 
 function PageLoader({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
   return <Suspense fallback={fallback}>{children}</Suspense>;
@@ -28,7 +29,7 @@ export const router = createBrowserRouter([
       { path: "/tv-shows", element: <HomePage type="tv-shows" /> },
       { path: "/movies", element: <HomePage type="movies" /> },
       { path: "/anime", element: <HomePage type="anime" /> },
-      { path: "/new-popular", element: <HomePage type="new-popular" /> },
+      { path: "/new-popular", element: <PageLoader><NewAndPopularPage /></PageLoader> },
       { path: "/movie/:slug", element: <PageLoader fallback={pageLoadingFallback}><MovieDetailPage /></PageLoader> },
       { path: "/search", element: <PageLoader><SearchPage /></PageLoader> },
       { path: "/profile", element: <PageLoader><ProfilePage /></PageLoader> },

@@ -1,0 +1,237 @@
+export interface ImdbItem {
+  id: string;
+  imdb_id: string;
+  name: string;
+  type: "movie" | "series";
+  year?: string;
+  imdbRating?: string;
+  genres: string[];
+  poster?: string;
+  background?: string;
+  description?: string;
+  cast?: string[];
+  director?: string[];
+  writer?: string[];
+  runtime?: string;
+  trailers?: Array<{ source: string; type: string }>;
+  popularity?: number;
+}
+
+export const IMDB_GENRES = [
+  "All",
+  "Action",
+  "Adventure",
+  "Animation",
+  "Comedy",
+  "Crime",
+  "Documentary",
+  "Drama",
+  "Family",
+  "Fantasy",
+  "Horror",
+  "Mystery",
+  "Romance",
+  "Sci-Fi",
+  "Thriller",
+  "Biography",
+  "History",
+  "Sport",
+  "War"
+];
+
+export const GENRE_LABELS_VI: Record<string, string> = {
+  All: "Tất cả",
+  Action: "Hành động",
+  Adventure: "Phiêu lưu",
+  Animation: "Hoạt hình",
+  Comedy: "Hài hước",
+  Crime: "Hình sự",
+  Documentary: "Tài liệu",
+  Drama: "Chính kịch",
+  Family: "Gia đình",
+  Fantasy: "Kỳ ảo",
+  Horror: "Kinh dị",
+  Mystery: "Bí ẩn",
+  Romance: "Lãng mạn",
+  "Sci-Fi": "Viễn tưởng",
+  Thriller: "Giật gân",
+  Biography: "Tiểu sử",
+  History: "Lịch sử",
+  Sport: "Thể thao",
+  War: "Chiến tranh"
+};
+
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+function getCached<T>(key: string): T | null {
+  const item = cache.get(key);
+  if (!item) return null;
+  if (Date.now() - item.timestamp > CACHE_TTL) {
+    cache.delete(key);
+    return null;
+  }
+  return item.data as T;
+}
+
+function setCache(key: string, data: any) {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+function normalizeRawMeta(raw: any, defaultType: "movie" | "series" = "movie"): ImdbItem {
+  const id = raw.imdb_id || raw.id || "";
+  let genres: string[] = [];
+  if (Array.isArray(raw.genre)) {
+    genres = raw.genre;
+  } else if (Array.isArray(raw.genres)) {
+    genres = raw.genres;
+  } else if (typeof raw.genre === "string") {
+    genres = [raw.genre];
+  }
+
+  // Sanitize poster and background images
+  let poster = raw.poster;
+  if (!poster && id) {
+    poster = `https://images.metahub.space/poster/medium/${id}/img`;
+  }
+  let background = raw.background;
+  if (!background && id) {
+    background = `https://images.metahub.space/background/medium/${id}/img`;
+  }
+
+  let ratingStr = "";
+  if (raw.imdbRating !== undefined && raw.imdbRating !== null && raw.imdbRating !== "") {
+    const parsed = parseFloat(String(raw.imdbRating));
+    if (!isNaN(parsed) && parsed > 0) {
+      ratingStr = parsed.toFixed(1);
+    }
+  }
+
+  return {
+    id,
+    imdb_id: id,
+    name: raw.name || "Untitled",
+    type: (raw.type === "series" || raw.type === "tv") ? "series" : defaultType,
+    year: raw.year ? String(raw.year) : (raw.releaseInfo ? String(raw.releaseInfo).substring(0, 4) : undefined),
+    imdbRating: ratingStr,
+    genres,
+    poster,
+    background,
+    description: raw.description || "",
+    cast: Array.isArray(raw.cast) ? raw.cast : [],
+    director: Array.isArray(raw.director) ? raw.director : (raw.director ? [raw.director] : []),
+    writer: Array.isArray(raw.writer) ? raw.writer : (raw.writer ? [raw.writer] : []),
+    runtime: raw.runtime ? String(raw.runtime) : undefined,
+    trailers: Array.isArray(raw.trailers) ? raw.trailers : [],
+    popularity: typeof raw.popularity === "number" ? raw.popularity : undefined
+  };
+}
+
+export interface CatalogParams {
+  type?: "movie" | "series" | "all";
+  sort?: "top" | "imdbRating";
+  genre?: string;
+  skip?: number;
+}
+
+export const imdbApi = {
+  async fetchCatalog({
+    type = "all",
+    sort = "top",
+    genre,
+    skip = 0
+  }: CatalogParams): Promise<ImdbItem[]> {
+    const genreParam = genre && genre !== "All" ? `genre=${encodeURIComponent(genre)}` : "";
+    const cacheKey = `imdb:catalog:${type}:${sort}:${genreParam}:${skip}`;
+    const cached = getCached<ImdbItem[]>(cacheKey);
+    if (cached) return cached;
+
+    const fetchSingleType = async (itemType: "movie" | "series"): Promise<ImdbItem[]> => {
+      let pathParts: string[] = ["catalog", itemType, sort];
+      if (genreParam) {
+        pathParts.push(genreParam);
+      }
+      let url = `https://v3-cinemeta.strem.io/${pathParts.join("/")}.json`;
+      if (skip > 0) {
+        const separator = genreParam ? "&" : "";
+        url = `https://v3-cinemeta.strem.io/catalog/${itemType}/${sort}${genreParam ? `/${genreParam}` : ""}${separator ? `&skip=${skip}` : `/skip=${skip}`}.json`;
+      }
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return [];
+        const data = await res.json();
+        const metas = Array.isArray(data?.metas) ? data.metas : [];
+        return metas.map((m: any) => normalizeRawMeta(m, itemType));
+      } catch (e) {
+        console.error(`Failed to fetch Cinemeta catalog for ${itemType}:`, e);
+        return [];
+      }
+    };
+
+    let items: ImdbItem[] = [];
+    if (type === "all") {
+      const [movies, series] = await Promise.all([
+        fetchSingleType("movie"),
+        fetchSingleType("series")
+      ]);
+
+      if (sort === "imdbRating") {
+        items = [...movies, ...series].sort((a, b) => {
+          const rA = parseFloat(a.imdbRating || "0");
+          const rB = parseFloat(b.imdbRating || "0");
+          return rB - rA;
+        });
+      } else {
+        const maxLen = Math.max(movies.length, series.length);
+        for (let i = 0; i < maxLen; i++) {
+          if (movies[i]) items.push(movies[i]);
+          if (series[i]) items.push(series[i]);
+        }
+      }
+    } else {
+      items = await fetchSingleType(type);
+      if (sort === "imdbRating") {
+        items = items.sort((a, b) => {
+          const rA = parseFloat(a.imdbRating || "0");
+          const rB = parseFloat(b.imdbRating || "0");
+          return rB - rA;
+        });
+      }
+    }
+
+    const filtered = items.filter((item) => item.name && item.name !== "Untitled" && item.id);
+    setCache(cacheKey, filtered);
+    return filtered;
+  },
+
+  async fetchDetail(imdbId: string, type: "movie" | "series" = "movie"): Promise<ImdbItem | null> {
+    const cacheKey = `imdb:detail:${type}:${imdbId}`;
+    const cached = getCached<ImdbItem>(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const res = await fetch(`https://v3-cinemeta.strem.io/meta/${type}/${imdbId}.json`);
+      if (!res.ok) {
+        const altType = type === "movie" ? "series" : "movie";
+        const altRes = await fetch(`https://v3-cinemeta.strem.io/meta/${altType}/${imdbId}.json`);
+        if (!altRes.ok) return null;
+        const altData = await altRes.json();
+        if (altData?.meta) {
+          const normalized = normalizeRawMeta(altData.meta, altType);
+          setCache(cacheKey, normalized);
+          return normalized;
+        }
+        return null;
+      }
+      const data = await res.json();
+      if (!data?.meta) return null;
+      const normalized = normalizeRawMeta(data.meta, type);
+      setCache(cacheKey, normalized);
+      return normalized;
+    } catch (e) {
+      console.error(`Failed to fetch Cinemeta detail for ${imdbId}:`, e);
+      return null;
+    }
+  }
+};
