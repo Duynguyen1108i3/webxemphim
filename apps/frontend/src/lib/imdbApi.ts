@@ -131,7 +131,11 @@ function normalizeRawMeta(raw: any, defaultType: "movie" | "series" = "movie"): 
 
 export function imdbToNormalizedMovie(item: ImdbItem): NormalizedMovie {
   const year = item.year ? parseInt(item.year, 10) : new Date().getFullYear();
-  const rating = item.imdbRating ? parseFloat(item.imdbRating) : 8.0;
+  let rating = 0;
+  if (item.imdbRating) {
+    const p = parseFloat(item.imdbRating);
+    if (!isNaN(p) && p > 0) rating = p;
+  }
   const genresDto = (item.genres || []).map((g) => ({
     id: g.toLowerCase().replace(/\s+/g, "-"),
     name: GENRE_LABELS_VI[g] || g,
@@ -303,6 +307,11 @@ export const imdbApi = {
         this.fetchCatalog({ type: "movie", sort: "top", genre: "Sci-Fi" })
       ]);
 
+      const sortedTopRated = [...topRatedMovies]
+        .sort((a, b) => parseFloat(b.imdbRating || "0") - parseFloat(a.imdbRating || "0"));
+      const sortedTopSeries = [...topSeries]
+        .sort((a, b) => parseFloat(b.imdbRating || "0") - parseFloat(a.imdbRating || "0"));
+
       const res = {
         rows: [
           {
@@ -312,12 +321,12 @@ export const imdbApi = {
           },
           {
             title: "Phim Chiếu Rạp Điểm IMDb Cao Nhất Mọi Thời Đại",
-            items: topRatedMovies.slice(0, 15).map(imdbToNormalizedMovie),
+            items: sortedTopRated.slice(0, 15).map(imdbToNormalizedMovie),
             ranked: true
           },
           {
             title: "Top TV Series / Phim Bộ IMDb Được Đánh Giá Cao Nhất",
-            items: topSeries.slice(0, 15).map(imdbToNormalizedMovie)
+            items: sortedTopSeries.slice(0, 15).map(imdbToNormalizedMovie)
           },
           {
             title: "Phim Hành Động Kịch Tính Nổi Bật Trên IMDb",
@@ -344,6 +353,9 @@ export const imdbApi = {
         this.fetchCatalog({ type: "series", sort: "imdbRating", genre: selectedGenre })
       ]);
 
+      const sortedGenreTopRated = [...genreTopRated]
+        .sort((a, b) => parseFloat(b.imdbRating || "0") - parseFloat(a.imdbRating || "0"));
+
       const res = {
         rows: [
           {
@@ -353,7 +365,7 @@ export const imdbApi = {
           },
           {
             title: `Phim ${viName} Có Điểm IMDb Cao Nhất`,
-            items: genreTopRated.slice(0, 15).map(imdbToNormalizedMovie)
+            items: sortedGenreTopRated.slice(0, 15).map(imdbToNormalizedMovie)
           },
           {
             title: `TV Series & Phim Bộ ${viName} Được Yêu Thích`,
