@@ -284,21 +284,21 @@ export function CinematicDetailModal() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#181818] via-[#181818]/20 to-transparent" />
           
           {/* Backdrop Details Title Overlay */}
-          <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
-            <div className="space-y-4 max-w-lg">
+          <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-6 right-4 sm:right-6 flex items-end justify-between">
+            <div className="space-y-3 sm:space-y-4 max-w-lg">
               <motion.h1 
                 layoutId={isInitiallyOpening ? `title-${movie.id}` : undefined}
-                className="large-title line-clamp-2 text-3xl font-black md:text-5xl text-shadow"
+                className="large-title line-clamp-2 text-2xl sm:text-3xl md:text-5xl font-black text-shadow"
               >
                 {displayMovie.title}
               </motion.h1>
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
                 {!(displayMovie as any).noPlayback ? (
                   <button
                     onClick={() => openPlayback(displayMovie, clickedElementId || "")}
-                    className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded bg-white px-7 text-sm font-black text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/70"
+                    className="nf-button inline-flex h-10 sm:h-11 items-center justify-center gap-2 rounded bg-white px-5 sm:px-7 text-xs sm:text-sm font-black text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/70"
                   >
-                    <Play size={18} fill="currentColor" className="transition-transform duration-200 group-hover:scale-110" /> Play
+                    <Play size={16} className="sm:w-[18px] sm:h-[18px]" fill="currentColor" /> Play
                   </button>
                 ) : (
                   <>
@@ -307,9 +307,9 @@ export function CinematicDetailModal() {
                         href={`https://www.youtube.com/watch?v=${(displayMovie as any).trailerKey}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded bg-white px-6 text-sm font-black text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/70"
+                        className="nf-button inline-flex h-10 sm:h-11 items-center justify-center gap-2 rounded bg-white px-4 sm:px-6 text-xs sm:text-sm font-black text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/70"
                       >
-                        <Play size={18} fill="currentColor" className="transition-transform duration-200 group-hover:scale-110" /> Xem Trailer
+                        <Play size={16} className="sm:w-[18px] sm:h-[18px]" fill="currentColor" /> Xem Trailer
                       </a>
                     ) : null}
                     {(displayMovie as any).imdbId && (
@@ -317,7 +317,7 @@ export function CinematicDetailModal() {
                         href={`https://www.imdb.com/title/${(displayMovie as any).imdbId}/`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded bg-[#f5c518] px-5 text-sm font-black text-black transition hover:brightness-110 shadow-md"
+                        className="inline-flex h-10 sm:h-11 items-center justify-center gap-2 rounded bg-[#f5c518] px-4 sm:px-5 text-xs sm:text-sm font-black text-black transition hover:brightness-110 shadow-md"
                       >
                         IMDb
                       </a>
@@ -333,30 +333,30 @@ export function CinematicDetailModal() {
                     }
                     toggleMyList(displayMovie);
                   }}
-                  className="nf-icon glass-button h-11 w-11 rounded-full p-0"
+                  className="nf-icon glass-button h-10 sm:h-11 w-10 sm:w-11 rounded-full p-0"
                   aria-label="Add to list"
                 >
                   <motion.div animate={{ rotate: inMyList ? 360 : 0 }}>
-                    {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
+                    {inMyList ? <Check size={16} className="text-[#46d369] sm:w-[18px] sm:h-[18px]" /> : <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />}
                   </motion.div>
                 </Button>
                 {/* Like Button */}
                 <Button
                   variant="ghost"
                   onClick={handleLike}
-                  className="nf-icon glass-button h-11 w-11 rounded-full p-0"
+                  className="nf-icon glass-button h-10 sm:h-11 w-10 sm:w-11 rounded-full p-0"
                   aria-label="Like this"
                 >
-                  <ThumbsUp size={16} className={liked ? "fill-white text-[#46d369]" : ""} />
+                  <ThumbsUp size={15} className={liked ? "fill-white text-[#46d369]" : ""} />
                 </Button>
                 {/* Dislike Button */}
                 <Button
                   variant="ghost"
                   onClick={handleDislike}
-                  className="nf-icon glass-button h-11 w-11 rounded-full p-0"
+                  className="nf-icon glass-button h-10 sm:h-11 w-10 sm:w-11 rounded-full p-0"
                   aria-label="Dislike this"
                 >
-                  <ThumbsDown size={16} className={disliked ? "fill-white text-white/90" : ""} />
+                  <ThumbsDown size={15} className={disliked ? "fill-white text-white/90" : ""} />
                 </Button>
               </div>
             </div>
@@ -364,10 +364,10 @@ export function CinematicDetailModal() {
               <Button
                 variant="ghost"
                 onClick={() => setIsMuted(!isMuted)}
-                className="nf-icon glass-button h-10 w-10 rounded-full p-0"
+                className="nf-icon glass-button h-9 sm:h-10 w-9 sm:w-10 rounded-full p-0"
                 aria-label={isMuted ? "Unmute preview" : "Mute preview"}
               >
-                {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+                {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </Button>
             )}
           </div>

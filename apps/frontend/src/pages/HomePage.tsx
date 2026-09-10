@@ -92,6 +92,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
 
   const [heroIndex, setHeroIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   // Auto-scroll every 6.5s unless hovered
   useEffect(() => {
@@ -103,6 +104,22 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
 
     return () => clearInterval(timer);
   }, [heroMovies.length, isPaused]);
+
+  // Touch swipe gesture support for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null || heroMovies.length <= 1) return;
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (diff > 45) {
+      setHeroIndex((prev) => (prev + 1) % heroMovies.length);
+    } else if (diff < -45) {
+      setHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length);
+    }
+    setTouchStartX(null);
+  };
 
   const currentHeroIndex = heroMovies.length > 0 ? (heroIndex % heroMovies.length) : 0;
   const hero = heroMovies[currentHeroIndex] || rows[0]?.items[0];
@@ -130,11 +147,13 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
 
   return (
     <main className="bg-transparent pb-16">
-      <div className="px-4 sm:px-8 md:px-14 lg:px-16 pt-[76px] pb-3">
+      <div className="px-3 sm:px-8 md:px-14 lg:px-16 pt-[72px] sm:pt-[76px] pb-3">
         <section 
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
-          className="group/hero relative min-h-[84vh] h-[85vh] overflow-hidden rounded-2xl bg-[#141414] shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/10 select-none"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="group/hero relative min-h-[68vh] sm:min-h-[84vh] h-[72vh] sm:h-[85vh] overflow-hidden rounded-2xl bg-[#141414] shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/10 select-none touch-pan-y"
         >
           {/* Animated Crossfading Hero Media */}
           <AnimatePresence mode="wait">
@@ -176,7 +195,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
           <AnimatePresence mode="wait">
             <motion.div
               key={`info-${hero?.id}`}
-              className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-20 pb-16 pl-6 pr-4 sm:pl-12 md:pl-16"
+              className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-16 pb-12 pl-4 pr-4 sm:pt-20 sm:pb-16 sm:pl-12 md:pl-16"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -196,29 +215,29 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                 </h1>
               )}
               
-              <div className="mt-4 flex flex-wrap items-center gap-2.5 text-xs sm:text-sm font-semibold text-white/90">
+              <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs sm:text-sm font-semibold text-white/90">
                 <span className="text-[#46d369] font-bold">{hero && "98% Match"}</span>
                 <span className="text-white/30">•</span>
                 <span>{hero?.releaseYear || "2025"}</span>
                 <span className="text-white/30">•</span>
-                <span className="rounded border border-white/35 px-2 py-0.5 text-[11px] font-bold tracking-wider">{hero?.maturityRating?.replace("_", "-") || "16+"}</span>
+                <span className="rounded border border-white/35 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold tracking-wider">{hero?.maturityRating?.replace("_", "-") || "16+"}</span>
                 <span className="text-white/30">•</span>
                 <span>{hero?.runtimeMinutes ? `${hero.runtimeMinutes}m` : "HD"}</span>
                 <span className="text-white/30">•</span>
-                <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wider">HD</span>
+                <span className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wider">HD</span>
               </div>
               
-              <p className="synopsis mt-3.5 line-clamp-2 sm:line-clamp-3 text-sm leading-relaxed text-white/80 md:text-base max-w-2xl">
+              <p className="synopsis mt-2.5 sm:mt-3.5 line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm leading-relaxed text-white/80 md:text-base max-w-2xl">
                 {decodeHtml(hero?.synopsis ?? "")}
               </p>
               
-              <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="mt-4 sm:mt-6 flex flex-wrap items-center gap-2.5 sm:gap-3">
                 {hero && (hero as any).animeUrl && (
                   <a
                     href="https://animevietsub.id/"
                     target="_blank"
                     rel="noreferrer"
-                    className="nf-button inline-flex h-12 items-center justify-center rounded-full glass-button px-5 text-xs font-bold text-white transition focus:outline-none"
+                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center rounded-full glass-button px-4 sm:px-5 text-xs font-bold text-white transition focus:outline-none"
                   >
                     Nguồn AnimeVietsub
                   </a>
@@ -226,7 +245,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                 {hero && (
                   <button
                     onClick={() => openPlayback(hero as NormalizedMovie, "hero")}
-                    className="nf-button inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-7 text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-xl active:scale-95 duration-300 cursor-pointer"
+                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 text-xs sm:text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-xl active:scale-95 duration-300 cursor-pointer"
                   >
                     <Play size={18} fill="currentColor" /> Play
                   </button>
@@ -234,7 +253,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                 {hero && (
                   <button
                     onClick={() => openDetailModal(hero as NormalizedMovie, "hero")}
-                    className="nf-button inline-flex h-12 items-center justify-center gap-2 rounded-full glass-button px-7 text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
+                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full glass-button px-5 sm:px-7 text-xs sm:text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
                   >
                     <Info size={18} /> More Info
                   </button>
@@ -249,7 +268,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                       }
                       toggleMyList(hero as NormalizedMovie);
                     }}
-                    className="nf-button h-12 rounded-full px-7 glass-button text-white flex items-center justify-center gap-2 text-sm font-bold active:scale-95 duration-300 cursor-pointer"
+                    className="nf-button h-11 sm:h-12 rounded-full px-5 sm:px-7 glass-button text-white flex items-center justify-center gap-2 text-xs sm:text-sm font-bold active:scale-95 duration-300 cursor-pointer"
                   >
                     {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
                     {inMyList ? "In My List" : "My List"}
@@ -281,16 +300,16 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
 
           {/* Carousel Indicator Bars matching User's screenshot: — ━ — */}
           {heroMovies.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2.5 p-1.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl select-none">
+            <div className="absolute bottom-3.5 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 sm:gap-2.5 p-1 sm:p-1.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl select-none">
               {heroMovies.map((m, idx) => (
                 <button
                   key={m.id || idx}
                   onClick={() => setHeroIndex(idx)}
                   aria-label={`Slide ${idx + 1}`}
-                  className={`h-1.5 rounded-full transition-all duration-400 cursor-pointer ${
+                  className={`h-1 sm:h-1.5 rounded-full transition-all duration-400 cursor-pointer ${
                     currentHeroIndex === idx
-                      ? "w-9 bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)]"
-                      : "w-5 bg-white/30 hover:bg-white/60 hover:w-7"
+                      ? "w-7 sm:w-9 bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)]"
+                      : "w-3.5 sm:w-5 bg-white/30 hover:bg-white/60 hover:w-7"
                   }`}
                 />
               ))}
@@ -298,7 +317,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
           )}
           
           {hero && (
-            <div className="absolute bottom-10 right-0 z-20 flex items-center gap-3.5 select-none pr-4 sm:pr-8 md:pr-12">
+            <div className="absolute bottom-4 sm:bottom-10 right-0 z-20 hidden sm:flex items-center gap-3.5 select-none pr-4 sm:pr-8 md:pr-12">
               <button
                 onClick={() => setIsHeroMuted(!isHeroMuted)}
                 className="grid h-9 w-9 place-items-center rounded-full border border-white/60 bg-black/35 text-white hover:bg-white/10 transition hover:border-white focus:outline-none cursor-pointer"

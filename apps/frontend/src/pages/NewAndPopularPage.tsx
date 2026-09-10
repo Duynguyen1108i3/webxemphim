@@ -54,6 +54,7 @@ export function NewAndPopularPage() {
 
   const [heroIndex, setHeroIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   // Auto-advance hero carousel every 6.5s unless hovered
   useEffect(() => {
@@ -65,6 +66,22 @@ export function NewAndPopularPage() {
 
     return () => clearInterval(timer);
   }, [heroMovies.length, isPaused]);
+
+  // Touch swipe support for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null || heroMovies.length <= 1) return;
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (diff > 45) {
+      setHeroIndex((prev) => (prev + 1) % heroMovies.length);
+    } else if (diff < -45) {
+      setHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length);
+    }
+    setTouchStartX(null);
+  };
 
   const currentHeroIndex = heroMovies.length > 0 ? heroIndex % heroMovies.length : 0;
   const hero = heroMovies[currentHeroIndex] || rows[0]?.items[0];
@@ -82,11 +99,13 @@ export function NewAndPopularPage() {
   return (
     <main className="bg-transparent pb-16">
       {/* Top Cinematic Hero Section (Identical layout to HomePage) */}
-      <div className="px-4 sm:px-8 md:px-14 lg:px-16 pt-[76px] pb-3">
+      <div className="px-3 sm:px-8 md:px-14 lg:px-16 pt-[72px] sm:pt-[76px] pb-3">
         <section
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
-          className="group/hero relative min-h-[84vh] h-[85vh] overflow-hidden rounded-2xl bg-[#141414] shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/10 select-none"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="group/hero relative min-h-[68vh] sm:min-h-[84vh] h-[72vh] sm:h-[85vh] overflow-hidden rounded-2xl bg-[#141414] shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/10 select-none touch-pan-y"
         >
           {/* Animated Crossfading Hero Media */}
           <AnimatePresence mode="wait">
@@ -113,7 +132,7 @@ export function NewAndPopularPage() {
             {hero && (
               <motion.div
                 key={`info-${hero.id}`}
-                className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-20 pb-16 pl-6 pr-4 sm:pl-12 md:pl-16"
+                className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-16 pb-12 pl-4 pr-4 sm:pt-20 sm:pb-16 sm:pl-12 md:pl-16"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -135,20 +154,20 @@ export function NewAndPopularPage() {
                 </h1>
 
                 {/* Metadata Row (Clean typography & small tags matching HomePage) */}
-                <div className="mt-4 flex flex-wrap items-center gap-2.5 text-xs sm:text-sm font-semibold text-white/90">
+                <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs sm:text-sm font-semibold text-white/90">
                   <span className="text-amber-400 font-bold">
                     ★ {hero.averageRating ? hero.averageRating.toFixed(1) : "8.5"} IMDb
                   </span>
                   <span className="text-white/30">•</span>
                   <span>{hero.releaseYear || hero.year}</span>
                   <span className="text-white/30">•</span>
-                  <span className="rounded border border-white/35 px-2 py-0.5 text-[11px] font-bold tracking-wider">
+                  <span className="rounded border border-white/35 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold tracking-wider">
                     4K Ultra HD
                   </span>
                   <span className="text-white/30">•</span>
                   <span>{hero.runtimeMinutes ? `${hero.runtimeMinutes}m` : "HD"}</span>
                   <span className="text-white/30">•</span>
-                  <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wider">
+                  <span className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wider">
                     {hero.episode_current || (hero.mediaType === "tv" ? "TV Series" : "Movie")}
                   </span>
                   {hero.genres && hero.genres.length > 0 && (
@@ -162,26 +181,26 @@ export function NewAndPopularPage() {
                 </div>
 
                 {/* Synopsis */}
-                <p className="synopsis mt-3.5 line-clamp-2 sm:line-clamp-3 text-sm leading-relaxed text-white/80 md:text-base max-w-2xl">
+                <p className="synopsis mt-2.5 sm:mt-3.5 line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm leading-relaxed text-white/80 md:text-base max-w-2xl">
                   {hero.synopsis || hero.description || "Khám phá tác phẩm điện ảnh xuất sắc trên bảng xếp hạng IMDb quốc tế."}
                 </p>
 
                 {/* Synchronized Action Buttons */}
-                <div className="mt-6 flex flex-wrap items-center gap-3">
+                <div className="mt-4 sm:mt-6 flex flex-wrap items-center gap-2.5 sm:gap-3">
                   <button
                     type="button"
                     onClick={() => openDetailModal(hero, "hero")}
-                    className="nf-button inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-7 text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-xl active:scale-95 duration-300 cursor-pointer"
+                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 text-xs sm:text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-xl active:scale-95 duration-300 cursor-pointer"
                   >
-                    <Info size={18} /> Chi tiết IMDb
+                    <Info size={16} className="sm:w-[18px] sm:h-[18px]" /> Chi tiết IMDb
                   </button>
 
                   <button
                     type="button"
                     onClick={handleToggleMyList}
-                    className="nf-button inline-flex h-12 items-center justify-center gap-2 rounded-full glass-button px-7 text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
+                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full glass-button px-5 sm:px-7 text-xs sm:text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
                   >
-                    {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
+                    {inMyList ? <Check size={16} className="text-[#46d369] sm:w-[18px] sm:h-[18px]" /> : <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />}
                     {inMyList ? "Đã lưu" : "Danh sách của tôi"}
                   </button>
                 </div>
@@ -215,16 +234,16 @@ export function NewAndPopularPage() {
 
           {/* Horizontal Rounded Indicator Pill Bars (— ━ —) */}
           {heroMovies.length > 1 && (
-            <div className="absolute bottom-5 right-6 sm:right-12 z-20 flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/10 px-3 py-1.5 rounded-full shadow-lg">
+            <div className="absolute bottom-3.5 right-4 sm:bottom-5 sm:right-12 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shadow-lg">
               {heroMovies.map((m, idx) => (
                 <button
                   key={m.id}
                   type="button"
                   onClick={() => setHeroIndex(idx)}
-                  className={`h-1.5 rounded-full transition-all duration-400 cursor-pointer ${
+                  className={`h-1 sm:h-1.5 rounded-full transition-all duration-400 cursor-pointer ${
                     currentHeroIndex === idx
-                      ? "w-9 bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)]"
-                      : "w-5 bg-white/30 hover:bg-white/60 hover:w-7"
+                      ? "w-7 sm:w-9 bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)]"
+                      : "w-3.5 sm:w-5 bg-white/30 hover:bg-white/60 hover:w-7"
                   }`}
                   aria-label={`Go to slide ${idx + 1}`}
                 />
@@ -235,19 +254,19 @@ export function NewAndPopularPage() {
       </div>
 
       {/* Genre Filter Bar (Native Netflix-style Category Filter) */}
-      <div className="px-4 sm:px-8 md:px-14 lg:px-16 pt-4 pb-2">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+      <div className="px-3 sm:px-8 md:px-14 lg:px-16 pt-3 sm:pt-4 pb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 border-b border-white/10 pb-3 sm:pb-4">
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight">
               Mới & Phổ biến trên IMDb
             </h2>
-            <p className="text-xs text-white/50 mt-0.5">
+            <p className="text-[11px] sm:text-xs text-white/50 mt-0.5">
               Bảng xếp hạng Top Trending & Phim điểm cao nhất toàn cầu
             </p>
           </div>
 
           {/* Genre Capsule Filter Scroll */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none max-w-full sm:max-w-2xl">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none max-w-full sm:max-w-2xl overscroll-x-contain touch-pan-x">
             {IMDB_GENRES.map((g) => {
               const isSelected = selectedGenre === g;
               return (

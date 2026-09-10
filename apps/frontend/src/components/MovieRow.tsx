@@ -204,7 +204,7 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
           <div
             ref={rowRef}
             onScroll={updateScrollState}
-            className="scrollbar-none flex gap-1.5 overflow-x-auto pb-4 pt-1 md:gap-2 scroll-smooth"
+            className="scrollbar-none flex gap-1.5 overflow-x-auto pb-4 pt-1 md:gap-2 scroll-smooth overscroll-x-contain touch-pan-x"
           >
             {items.map((movie, index) => (
               <MovieTile
@@ -321,11 +321,11 @@ export const MovieTile = React.memo(function MovieTile({
             <div className="h-full bg-[#e50914] rounded-full shadow-[0_0_6px_#e50914]" style={{ width: `${(movie as any).progress}%` }} />
           </div>
         )}
-        {rank && <span className="absolute -left-1 bottom-0 text-[4rem] font-black leading-none text-black/70 [-webkit-text-stroke:1.5px_rgba(255,255,255,.72)] md:text-[5.5rem]">{rank}</span>}
+        {rank && <span className="absolute -left-1 bottom-0 text-[3.25rem] sm:text-[4rem] font-black leading-none text-black/70 [-webkit-text-stroke:1.5px_rgba(255,255,255,.72)] md:text-[5.5rem]">{rank}</span>}
         
         {/* Absolutely NO button, NO box, NO border - ONLY glowing star and score */}
         {!isContinueWatching && ((movie as any).averageRating && Number((movie as any).averageRating) > 0) && (
-          <div className="absolute top-2 right-2.5 z-10 flex items-center gap-1 text-xs sm:text-sm font-black pointer-events-none select-none">
+          <div className="absolute top-2 right-2 sm:right-2.5 z-10 flex items-center gap-1 text-[11px] sm:text-xs md:text-sm font-black pointer-events-none select-none">
             <span className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.95)]">★</span>
             <span className="text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.85)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] tracking-tight font-black">
               {Number((movie as any).averageRating).toFixed(1)}
