@@ -323,11 +323,13 @@ export const MovieTile = React.memo(function MovieTile({
         )}
         {rank && <span className="absolute -left-1 bottom-0 text-[4rem] font-black leading-none text-black/70 [-webkit-text-stroke:1.5px_rgba(255,255,255,.72)] md:text-[5.5rem]">{rank}</span>}
         
-        {/* Luminous Glass Transparency Star and Score badge */}
+        {/* Absolutely NO button, NO box, NO border - ONLY glowing star and score */}
         {!isContinueWatching && ((movie as any).averageRating && Number((movie as any).averageRating) > 0) && (
-          <div className="glass-imdb-badge absolute top-2 right-2 z-10">
-            <span className="star-glow">★</span>
-            <span className="score-glow">{Number((movie as any).averageRating).toFixed(1)}</span>
+          <div className="absolute top-2 right-2.5 z-10 flex items-center gap-1 text-xs sm:text-sm font-black pointer-events-none select-none">
+            <span className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.95)]">★</span>
+            <span className="text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.85)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] tracking-tight font-black">
+              {Number((movie as any).averageRating).toFixed(1)}
+            </span>
           </div>
         )}
 
