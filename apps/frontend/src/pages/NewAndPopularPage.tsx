@@ -119,45 +119,59 @@ export function NewAndPopularPage() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.45, ease: "easeOut" }}
               >
-                {/* Badges */}
-                <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white">
-                  <span className="flex items-center gap-1 text-amber-300 font-extrabold bg-amber-400/20 border border-amber-400/30 px-2 py-0.5 rounded backdrop-blur-md">
-                    ★ {hero.averageRating ? hero.averageRating.toFixed(1) : "8.5"} IMDb
+                {/* Brand / Tagline */}
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="brand-logo text-base sm:text-lg font-extrabold tracking-tight text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.35)]">
+                    RYTOXGROUP
                   </span>
-                  <span className="glass-capsule text-white/90">TOP TRENDING</span>
-                  <span className="glass-capsule border border-white/20">4K Ultra HD</span>
-                  <span className="glass-capsule border border-white/20">
-                    {hero.episode_current || (hero.mediaType === "tv" ? "TV Series" : "Phim lẻ")}
+                  <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/60 bg-white/10 px-2 py-0.5 rounded border border-white/10">
+                    IMDb RADAR
                   </span>
                 </div>
 
                 {/* Hero Title */}
-                <h1 className="large-title text-shadow-strong mb-3 text-3xl font-black leading-tight sm:text-5xl md:text-6xl line-clamp-2">
+                <h1 className="hero-title text-2xl font-black leading-tight sm:text-4xl md:text-5xl lg:text-6xl text-white text-shadow line-clamp-2 max-w-3xl">
                   {hero.title || hero.name}
                 </h1>
 
-                {/* Subtitle info */}
-                <div className="mb-4 flex flex-wrap items-center gap-2.5 text-xs sm:text-sm font-semibold text-white/80">
-                  <span className="font-bold text-white">{hero.releaseYear || hero.year}</span>
-                  <span>•</span>
-                  <span>{hero.runtimeMinutes ? `${hero.runtimeMinutes} phút` : "Chính thức"}</span>
-                  <span>•</span>
-                  <span className="text-white/70">
-                    {hero.genres?.map((g) => g.name).slice(0, 3).join(", ") || "Điện ảnh"}
+                {/* Metadata Row (Clean typography & small tags matching HomePage) */}
+                <div className="mt-4 flex flex-wrap items-center gap-2.5 text-xs sm:text-sm font-semibold text-white/90">
+                  <span className="text-amber-400 font-bold">
+                    ★ {hero.averageRating ? hero.averageRating.toFixed(1) : "8.5"} IMDb
                   </span>
+                  <span className="text-white/30">•</span>
+                  <span>{hero.releaseYear || hero.year}</span>
+                  <span className="text-white/30">•</span>
+                  <span className="rounded border border-white/35 px-2 py-0.5 text-[11px] font-bold tracking-wider">
+                    4K Ultra HD
+                  </span>
+                  <span className="text-white/30">•</span>
+                  <span>{hero.runtimeMinutes ? `${hero.runtimeMinutes}m` : "HD"}</span>
+                  <span className="text-white/30">•</span>
+                  <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-bold tracking-wider">
+                    {hero.episode_current || (hero.mediaType === "tv" ? "TV Series" : "Movie")}
+                  </span>
+                  {hero.genres && hero.genres.length > 0 && (
+                    <>
+                      <span className="text-white/30">•</span>
+                      <span className="text-white/70">
+                        {hero.genres.map((g) => g.name).slice(0, 3).join(", ")}
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 {/* Synopsis */}
-                <p className="body-text text-shadow-soft mb-6 line-clamp-3 text-xs sm:text-sm md:text-base max-w-xl text-white/80 leading-relaxed font-medium">
+                <p className="synopsis mt-3.5 line-clamp-2 sm:line-clamp-3 text-sm leading-relaxed text-white/80 md:text-base max-w-2xl">
                   {hero.synopsis || hero.description || "Khám phá tác phẩm điện ảnh xuất sắc trên bảng xếp hạng IMDb quốc tế."}
                 </p>
 
-                {/* Action Buttons (Strictly without streaming Play button) */}
-                <div className="flex flex-wrap items-center gap-3">
+                {/* Synchronized Action Buttons */}
+                <div className="mt-6 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
                     onClick={() => openDetailModal(hero, "hero")}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded bg-white px-7 text-sm font-black text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/70 shadow-lg cursor-pointer"
+                    className="nf-button inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-7 text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-xl active:scale-95 duration-300 cursor-pointer"
                   >
                     <Info size={18} /> Chi tiết IMDb
                   </button>
@@ -165,17 +179,10 @@ export function NewAndPopularPage() {
                   <button
                     type="button"
                     onClick={handleToggleMyList}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-bold text-white border border-white/25 bg-black/40 hover:bg-white/20 backdrop-blur-md transition-all duration-200 cursor-pointer"
+                    className="nf-button inline-flex h-12 items-center justify-center gap-2 rounded-full glass-button px-7 text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
                   >
-                    {inMyList ? (
-                      <>
-                        <Check size={18} className="text-emerald-400" /> Đã lưu
-                      </>
-                    ) : (
-                      <>
-                        <Plus size={18} /> Danh sách của tôi
-                      </>
-                    )}
+                    {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
+                    {inMyList ? "Đã lưu" : "Danh sách của tôi"}
                   </button>
                 </div>
               </motion.div>
