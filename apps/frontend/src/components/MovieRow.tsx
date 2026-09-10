@@ -323,19 +323,11 @@ export const MovieTile = React.memo(function MovieTile({
         )}
         {rank && <span className="absolute -left-1 bottom-0 text-[4rem] font-black leading-none text-black/70 [-webkit-text-stroke:1.5px_rgba(255,255,255,.72)] md:text-[5.5rem]">{rank}</span>}
         
-        {/* Prominent IMDb Score Badge directly on top-right of image */}
-        {!isContinueWatching && (
-          ((movie as any).averageRating && Number((movie as any).averageRating) > 0) ? (
-            <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-md bg-black/80 px-2 py-0.5 text-xs font-black text-amber-300 backdrop-blur-md border border-amber-400/40 shadow-[0_2px_10px_rgba(0,0,0,0.85)] select-none">
-              <span className="text-amber-400">★</span>
-              <span>{Number((movie as any).averageRating).toFixed(1)}</span>
-              <span className="text-[9px] text-white/60 font-bold tracking-wider ml-0.5">IMDb</span>
-            </div>
-          ) : (movie as any).noPlayback ? (
-            <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-bold text-zinc-300 backdrop-blur-md border border-white/20 select-none">
-              <span>Sắp chiếu</span>
-            </div>
-          ) : null
+        {/* Only Star and Rating score directly on image */}
+        {!isContinueWatching && ((movie as any).averageRating && Number((movie as any).averageRating) > 0) && (
+          <span className="absolute top-2 right-2.5 z-10 flex items-center gap-1 text-xs sm:text-sm font-black text-amber-400 drop-shadow-[0_2px_8px_rgba(0,0,0,1)] select-none pointer-events-none">
+            ★ {Number((movie as any).averageRating).toFixed(1)}
+          </span>
         )}
 
         <span className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/85 to-transparent" />
