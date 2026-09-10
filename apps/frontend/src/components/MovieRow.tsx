@@ -424,16 +424,30 @@ export const HoverPreview = React.memo(function HoverPreview({
           </div>
           <div className="space-y-3 p-3">
             <div className="flex items-center gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  usePlaybackStore.getState().openPlayback(movie as NormalizedMovie, `card-${movie.id}`);
-                }}
-                className="nf-icon grid h-10 w-10 place-items-center rounded-full bg-white text-black transition hover:bg-white/80 focus:outline-none"
-                aria-label="Play"
-              >
-                <Play size={18} fill="currentColor" />
-              </button>
+              {!(movie as any).noPlayback ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    usePlaybackStore.getState().openPlayback(movie as NormalizedMovie, `card-${movie.id}`);
+                  }}
+                  className="nf-icon grid h-10 w-10 place-items-center rounded-full bg-white text-black transition hover:bg-white/80 focus:outline-none"
+                  aria-label="Play"
+                >
+                  <Play size={18} fill="currentColor" />
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpen();
+                  }}
+                  className="nf-icon grid h-10 w-10 place-items-center rounded-full bg-white text-black transition hover:bg-white/80 focus:outline-none"
+                  title="Xem chi tiết"
+                  aria-label="Details"
+                >
+                  <Play size={18} fill="currentColor" />
+                </button>
+              )}
               <Button
                 variant="ghost"
                 onClick={(e) => {

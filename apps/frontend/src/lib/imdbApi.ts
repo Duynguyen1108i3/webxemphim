@@ -1,3 +1,5 @@
+import type { NormalizedMovie } from "./movieApi";
+
 export interface ImdbItem {
   id: string;
   imdb_id: string;
@@ -127,6 +129,57 @@ function normalizeRawMeta(raw: any, defaultType: "movie" | "series" = "movie"): 
   };
 }
 
+export function imdbToNormalizedMovie(item: ImdbItem): NormalizedMovie {
+  const year = item.year ? parseInt(item.year, 10) : new Date().getFullYear();
+  const rating = item.imdbRating ? parseFloat(item.imdbRating) : 8.0;
+  const genresDto = (item.genres || []).map((g) => ({
+    id: g.toLowerCase().replace(/\s+/g, "-"),
+    name: GENRE_LABELS_VI[g] || g,
+    slug: g.toLowerCase().replace(/\s+/g, "-")
+  }));
+
+  const trailerKey = item.trailers?.[0]?.source || "";
+  const trailerUrl = trailerKey ? `https://www.youtube.com/watch?v=${trailerKey}` : null;
+  const posterUrl = item.poster || `https://images.metahub.space/poster/medium/${item.id}/img`;
+  const backdropUrl = item.background || item.poster || `https://images.metahub.space/background/medium/${item.id}/img`;
+
+  return {
+    id: item.id,
+    slug: item.id,
+    title: item.name,
+    name: item.name,
+    origin_name: item.name,
+    synopsis: item.description || "",
+    description: item.description || "",
+    posterUrl,
+    backdropUrl,
+    poster: posterUrl,
+    thumb: backdropUrl,
+    trailerUrl,
+    releaseYear: year,
+    year,
+    runtimeMinutes: item.runtime ? parseInt(String(item.runtime).match(/\d+/)?.[0] || "45", 10) : 45,
+    maturityRating: "PG_13",
+    averageRating: rating,
+    genres: genresDto,
+    tags: item.genres || [],
+    quality: "4K Ultra HD",
+    lang: "en",
+    episode_current: item.type === "series" ? "TV Series" : "Movie",
+    category: [],
+    country: [{ id: "us", name: "United States", slug: "us" }],
+    cast: item.cast || [],
+    director: item.director?.join(", ") || "",
+    match: Math.round(rating * 10),
+    reviews: [],
+    seasons: [],
+    imdbId: item.imdb_id,
+    mediaType: item.type === "series" ? "tv" : "movie",
+    noPlayback: true,
+    trailerKey
+  } as NormalizedMovie & { noPlayback: boolean; trailerKey?: string };
+}
+
 export interface CatalogParams {
   type?: "movie" | "series" | "all";
   sort?: "top" | "imdbRating";
@@ -232,6 +285,85 @@ export const imdbApi = {
     } catch (e) {
       console.error(`Failed to fetch Cinemeta detail for ${imdbId}:`, e);
       return null;
+    }
+  },
+
+  async getNewAndPopularRows(selectedGenre: string = "All"): Promise<{ rows: Array<{ title: string; items: NormalizedMovie[]; ranked?: boolean }> }> {
+    const cacheKey = `imdb:rows:${selectedGenre}`;
+    const cached = getCached<{ rows: Array<{ title: string; items: NormalizedMovie[]; ranked?: boolean }> }>(cacheKey);
+    if (cached) return cached;
+
+    if (selectedGenre === "All") {
+      const [topTrendingMovies, topRatedMovies, topSeries, actionMovies, animationMovies, sciFiMovies] = await Promise.all([
+        this.fetchCatalog({ type: "movie", sort: "top" }),
+        this.fetchCatalog({ type: "movie", sort: "imdbRating" }),
+        this.fetchCatalog({ type: "series", sort: "imdbRating" }),
+        this.fetchCatalog({ type: "movie", sort: "top", genre: "Action" }),
+        this.fetchCatalog({ type: "movie", sort: "top", genre: "Animation" }),
+        this.fetchCatalog({ type: "movie", sort: "top", genre: "Sci-Fi" })
+      ]);
+
+      const res = {
+        rows: [
+          {
+            title: "Top 10 Phim Thịnh Hành Trên IMDb Hôm Nay",
+            items: topTrendingMovies.slice(0, 10).map(imdbToNormalizedMovie),
+            ranked: true
+          },
+          {
+            title: "Phim Chiếu Rạp Điểm IMDb Cao Nhất Mọi Thời Đại",
+            items: topRatedMovies.slice(0, 15).map(imdbToNormalizedMovie),
+            ranked: true
+          },
+          {
+            title: "Top TV Series / Phim Bộ IMDb Được Đánh Giá Cao Nhất",
+            items: topSeries.slice(0, 15).map(imdbToNormalizedMovie)
+          },
+          {
+            title: "Phim Hành Động Kịch Tính Nổi Bật Trên IMDb",
+            items: actionMovies.slice(0, 15).map(imdbToNormalizedMovie)
+          },
+          {
+            title: "Phim Hoạt Hình & Anime Đỉnh Cao",
+            items: animationMovies.slice(0, 15).map(imdbToNormalizedMovie)
+          },
+          {
+            title: "Phim Khoa Học Viễn Tưởng Tuyển Chọn",
+            items: sciFiMovies.slice(0, 15).map(imdbToNormalizedMovie)
+          }
+        ].filter((r) => r.items.length > 0)
+      };
+
+      setCache(cacheKey, res);
+      return res;
+    } else {
+      const viName = GENRE_LABELS_VI[selectedGenre] || selectedGenre;
+      const [genreTrending, genreTopRated, genreSeries] = await Promise.all([
+        this.fetchCatalog({ type: "movie", sort: "top", genre: selectedGenre }),
+        this.fetchCatalog({ type: "movie", sort: "imdbRating", genre: selectedGenre }),
+        this.fetchCatalog({ type: "series", sort: "imdbRating", genre: selectedGenre })
+      ]);
+
+      const res = {
+        rows: [
+          {
+            title: `Top 10 Phim ${viName} Thịnh Hành Trên IMDb`,
+            items: genreTrending.slice(0, 10).map(imdbToNormalizedMovie),
+            ranked: true
+          },
+          {
+            title: `Phim ${viName} Có Điểm IMDb Cao Nhất`,
+            items: genreTopRated.slice(0, 15).map(imdbToNormalizedMovie)
+          },
+          {
+            title: `TV Series & Phim Bộ ${viName} Được Yêu Thích`,
+            items: genreSeries.slice(0, 15).map(imdbToNormalizedMovie)
+          }
+        ].filter((r) => r.items.length > 0)
+      };
+
+      setCache(cacheKey, res);
+      return res;
     }
   }
 };

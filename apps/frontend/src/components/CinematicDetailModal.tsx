@@ -293,12 +293,37 @@ export function CinematicDetailModal() {
                 {displayMovie.title}
               </motion.h1>
               <div className="flex flex-wrap gap-2.5">
-                <button
-                  onClick={() => openPlayback(displayMovie, clickedElementId || "")}
-                  className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded bg-white px-7 text-sm font-black text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/70"
-                >
-                  <Play size={18} fill="currentColor" className="transition-transform duration-200 group-hover:scale-110" /> Play
-                </button>
+                {!(displayMovie as any).noPlayback ? (
+                  <button
+                    onClick={() => openPlayback(displayMovie, clickedElementId || "")}
+                    className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded bg-white px-7 text-sm font-black text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/70"
+                  >
+                    <Play size={18} fill="currentColor" className="transition-transform duration-200 group-hover:scale-110" /> Play
+                  </button>
+                ) : (
+                  <>
+                    {(displayMovie as any).trailerKey ? (
+                      <a
+                        href={`https://www.youtube.com/watch?v=${(displayMovie as any).trailerKey}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="nf-button inline-flex h-11 items-center justify-center gap-2 rounded bg-white px-6 text-sm font-black text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/70"
+                      >
+                        <Play size={18} fill="currentColor" className="transition-transform duration-200 group-hover:scale-110" /> Xem Trailer
+                      </a>
+                    ) : null}
+                    {(displayMovie as any).imdbId && (
+                      <a
+                        href={`https://www.imdb.com/title/${(displayMovie as any).imdbId}/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded bg-[#f5c518] px-5 text-sm font-black text-black transition hover:brightness-110 shadow-md"
+                      >
+                        IMDb
+                      </a>
+                    )}
+                  </>
+                )}
                 <Button
                   variant="ghost"
                   onClick={() => {
@@ -407,6 +432,7 @@ export function CinematicDetailModal() {
         </motion.div>
 
         {/* Episodes Section */}
+        {!(displayMovie as any).noPlayback && (
         <section className="px-6 pb-6 md:px-8 border-t border-white/5 pt-6">
           <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-1">
@@ -480,6 +506,7 @@ export function CinematicDetailModal() {
             )}
           </div>
         </section>
+        )}
 
         {/* Similar Titles Section */}
         {similarTitles.length > 0 && (
