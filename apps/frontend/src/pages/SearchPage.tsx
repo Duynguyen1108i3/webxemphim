@@ -260,7 +260,7 @@ export function SearchPage() {
                 }}
                 className={`px-4 py-2 h-9 rounded-full text-xs font-semibold border transition shrink-0 cursor-pointer ${
                   !lang
-                    ? "bg-[#e50914] border-[#e50914] text-white"
+                    ? "bg-white/25 border-white/40 text-white shadow-[0_2px_12px_rgba(255,255,255,0.15)] backdrop-blur-md"
                     : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
                 }`}
               >
@@ -277,7 +277,7 @@ export function SearchPage() {
                     }}
                     className={`px-4 py-2 h-9 rounded-full text-xs font-semibold border transition shrink-0 cursor-pointer ${
                       isSelected
-                        ? "bg-[#e50914] border-[#e50914] text-white"
+                        ? "bg-white/25 border-white/40 text-white shadow-[0_2px_12px_rgba(255,255,255,0.15)] backdrop-blur-md"
                         : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
                     }`}
                   >
@@ -341,7 +341,7 @@ export function SearchPage() {
                 className="group relative inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm tracking-wide transition-all duration-300 border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.6)] hover:border-white/40 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
               >
                 <span>Xem thêm</span>
-                <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-[#e50914]" />
+                <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-white/70" />
               </button>
             </div>
           )}

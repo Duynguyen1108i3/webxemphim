@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, ChevronUp, Play, Plus, ThumbsDown, ThumbsUp, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { usePlaybackStore } from "../store/playbackStore";
+import { useAuthStore } from "../store/auth";
 import { movieApi } from "../lib/movieApi";
 import { Badge, Button } from "@streamforge/ui";
 import { formatRuntime, getEpisodes } from "@streamforge/utils";
@@ -11,7 +13,9 @@ import { ParallaxTilt } from "./ParallaxTilt";
 import { decodeHtml } from "../lib/htmlUtils";
 
 export function CinematicDetailModal() {
-  const { activeMovieDetail, clickedElementId, closeDetailModal, openPlayback, myList, toggleMyList, activePlayback } = usePlaybackStore();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const { activeMovieDetail, clickedElementId, closeDetailModal, openPlayback, myList, toggleMyList, activePlayback, openAuthModal } = usePlaybackStore();
   const [showTrailer, setShowTrailer] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [liked, setLiked] = useState(false);
@@ -297,7 +301,13 @@ export function CinematicDetailModal() {
                 </button>
                 <Button
                   variant="ghost"
-                  onClick={() => toggleMyList(displayMovie)}
+                  onClick={() => {
+                    if (!user) {
+                      openAuthModal();
+                      return;
+                    }
+                    toggleMyList(displayMovie);
+                  }}
                   className="nf-icon glass-button h-11 w-11 rounded-full p-0"
                   aria-label="Add to list"
                 >
@@ -321,7 +331,7 @@ export function CinematicDetailModal() {
                   className="nf-icon glass-button h-11 w-11 rounded-full p-0"
                   aria-label="Dislike this"
                 >
-                  <ThumbsDown size={16} className={disliked ? "fill-white text-[#e50914]" : ""} />
+                  <ThumbsDown size={16} className={disliked ? "fill-white text-white/90" : ""} />
                 </Button>
               </div>
             </div>

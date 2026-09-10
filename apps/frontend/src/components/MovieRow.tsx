@@ -7,6 +7,8 @@ import { Badge, Button } from "@streamforge/ui";
 import { formatRuntime } from "@streamforge/utils";
 import type { NormalizedMovie } from "../lib/movieApi";
 import { usePlaybackStore } from "../store/playbackStore";
+import { useAuthStore } from "../store/auth";
+import { useNavigate } from "react-router-dom";
 import { ParallaxTilt } from "./ParallaxTilt";
 
 function createFallbackImage(title: string) {
@@ -365,7 +367,9 @@ export const HoverPreview = React.memo(function HoverPreview({
   const width = Math.min(430, Math.max(rect.width + 180, rect.width * 1.82));
   const left = Math.min(window.innerWidth - width - 16, Math.max(16, rect.left + rect.width / 2 - width / 2));
   const top = Math.max(72, rect.top - 48);
-  const { myList, toggleMyList, openDetailModal, removeFromWatchHistory } = usePlaybackStore();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const { myList, toggleMyList, openDetailModal, removeFromWatchHistory, openAuthModal } = usePlaybackStore();
   const inMyList = myList.some((item) => item.id === movie.id);
 
   return createPortal(
@@ -434,6 +438,10 @@ export const HoverPreview = React.memo(function HoverPreview({
                 variant="ghost"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (!user) {
+                    openAuthModal();
+                    return;
+                  }
                   toggleMyList(movie as NormalizedMovie);
                 }}
                 className="nf-icon glass-button grid h-10 w-10 place-items-center rounded-full p-0"

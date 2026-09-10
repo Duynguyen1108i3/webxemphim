@@ -89,6 +89,9 @@ export interface PlaybackState {
   closePlayback: () => void;
   myList: NormalizedMovie[];
   toggleMyList: (movie: NormalizedMovie) => void;
+  authModalOpen: boolean;
+  openAuthModal: () => void;
+  closeAuthModal: () => void;
   watchHistory: WatchHistoryItem[];
   updateWatchHistory: (movie: NormalizedMovie, currentTime: number, duration: number, episodeId?: string, episodeTitle?: string) => void;
   removeFromWatchHistory: (movieId: string) => void;
@@ -110,6 +113,9 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
   activeCustomUrl: null,
   scrollPosition: 0,
   myList: [],
+  authModalOpen: false,
+  openAuthModal: () => set({ authModalOpen: true }),
+  closeAuthModal: () => set({ authModalOpen: false }),
   watchHistory: [],
 
   loadUserData: () => {
@@ -216,7 +222,10 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
 
   toggleMyList: (movie) => {
     const user = useAuthStore.getState().user;
-    if (!user) return;
+    if (!user) {
+      set({ authModalOpen: true });
+      return;
+    }
 
     const profileName = useAuthStore.getState().profileId || user.username;
     const dbProfileId = user.profiles.find((profile) => profile.name === profileName)?.id ?? user.profiles[0]?.id;

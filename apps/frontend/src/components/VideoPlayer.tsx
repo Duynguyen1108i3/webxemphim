@@ -1,7 +1,6 @@
 import Hls from "hls.js";
 import { Check, ChevronUp, Download, Gauge, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Button } from "@streamforge/ui";
 import type { PlaybackSourceDto } from "@streamforge/shared-types";
 import { useAuthStore } from "../store/auth";
 
@@ -677,7 +676,6 @@ export function VideoPlayer({
         >
           <Maximize size={16} />
         </button>
-        
         {/* YouTube fallback */}
         {(activeUrl.includes("youtube.com") || activeUrl.includes("youtu.be")) && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 bg-black/80 px-4 py-3 rounded-lg border border-white/10 text-center max-w-[90vw] backdrop-blur-sm shadow-xl">
@@ -686,7 +684,7 @@ export function VideoPlayer({
               href={activeUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-9 items-center justify-center gap-2 rounded bg-[#e50914] px-4 text-xs font-bold text-white transition hover:bg-[#b20710] focus:outline-none cursor-pointer"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-full glass-capsule px-5 text-xs font-bold text-white transition hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
             >
               Watch Trailer on YouTube
             </a>
@@ -711,7 +709,7 @@ export function VideoPlayer({
               e.stopPropagation();
               toggle();
             }}
-            className="grid h-20 w-20 place-items-center rounded-full glass-button pointer-events-auto focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+            className="glass-player-center-play pointer-events-auto focus:outline-none cursor-pointer"
             aria-label="Play video"
           >
             <Play size={36} fill="currentColor" className="ml-1 text-white" />
@@ -732,31 +730,31 @@ export function VideoPlayer({
             onTouchEnd={handleSeekTouchEnd}
             onMouseMove={handleSeekMouseMove}
             onMouseLeave={handleSeekMouseLeave}
-            className="relative h-4 w-full cursor-pointer group/progress py-1 flex items-center select-none"
+            className="relative h-6 w-full cursor-pointer group/progress py-2 flex items-center select-none"
           >
-            {/* Base Gray Bar */}
-            <div className="h-1.5 w-full rounded-full bg-white/25 overflow-hidden transition-all group-hover/progress:h-2">
+            {/* Base Glass Bar */}
+            <div className="h-1.5 w-full rounded-full bg-white/20 backdrop-blur-md border border-white/10 overflow-hidden transition-all group-hover/progress:h-2.5">
               {/* Buffered progress */}
-              <div className="h-full bg-white/40 transition-all duration-150" style={{ width: `${bufferedProgress}%` }} />
+              <div className="h-full bg-white/30 transition-all duration-150" style={{ width: `${bufferedProgress}%` }} />
             </div>
 
-            {/* Red Playback Progress Bar */}
+            {/* Liquid Glass Playback Progress Bar */}
             <div 
-              className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-[#e50914] transition-all group-hover/progress:h-2 pointer-events-none" 
+              className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-gradient-to-r from-white/70 via-white/90 to-white shadow-[0_0_12px_rgba(255,255,255,0.8)] transition-all group-hover/progress:h-2.5 pointer-events-none" 
               style={{ width: `${progress}%` }} 
             />
 
             {/* Hover preview indicator line */}
             {hoverTime !== null && (
               <div
-                className="absolute top-1/2 -translate-y-1/2 h-2.5 w-0.5 bg-white/90 pointer-events-none z-10"
+                className="absolute top-1/2 -translate-y-1/2 h-3.5 w-0.5 bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)] pointer-events-none z-10"
                 style={{ left: `${hoverPercent}%` }}
               />
             )}
 
-            {/* Red Handle Circle (Expands on hover or during drag) */}
+            {/* Liquid Glass Scrubber Bead Handle */}
             <div 
-              className={`absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-[#e50914] border-2 border-white shadow-[0_0_10px_rgba(229,9,20,0.9)] transition-transform duration-100 pointer-events-none z-20 ${
+              className={`absolute top-1/2 -translate-y-1/2 h-4 w-4 rounded-full bg-white border-2 border-white/90 shadow-[0_0_14px_rgba(255,255,255,0.95)] backdrop-blur-md transition-transform duration-100 pointer-events-none z-20 ${
                 isScrubbing ? "scale-125 opacity-100" : "scale-0 opacity-0 group-hover/progress:scale-100 group-hover/progress:opacity-100"
               }`} 
               style={{ left: `calc(${progress}% - 8px)` }} 
@@ -765,7 +763,7 @@ export function VideoPlayer({
             {/* Hover Time Tooltip Box */}
             {hoverTime !== null && (
               <div
-                className="absolute -top-9 -translate-x-1/2 rounded-lg bg-black/90 px-2.5 py-1 text-[11px] font-bold text-white shadow-xl border border-white/15 pointer-events-none select-none z-30"
+                className="absolute -top-9 -translate-x-1/2 rounded-xl liquid-glass px-3 py-1 text-[11px] font-bold text-white shadow-xl border border-white/20 pointer-events-none select-none z-30"
                 style={{ left: `${hoverPercent}%` }}
               >
                 {formatTime(hoverTime)}
@@ -773,43 +771,63 @@ export function VideoPlayer({
             )}
           </div>
 
-          {/* Control Button bar */}
-          <div className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 w-full pt-1 select-none">
-            <div className="flex flex-wrap items-center gap-1.5 md:gap-3">
+          {/* Control Button bar - Floating Liquid Glass Island */}
+          <div className="p-2 sm:p-2.5 rounded-3xl liquid-glass shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-2xl flex flex-wrap items-center justify-between gap-y-3 gap-x-2 w-full select-none border border-white/15">
+            <div className="flex flex-wrap items-center gap-1.5 md:gap-2.5">
               {/* Play/Pause */}
-              <Button onClick={toggle} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label={playing ? "Pause" : "Play"}>
+              <button 
+                onClick={toggle} 
+                className="glass-player-btn glass-player-btn--hero cursor-pointer" 
+                aria-label={playing ? "Pause" : "Play"}
+              >
                 {playing ? <Pause size={20} /> : <Play size={20} fill="currentColor" />}
-              </Button>
+              </button>
               
               {/* Rewind 10s */}
-              <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label="Rewind 10 seconds">
+              <button 
+                onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10); }} 
+                className="glass-player-btn cursor-pointer" aria-label="Rewind 10 seconds"
+              >
                 <RotateCcw size={16} />
-              </Button>
+              </button>
 
               {/* Forward 10s */}
-              <Button variant="ghost" onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10); }} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label="Forward 10 seconds">
+              <button 
+                onClick={() => { if (videoRef.current) videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10); }} 
+                className="glass-player-btn cursor-pointer" aria-label="Forward 10 seconds"
+              >
                 <RotateCw size={16} />
-              </Button>
+              </button>
 
               {/* Next Episode */}
               {hasNextEpisode && onNextEpisode && (
-                <Button variant="ghost" onClick={onNextEpisode} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#46d369] shrink-0 glass-button" aria-label="Next Episode">
+                <button 
+                  onClick={onNextEpisode} 
+                  className="glass-player-btn cursor-pointer" aria-label="Next Episode"
+                >
                   <SkipForward size={18} fill="currentColor" />
-                </Button>
+                </button>
               )}
 
               {/* Skip Intro */}
               {source && typeof source.introEndSeconds === "number" && source.introEndSeconds > 0 && (
-                <Button variant="ghost" className="h-9 px-3 text-xs shrink-0 glass-button" onClick={() => { if (videoRef.current) videoRef.current.currentTime = source.introEndSeconds!; }}>
-                  <SkipForward size={14} /> Skip Intro
-                </Button>
+                <button 
+                  className="h-9 px-3.5 rounded-full glass-capsule text-xs font-bold text-white/90 hover:text-white flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer" 
+                  onClick={() => { if (videoRef.current) videoRef.current.currentTime = source.introEndSeconds!; }}
+                >
+                  <SkipForward size={13} /> Skip Intro
+                </button>
               )}
 
               {/* Volume bar */}
-              <div className="flex items-center gap-1.5 md:gap-2 ml-1">
-                <Button variant="ghost" onClick={toggleMute} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 shrink-0 glass-button" aria-label={muted ? "Unmute" : "Mute"}>
+              <div className="flex items-center gap-1.5 md:gap-2 px-2.5 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md ml-1">
+                <button 
+                  onClick={toggleMute} 
+                  className="h-7 w-7 rounded-full flex items-center justify-center text-white/90 hover:text-white active:scale-90 transition cursor-pointer" 
+                  aria-label={muted ? "Unmute" : "Mute"}
+                >
                   {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                </Button>
+                </button>
                 <input
                   type="range"
                   min="0"
@@ -817,14 +835,14 @@ export function VideoPlayer({
                   step="0.05"
                   value={muted ? 0 : volume}
                   onChange={handleVolumeChange}
-                  className="h-1.5 w-14 sm:w-20 cursor-pointer rounded-lg bg-white/20 accent-[#e50914] appearance-none"
+                  className="h-1.5 w-14 sm:w-20 cursor-pointer rounded-lg bg-white/25 accent-white appearance-none"
                   aria-label="Volume level"
                 />
               </div>
 
               {/* Time display */}
-              <div className="text-xs font-bold tracking-wider text-white/80 ml-2 whitespace-nowrap">
-                {formatTime(currentTime)} / {formatTime(duration)}
+              <div className="px-3 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md text-xs font-mono font-semibold text-white/90 whitespace-nowrap shadow-sm ml-1">
+                {formatTime(currentTime)} <span className="text-white/40">/</span> {formatTime(duration)}
               </div>
             </div>
 
@@ -834,7 +852,7 @@ export function VideoPlayer({
                 <button
                   type="button"
                   onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                  className="flex items-center gap-1.5 h-10 px-3.5 rounded-full glass-button text-xs sm:text-sm font-bold text-white transition active:scale-95 cursor-pointer hover:border-white/40 shadow-lg"
+                  className="flex items-center gap-1.5 h-10 px-3.5 rounded-full glass-capsule text-xs sm:text-sm font-bold text-white transition active:scale-95 cursor-pointer shadow-md"
                   aria-label="Playback speed"
                 >
                   <Gauge size={15} className="text-white/90" />
@@ -843,7 +861,7 @@ export function VideoPlayer({
                 </button>
 
                 {showSpeedMenu && (
-                  <div className="absolute bottom-12 right-0 z-[150] flex flex-col w-32 rounded-2xl bg-zinc-950/90 border border-white/20 backdrop-blur-2xl p-1.5 shadow-[0_10px_40px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
+                  <div className="absolute bottom-12 right-0 z-[150] flex flex-col w-32 rounded-2xl liquid-glass border border-white/20 backdrop-blur-2xl p-1.5 shadow-[0_12px_48px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
                     <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/50 border-b border-white/10 mb-1">
                       Tốc độ
                     </div>
@@ -856,7 +874,7 @@ export function VideoPlayer({
                           setShowSpeedMenu(false);
                         }}
                         className={`flex items-center justify-between px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
-                          speed === v ? "bg-[#e50914] text-white shadow-lg shadow-red-600/40" : "text-white/80 hover:bg-white/15 hover:text-white"
+                          speed === v ? "bg-white/25 text-white border border-white/30 shadow-[0_0_12px_rgba(255,255,255,0.2)]" : "text-white/80 hover:bg-white/10 hover:text-white"
                         }`}
                       >
                         <span>{v}x</span>
@@ -868,14 +886,20 @@ export function VideoPlayer({
               </div>
               
               {/* Picture-in-Picture */}
-              <Button variant="ghost" onClick={() => videoRef.current?.requestPictureInPicture()} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 flex items-center justify-center glass-button" aria-label="Picture in picture">
+              <button 
+                onClick={() => videoRef.current?.requestPictureInPicture()} 
+                className="glass-player-btn cursor-pointer" aria-label="Picture in picture"
+              >
                 <PictureInPicture2 size={16} />
-              </Button>
+              </button>
               
               {/* Fullscreen */}
-              <Button variant="ghost" onClick={handleFullscreen} className="h-10 w-10 md:h-11 md:w-11 rounded-full p-0 text-white hover:text-[#e50914] glass-button" aria-label="Fullscreen">
+              <button 
+                onClick={handleFullscreen} 
+                className="glass-player-btn cursor-pointer" aria-label="Fullscreen"
+              >
                 <Maximize size={20} />
-              </Button>
+              </button>
             </div>
           </div>
         </div>

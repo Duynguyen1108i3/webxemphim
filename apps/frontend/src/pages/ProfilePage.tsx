@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Check, Camera, LogOut, Save, User, Mail, Lock, KeyRound, Send, ShieldCheck, Sparkles, HelpCircle, RefreshCw, X, Trash2 } from "lucide-react";
 import { useAuthStore, authApi } from "../store/auth";
 import { useNavigate } from "react-router-dom";
@@ -25,6 +25,12 @@ export function ProfilePage() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<"general" | "username" | "email" | "password">("general");
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
 
   // Avatar state
   const [inputAvatar, setInputAvatar] = useState(avatarUrl || "");

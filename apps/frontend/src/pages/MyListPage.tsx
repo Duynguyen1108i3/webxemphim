@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { usePlaybackStore } from "../store/playbackStore";
+import { useAuthStore } from "../store/auth";
 import { Link } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { MovieTile, HoverPreview } from "../components/MovieRow";
@@ -7,6 +8,7 @@ import type { MovieCardDto } from "@streamforge/shared-types";
 import type { NormalizedMovie } from "../lib/movieApi";
 
 export function MyListPage() {
+  const user = useAuthStore((state) => state.user);
   const myList = usePlaybackStore((state) => state.myList);
   const { openDetailModal } = usePlaybackStore();
 
@@ -78,7 +80,30 @@ export function MyListPage() {
     <main className="min-h-screen bg-transparent px-4 pt-28 pb-12 sm:px-8 md:px-14 lg:px-16">
       <h1 className="text-3xl font-bold tracking-tight text-white mb-8">My List</h1>
       
-      {myList.length > 0 ? (
+      {!user ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 max-w-md mx-auto">
+          <p className="text-white text-xl font-bold">
+            Vui lòng đăng nhập để xem danh sách yêu thích
+          </p>
+          <p className="text-zinc-400 text-sm leading-relaxed">
+            Bạn cần đăng nhập hoặc tạo tài khoản để thêm các bộ phim yêu thích và quản lý danh sách xem của riêng bạn.
+          </p>
+          <div className="flex items-center gap-3 pt-3">
+            <Link
+              to="/login"
+              className="inline-flex h-11 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 border border-white/25 px-6 text-sm font-bold text-white transition shadow-lg backdrop-blur-md"
+            >
+              Đăng nhập ngay
+            </Link>
+            <Link
+              to="/register"
+              className="inline-flex h-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 border border-white/20 px-6 text-sm font-bold text-white transition"
+            >
+              Tạo tài khoản mới
+            </Link>
+          </div>
+        </div>
+      ) : myList.length > 0 ? (
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 md:gap-2">
           {myList.map((movie) => (
             <MovieTile

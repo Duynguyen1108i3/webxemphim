@@ -70,7 +70,7 @@ export function CinematicPlayerOverlay() {
       <div className="absolute left-6 top-6 z-[120]">
         <button
           onClick={handleClose}
-          className="nf-icon inline-flex h-11 items-center justify-center gap-2 rounded-full bg-black/60 px-5 text-sm font-semibold text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/70"
+          className="glass-capsule gap-2 px-5 h-11 text-sm font-bold text-white transition hover:scale-105 active:scale-95 shadow-[0_8px_32px_rgba(0,0,0,0.5)] cursor-pointer"
         >
           <ArrowLeft size={18} /> Exit
         </button>
@@ -108,7 +108,7 @@ export function CinematicPlayerOverlay() {
             {/* Subtle loading spinner or shimmer */}
             {openingFinished && showLoading && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/30 backdrop-blur-sm z-[110]">
-                <Loader2 size={48} className="animate-spin text-[#e50914]" />
+                <Loader2 size={48} className="animate-spin text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]" />
                 <p className="text-sm font-semibold tracking-wide text-white/70 animate-pulse">
                   Buffering Stream...
                 </p>

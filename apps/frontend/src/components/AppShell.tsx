@@ -1,4 +1,4 @@
-import { Bell, Lock, Menu, Search, X, Sliders, ChevronDown, Globe } from "lucide-react";
+import { Bell, Lock, Menu, Search, X, Sliders, ChevronDown, Globe, User, LogIn, UserPlus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -6,6 +6,7 @@ import { usePlaybackStore } from "../store/playbackStore";
 import { CinematicDetailModal } from "./CinematicDetailModal";
 import { CinematicPlayerOverlay } from "./CinematicPlayerOverlay";
 import { Footer } from "./Footer";
+import { AuthPromptModal } from "./AuthPromptModal";
 import { movieApi, type NormalizedMovie } from "../lib/movieApi";
 import { MovieTile, HoverPreview } from "./MovieRow";
 import { Button, Skeleton } from "@streamforge/ui";
@@ -21,7 +22,7 @@ const iosSpringTransition = {
 };
 
 export function AppShell() {
-  const { activeMovieDetail, activePlayback, activeEpisodeId, watchHistory } = usePlaybackStore();
+  const { activeMovieDetail, activePlayback, activeEpisodeId, watchHistory, authModalOpen } = usePlaybackStore();
   const { user, profileId, avatarUrl, initialized, setProfileId, logout, initialize } = useAuthStore();
   const [scrolled, setScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -45,21 +46,30 @@ export function AppShell() {
 
   const toggleSettings = () => setSettingsOpen(!settingsOpen);
 
+  const applyGlassProperties = (val: number, ambient: number) => {
+    const root = document.documentElement;
+    root.style.setProperty("--system-glassness", String(val));
+    root.style.setProperty("--glass-blur", `${Math.round(val * 32 + 6)}px`);
+    root.style.setProperty("--glass-bg-opacity", `${(0.92 - val * 0.70).toFixed(3)}`);
+    root.style.setProperty("--glass-border-opacity", `${(0.08 + val * 0.22).toFixed(3)}`);
+    root.style.setProperty("--glass-specular-opacity", `${(0.04 + val * 0.20).toFixed(3)}`);
+    root.style.setProperty("--ambient-opacity", String(ambient));
+  };
+
   const handleGlassnessChange = (val: number) => {
     setGlassness(val);
     localStorage.setItem("system-glassness", String(val));
-    document.documentElement.style.setProperty("--system-glassness", String(val));
+    applyGlassProperties(val, ambientOpacity);
   };
 
   const handleAmbientOpacityChange = (val: number) => {
     setAmbientOpacity(val);
     localStorage.setItem("system-ambient-opacity", String(val));
-    document.documentElement.style.setProperty("--ambient-opacity", String(val));
+    applyGlassProperties(glassness, val);
   };
 
   useEffect(() => {
-    document.documentElement.style.setProperty("--system-glassness", String(glassness));
-    document.documentElement.style.setProperty("--ambient-opacity", String(ambientOpacity));
+    applyGlassProperties(glassness, ambientOpacity);
   }, [glassness, ambientOpacity]);
 
   // Click outside to close settings
@@ -78,19 +88,19 @@ export function AppShell() {
     initialize();
   }, [initialize]);
 
-  // Auth Guard: redirect unauthenticated users to login
+  // Auth Guard: redirect unauthenticated users to login only for protected routes
   useEffect(() => {
     if (!initialized) return;
-    if (!user && location.pathname !== "/login" && location.pathname !== "/register") {
+    if (!user && location.pathname === "/profile") {
       navigate("/login");
-    } else if (user && (location.pathname === "/login" || location.pathname === "/register")) {
+    } else if (user && (location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/forgot-password")) {
       navigate("/");
     }
   }, [initialized, user, location.pathname, navigate]);
 
   // Restore modal and playback states from URL parameters on mount or query change
   useEffect(() => {
-    if (!initialized || !user) return;
+    if (!initialized) return;
 
     const searchParams = new URLSearchParams(location.search);
     const movieDetailSlug = searchParams.get("m");
@@ -147,11 +157,11 @@ export function AppShell() {
     Promise.allSettled([p1, p2]).finally(() => {
       setIsRestoringState(false);
     });
-  }, [initialized, user, location.search]);
+  }, [initialized, location.search]);
 
   // Sync URL parameters when modal/playback store state changes
   useEffect(() => {
-    if (!initialized || !user) return;
+    if (!initialized) return;
     
     const searchParams = new URLSearchParams(location.search);
     let changed = false;
@@ -462,22 +472,18 @@ export function AppShell() {
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-col items-center gap-6"
         >
-          <span className="brand-logo text-2xl font-black text-[#e50914] tracking-tighter sm:text-3xl">RytoxGroup</span>
-          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#e50914]/20 border-t-[#e50914]" />
+          <span className="brand-logo text-2xl font-black text-white drop-shadow-[0_2px_14px_rgba(255,255,255,0.35)] tracking-tighter sm:text-3xl">RytoxGroup</span>
+          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-white/20 border-t-white" />
           <p className="text-xs font-semibold text-white/35 tracking-[0.15em] uppercase animate-pulse">Đang kết nối...</p>
         </motion.div>
       </div>
     );
   }
 
-  if (!user) {
-    return <div className="min-h-screen bg-[#141414]" />;
-  }
-
   if (isRestoringState) {
     return (
       <div className="min-h-screen bg-[#141414] flex flex-col items-center justify-center text-white">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#e50914] border-t-transparent" />
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-white/20 border-t-white" />
         <p className="mt-4 text-xs font-semibold text-white/50 tracking-wider uppercase animate-pulse">Đang tải...</p>
       </div>
     );
@@ -487,7 +493,7 @@ export function AppShell() {
     <div className="min-h-screen bg-transparent text-white">
       {location.pathname === "/profile" ? (
         <header className="fixed inset-x-0 top-0 z-50 flex h-[68px] items-center px-4 sm:px-8 md:px-14 lg:px-16 bg-gradient-to-b from-black/60 to-transparent">
-          <span className="brand-logo text-xs font-black tracking-tight text-[#e50914] sm:text-sm md:text-base select-none">RytoxGroup</span>
+          <span className="brand-logo text-xs font-black tracking-tight text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)] sm:text-sm md:text-base select-none">RytoxGroup</span>
         </header>
       ) : (
         <header 
@@ -503,12 +509,10 @@ export function AppShell() {
               <Menu size={22} />
             </button>
             
-            <NavLink to="/" className={`brand-logo text-xs font-black tracking-tight text-[#e50914] sm:text-sm md:text-base ${searchExpanded ? "hidden md:block" : ""}`}>RytoxGroup</NavLink>
+            <NavLink to="/" className={`brand-logo text-xs font-black tracking-tight text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)] sm:text-sm md:text-base ${searchExpanded ? "hidden md:block" : ""}`}>RytoxGroup</NavLink>
             <nav className={`hidden items-center gap-2 text-sm font-semibold bg-white/5 border border-white/10 p-1.5 rounded-full backdrop-blur-md shadow-inner relative whitespace-nowrap ${searchExpanded ? "xl:flex" : "md:flex"}`}>
               {[
                 { to: "/", label: "Home" },
-                { to: "/tv-shows", label: "Shows" },
-                { to: "/movies", label: "Movies" },
                 { to: "/anime", label: "Anime" },
                 { to: "/new-popular", label: "New & Popular" },
                 { to: "/my-list", label: "My List" },
@@ -524,7 +528,7 @@ export function AppShell() {
                       {isActive && (
                         <motion.div
                           layoutId="active-nav-pill"
-                          className="absolute inset-0 bg-white/15 border border-white/20 rounded-full shadow-[0_3px_12px_rgba(229,9,20,0.18)] z-[-1]"
+                          className="absolute inset-0 bg-white/15 border border-white/20 rounded-full shadow-[0_3px_12px_rgba(255,255,255,0.12)] z-[-1]"
                           style={{
                             backdropFilter: "blur(20px) saturate(180%)",
                             WebkitBackdropFilter: "blur(20px) saturate(180%)",
@@ -617,8 +621,6 @@ export function AppShell() {
               </motion.div>
             </div>
 
-            {/* Kids Mode Link */}
-            <NavLink to="/search" className="glass-capsule hidden lg:flex items-center justify-center px-5">Kids</NavLink>
 
             {/* Liquid Glass Settings Slider Button */}
             <div ref={settingsRef} className="relative hidden md:block">
@@ -654,7 +656,7 @@ export function AppShell() {
                           step="0.05"
                           value={glassness}
                           onChange={(e) => handleGlassnessChange(parseFloat(e.target.value))}
-                          className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-[#e50914]"
+                          className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
                         />
                       </div>
                       
@@ -671,7 +673,7 @@ export function AppShell() {
                           step="0.05"
                           value={ambientOpacity}
                           onChange={(e) => handleAmbientOpacityChange(parseFloat(e.target.value))}
-                          className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-[#e50914]"
+                          className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
                         />
                       </div>
                     </div>
@@ -689,7 +691,7 @@ export function AppShell() {
               >
                 <Bell size={22} />
                 {hasNotification && (
-                  <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-[#e50914] animate-pulse" />
+                  <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)] animate-pulse" />
                 )}
               </button>
               
@@ -738,7 +740,7 @@ export function AppShell() {
               </AnimatePresence>
             </div>
 
-            {/* Profile Dropdown */}
+            {/* Account / Profile Dropdown */}
             <div ref={profileRef} className="relative">
               <button
                 onClick={(e) => {
@@ -746,15 +748,21 @@ export function AppShell() {
                   setIsProfileOpen(!isProfileOpen);
                 }}
                 className={`glass-capsule pl-2 pr-3 rounded-full flex items-center gap-2 ${isProfileOpen ? "active" : ""}`}
-                aria-label="Profile Menu"
+                aria-label="Account Menu"
               >
-                {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
-                  <img src={avatarUrl} className="h-8 w-8 rounded-full object-cover border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300" alt="Avatar" />
-                ) : (
-                  <span className={`grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br ${avatarUrl || "from-blue-500 to-cyan-300"} border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300`}>
-                    <span className="text-xs font-black text-white">
-                      {user?.username ? user.username[0].toUpperCase() : "M"}
+                {user ? (
+                  avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
+                    <img src={avatarUrl} className="h-8 w-8 rounded-full object-cover border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300" alt="Avatar" />
+                  ) : (
+                    <span className={`grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br ${avatarUrl || "from-blue-500 to-cyan-300"} border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300`}>
+                      <span className="text-xs font-black text-white">
+                        {user?.username ? user.username[0].toUpperCase() : "M"}
+                      </span>
                     </span>
+                  )
+                ) : (
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-white/10 border border-white/20 text-white/80 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300">
+                    <User size={16} />
                   </span>
                 )}
                 <span className={`border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 ${isProfileOpen ? "rotate-180" : ""}`} />
@@ -767,28 +775,56 @@ export function AppShell() {
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 8 }}
                     transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
-                    className="absolute right-0 top-full mt-2 w-52 origin-top-right overflow-hidden rounded-2xl liquid-glass py-2 shadow-2xl z-[120]"
+                    className="absolute right-0 top-full mt-2 w-56 origin-top-right overflow-hidden rounded-2xl liquid-glass p-3 shadow-2xl z-[120]"
                   >
-                    <div className="px-4 py-2 text-xs font-bold text-white/50 border-b border-white/10 uppercase tracking-wider">
-                      Hồ sơ của tôi
-                    </div>
+                    {user ? (
+                      <>
+                        <div className="px-2 py-1.5 mb-1 text-xs font-bold text-white/50 border-b border-white/10 uppercase tracking-wider">
+                          Hồ sơ của tôi
+                        </div>
 
-                    <NavLink to="/profile" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-white/10 transition text-xs font-semibold text-white/70 hover:text-white mt-1">
-                      Cài đặt hồ sơ
-                    </NavLink>
-                    
-                    <hr className="border-white/10 my-1" />
+                        <NavLink to="/profile" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/10 transition text-xs font-semibold text-white/70 hover:text-white mt-1">
+                          Cài đặt hồ sơ
+                        </NavLink>
+                        
+                        <hr className="border-white/10 my-1.5" />
 
-                    <button
-                      onClick={() => {
-                        setIsProfileOpen(false);
-                        logout();
-                        navigate("/login");
-                      }}
-                      className="flex items-center gap-2.5 w-full px-4 py-2 hover:bg-white/10 transition text-xs font-bold text-[#e50914] text-left cursor-pointer"
-                    >
-                      Đăng xuất khỏi RytoxGroup
-                    </button>
+                        <button
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            logout();
+                            navigate("/login");
+                          }}
+                          className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg hover:bg-white/10 transition text-xs font-bold text-white/80 hover:text-white text-left cursor-pointer"
+                        >
+                          Đăng xuất khỏi RytoxGroup
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="px-2 py-1.5 mb-2 text-xs font-bold text-white/50 border-b border-white/10 uppercase tracking-wider">
+                          Tài khoản
+                        </div>
+
+                        <NavLink
+                          to="/login"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-white/20 hover:bg-white/30 text-xs font-bold text-white transition border border-white/30 shadow-[0_4px_16px_rgba(0,0,0,0.3)] backdrop-blur-md mb-2 active:scale-95"
+                        >
+                          <LogIn size={14} />
+                          Đăng nhập
+                        </NavLink>
+
+                        <NavLink
+                          to="/register"
+                          onClick={() => setIsProfileOpen(false)}
+                          className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/12 text-xs font-semibold text-white/80 hover:text-white transition border border-white/10 backdrop-blur-md active:scale-95"
+                        >
+                          <UserPlus size={14} />
+                          Đăng ký tài khoản
+                        </NavLink>
+                      </>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -845,7 +881,7 @@ export function AppShell() {
                     className="group relative inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm tracking-wide transition-all duration-300 border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.6)] hover:border-white/40 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md disabled:opacity-50"
                   >
                     <span>Xem thêm</span>
-                    <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-[#e50914]" />
+                    <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-white/70" />
                   </button>
                 </div>
               )}
@@ -891,7 +927,7 @@ export function AppShell() {
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               <div className="flex items-center justify-between">
-                <span className="brand-logo text-xl font-black text-[#e50914] tracking-tight">RytoxGroup</span>
+                <span className="brand-logo text-xl font-black text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)] tracking-tight">RytoxGroup</span>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="nf-icon rounded-full p-2 hover:bg-white/10 text-white/70 hover:text-white"
@@ -901,48 +937,81 @@ export function AppShell() {
                 </button>
               </div>
               <div className="flex flex-col gap-4 text-lg font-medium text-white/80">
-                <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>Home</NavLink>
-                <NavLink to="/tv-shows" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>Shows</NavLink>
-                <NavLink to="/movies" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>Movies</NavLink>
-                <NavLink to="/anime" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>Anime</NavLink>
-                <NavLink to="/new-popular" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>New & Popular</NavLink>
-                <NavLink to="/my-list" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>My List</NavLink>
-                <NavLink to="/search" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-[#e50914] font-bold" : ""}`}>Browse by Languages</NavLink>
+                <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-white font-bold underline underline-offset-4" : ""}`}>Home</NavLink>
+                <NavLink to="/anime" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-white font-bold underline underline-offset-4" : ""}`}>Anime</NavLink>
+                <NavLink to="/new-popular" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-white font-bold underline underline-offset-4" : ""}`}>New & Popular</NavLink>
+                <NavLink to="/my-list" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-white font-bold underline underline-offset-4" : ""}`}>My List</NavLink>
+                <NavLink to="/search" onClick={() => setIsMobileMenuOpen(false)} className={({ isActive }) => `hover:text-white transition ${isActive ? "text-white font-bold underline underline-offset-4" : ""}`}>Browse by Languages</NavLink>
                 
                 {/* Profile section for mobile */}
                 <hr className="border-white/10 my-1" />
-                <p className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Tài khoản & Hồ sơ</p>
-                <div className="flex flex-col gap-3">
-                  <button 
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      navigate("/profile");
-                    }}
-                    className="flex items-center gap-2.5 text-left text-sm font-semibold text-white/60 hover:text-white"
-                  >
-                    {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
-                      <img src={avatarUrl} className="h-6 w-6 rounded object-cover border border-white/20" alt="Avatar" />
-                    ) : (
-                      <span className={`grid h-6 w-6 place-items-center rounded bg-gradient-to-br ${avatarUrl || "from-blue-500 to-cyan-300"}`}>
-                        <span className="text-[10px] font-black text-white">
-                          {user?.username ? user.username[0].toUpperCase() : "M"}
-                        </span>
-                      </span>
-                    )}
-                    <span>Cài đặt hồ sơ</span>
-                  </button>
+                {user ? (
+                  <>
+                    <p className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Tài khoản & Hồ sơ</p>
+                    <div className="flex flex-col gap-3">
+                      <button 
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          navigate("/profile");
+                        }}
+                        className="flex items-center gap-2.5 text-left text-sm font-semibold text-white/60 hover:text-white"
+                      >
+                        {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
+                          <img src={avatarUrl} className="h-6 w-6 rounded object-cover border border-white/20" alt="Avatar" />
+                        ) : (
+                          <span className={`grid h-6 w-6 place-items-center rounded bg-gradient-to-br ${avatarUrl || "from-blue-500 to-cyan-300"}`}>
+                            <span className="text-[10px] font-black text-white">
+                              {user?.username ? user.username[0].toUpperCase() : "M"}
+                            </span>
+                          </span>
+                        )}
+                        <span>Cài đặt hồ sơ</span>
+                      </button>
 
-                  <button 
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      logout();
-                      navigate("/login");
-                    }}
-                    className="flex items-center gap-2.5 text-left text-sm font-bold text-[#e50914]"
-                  >
-                    <span>Đăng xuất</span>
-                  </button>
-                </div>
+                      <button 
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          logout();
+                          navigate("/login");
+                        }}
+                        className="flex items-center gap-2.5 text-left text-sm font-bold text-white/80 hover:text-white"
+                      >
+                        <span>Đăng xuất</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Tài khoản</p>
+                    <div className="flex flex-col gap-2.5">
+                      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/10 mb-0.5">
+                        <span className="grid h-8 w-8 place-items-center rounded-full bg-white/10 border border-white/20 text-white/70">
+                          <User size={16} />
+                        </span>
+                        <div className="text-xs">
+                          <p className="font-bold text-white">Khách</p>
+                          <p className="text-white/40">Đăng nhập để lưu phim</p>
+                        </div>
+                      </div>
+                      <NavLink
+                        to="/login"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white/20 hover:bg-white/30 text-sm font-bold text-white transition border border-white/25 shadow-md backdrop-blur-md active:scale-95"
+                      >
+                        <LogIn size={16} />
+                        Đăng nhập
+                      </NavLink>
+                      <NavLink
+                        to="/register"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/12 text-sm font-semibold text-white/80 hover:text-white transition border border-white/10 backdrop-blur-md active:scale-95"
+                      >
+                        <UserPlus size={16} />
+                        Đăng ký tài khoản
+                      </NavLink>
+                    </div>
+                  </>
+                )}
                 
                 {/* Separator line */}
                 <hr className="border-white/10 my-1" />
@@ -977,7 +1046,7 @@ export function AppShell() {
                           <div className="flex-1 min-w-0">
                             <p className="truncate text-xs text-white/80">{item.title}</p>
                             <div className="w-full bg-zinc-700 h-1 rounded overflow-hidden mt-1 max-w-[120px]">
-                              <div className="bg-[#e50914] h-full" style={{ width: `${item.progress}%` }} />
+                              <div className="bg-white/80 h-full" style={{ width: `${item.progress}%` }} />
                             </div>
                           </div>
                         </button>
@@ -996,6 +1065,9 @@ export function AppShell() {
       </AnimatePresence>
       <AnimatePresence>
         {activePlayback && <CinematicPlayerOverlay />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {authModalOpen && <AuthPromptModal />}
       </AnimatePresence>
       <AnimatePresence>
         {hovered && (
