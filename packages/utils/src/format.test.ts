@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRuntime } from "@streamforge/utils";
+import { formatRuntime } from "./index.js";
 
 describe("formatRuntime", () => {
   it("formats feature-length runtimes", () => {

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
-import { requireAuth, requireRole } from "../middleware/auth.js";
-import { ApiError } from "../middleware/error.js";
+import { requireAuth, requireRole } from "../middleware/auth.middleware.js";
+import { ApiError } from "../middleware/error.middleware.js";
 
 const router = Router();
 router.use(requireAuth, requireRole("ADMIN", "SUPER_ADMIN"));

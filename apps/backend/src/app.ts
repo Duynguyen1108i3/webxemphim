@@ -1,6 +1,6 @@
 import express from "express";
-import { applySecurity } from "./middleware/security.js";
-import { errorHandler, notFound } from "./middleware/error.js";
+import { applySecurity } from "./middleware/security.middleware.js";
+import { errorHandler, notFound } from "./middleware/error.middleware.js";
 import authRoutes from "./routes/auth.routes.js";
 import movieRoutes from "./routes/movie.routes.js";
 import userRoutes from "./routes/user.routes.js";
