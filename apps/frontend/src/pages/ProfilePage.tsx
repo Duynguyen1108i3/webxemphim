@@ -1,7 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Check, Camera, LogOut, Save, User, Mail, Lock, KeyRound, Send, ShieldCheck, Sparkles, HelpCircle, RefreshCw, X, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useAuthStore, authApi } from "../store/auth";
 import { useNavigate } from "react-router-dom";
+import { LiquidGlassBackground } from "../components/LiquidGlassBackground";
+
+const PROFILE_TABS = [
+  { id: "general", label: "Ảnh đại diện", icon: User },
+  { id: "username", label: "Tên hiển thị", icon: Sparkles },
+  { id: "email", label: "Địa chỉ Email", icon: Mail },
+  { id: "password", label: "Mật khẩu", icon: Lock },
+] as const;
 
 const presetAvatars = [
   { name: "Netflix Red", value: "https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" },
@@ -292,7 +301,8 @@ export function ProfilePage() {
   const isCustomImage = inputAvatar && (inputAvatar.startsWith("http") || inputAvatar.includes("/"));
 
   return (
-    <main className="min-h-screen bg-transparent px-4 pt-24 pb-16 sm:px-6 md:px-8 flex items-center justify-center">
+    <main className="min-h-screen bg-transparent px-4 pt-24 pb-16 sm:px-6 md:px-8 flex items-center justify-center relative">
+      <LiquidGlassBackground />
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -301,7 +311,7 @@ export function ProfilePage() {
         className="hidden" 
       />
 
-      <div className="w-full max-w-xl liquid-glass rounded-2xl p-5 sm:p-7 shadow-2xl border border-white/10 relative overflow-hidden">
+      <div className="w-full max-w-xl liquid-glass rounded-3xl p-5 sm:p-7 shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/15 relative overflow-hidden backdrop-blur-2xl">
         
         {/* Header Navigation Row */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
@@ -311,13 +321,13 @@ export function ProfilePage() {
           >
             <ArrowLeft size={14} /> Trang chủ
           </button>
-          <span className="text-[11px] uppercase tracking-widest text-[#e50914] font-black flex items-center gap-1">
-            <Sparkles size={12} /> Quản lý tài khoản
+          <span className="text-[11px] uppercase tracking-widest text-white/90 font-black flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 backdrop-blur-md shadow-sm">
+            <Sparkles size={12} className="text-white" /> Quản lý tài khoản
           </span>
         </div>
 
         {/* User Card Summary Banner */}
-        <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-white/5 border border-white/10 mb-5">
+        <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10 mb-5">
           <div className="relative group cursor-pointer shrink-0" onClick={handleAvatarClick} title="Bấm vào đây để thay đổi ảnh đại diện">
             <div className="h-12 w-12 rounded-xl overflow-hidden shadow-md border border-white/20 aspect-square">
               {isCustomImage ? (
@@ -345,40 +355,62 @@ export function ProfilePage() {
 
         {/* Alert Feedback Messages */}
         {successMsg && (
-          <div className="mb-4 px-3.5 py-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+          <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
             <Check size={14} /> {successMsg}
           </div>
         )}
         {errorMsg && (
-          <div className="mb-4 px-3.5 py-2.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+          <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
             <ShieldCheck size={14} /> {errorMsg}
           </div>
         )}
 
-        {/* Optimized Navigation Tabs */}
-        <div className="grid grid-cols-4 gap-1 p-1 bg-black/40 rounded-xl border border-white/10 mb-5 text-xs font-bold">
-          {[
-            { id: "general", label: "Ảnh đại diện", icon: User },
-            { id: "username", label: "Tên hiển thị", icon: Sparkles },
-            { id: "email", label: "Địa chỉ Email", icon: Mail },
-            { id: "password", label: "Mật khẩu", icon: Lock },
-          ].map((tab) => {
+        {/* Profile Navigation Tabs styled identically to Home Menu Bar */}
+        <nav
+          aria-label="Profile Tabs"
+          className="relative flex items-center justify-between gap-1 p-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-inner mb-6 select-none"
+        >
+          {PROFILE_TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => { setActiveTab(tab.id as any); setErrorMsg(""); setSuccessMsg(""); setForgotMode(false); }}
-                className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2 px-2 rounded-lg transition duration-200 cursor-pointer ${
-                  active ? "bg-white/15 text-white shadow border border-white/20 font-bold" : "text-white/50 hover:text-white/80 hover:bg-white/5"
+                onClick={() => {
+                  setActiveTab(tab.id as any);
+                  setErrorMsg("");
+                  setSuccessMsg("");
+                  setForgotMode(false);
+                }}
+                type="button"
+                className={`relative flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-full transition-all duration-200 z-10 cursor-pointer select-none text-white/60 hover:text-white active:scale-95 text-xs ${
+                  active ? "text-white" : ""
                 }`}
               >
-                <Icon size={13} />
-                <span className="text-[11px] truncate">{tab.label}</span>
+                {active && (
+                  <motion.div
+                    layoutId="active-profile-tab-pill"
+                    className="absolute inset-0 bg-white/20 border border-white/25 rounded-full shadow-[0_3px_14px_rgba(255,255,255,0.15)] z-[-1] backdrop-blur-xl"
+                    transition={{ type: "spring", stiffness: 420, damping: 30 }}
+                  />
+                )}
+                <Icon
+                  size={14}
+                  className={`transition-transform duration-200 ${
+                    active ? "scale-110 text-white" : "text-white/60"
+                  }`}
+                />
+                <span
+                  className={`transition-all duration-200 truncate ${
+                    active ? "font-bold text-white scale-105" : "font-medium"
+                  }`}
+                >
+                  {tab.label}
+                </span>
               </button>
             );
           })}
-        </div>
+        </nav>
 
         {/* TAB 1: GENERAL & AVATAR SETTINGS */}
         {activeTab === "general" && (
@@ -398,7 +430,7 @@ export function ProfilePage() {
                       onClick={() => handleSelectAndSaveAvatar(item.value)}
                       className="flex flex-col items-center gap-1 focus:outline-none group cursor-pointer"
                     >
-                      <div className={`h-11 w-11 rounded-xl border-2 transition duration-200 ${isSelected ? "border-[#e50914] scale-105 shadow-lg ring-2 ring-[#e50914]/40" : "border-white/10 hover:border-white/50"} aspect-square overflow-hidden`}>
+                      <div className={`h-11 w-11 rounded-xl border-2 transition duration-200 ${isSelected ? "border-white scale-105 shadow-[0_0_16px_rgba(255,255,255,0.5)] ring-2 ring-white/60" : "border-white/10 hover:border-white/40"} aspect-square overflow-hidden`}>
                         {isImg ? (
                           <img src={item.value} className="h-full w-full object-cover aspect-square" alt={item.name} />
                         ) : (
@@ -425,7 +457,7 @@ export function ProfilePage() {
                         <button
                           type="button"
                           onClick={() => handleSelectAndSaveAvatar(photoUrl)}
-                          className={`h-11 w-11 rounded-xl border-2 transition duration-200 ${isSelected ? "border-[#e50914] scale-105 shadow-lg ring-2 ring-[#e50914]/40" : "border-white/10 hover:border-white/50"} aspect-square overflow-hidden cursor-pointer`}
+                          className={`h-11 w-11 rounded-xl border-2 transition duration-200 ${isSelected ? "border-white scale-105 shadow-[0_0_16px_rgba(255,255,255,0.5)] ring-2 ring-white/60" : "border-white/10 hover:border-white/40"} aspect-square overflow-hidden cursor-pointer`}
                         >
                           <img src={photoUrl} className="h-full w-full object-cover aspect-square" alt={`Ảnh ${idx + 1}`} />
                         </button>
@@ -436,7 +468,7 @@ export function ProfilePage() {
                           type="button"
                           onClick={(e) => { e.stopPropagation(); removeUploadedPhoto(photoUrl); }}
                           title="Xóa ảnh này"
-                          className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-black/80 hover:bg-[#e50914] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                          className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-black/80 hover:bg-rose-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer"
                         >
                           <X size={10} />
                         </button>
@@ -457,12 +489,12 @@ export function ProfilePage() {
                   value={isCustomImage ? inputAvatar : ""}
                   onChange={(e) => setInputAvatar(e.target.value)}
                   placeholder="https://example.com/avatar.jpg"
-                  className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 transition"
+                  className="flex-1 px-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition-all shadow-inner"
                 />
                 <button
                   type="button"
                   onClick={handleAvatarClick}
-                  className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition border border-white/10 flex items-center gap-1 cursor-pointer shrink-0"
+                  className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition border border-white/15 flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
                 >
                   <Camera size={13} /> Chọn tệp
                 </button>
@@ -473,9 +505,9 @@ export function ProfilePage() {
               <button
                 type="button"
                 onClick={handleSaveAvatar}
-                className="flex items-center gap-1.5 bg-[#e50914] hover:bg-[#b80710] text-white font-bold text-xs px-5 py-2.5 rounded-lg transition shadow-md cursor-pointer focus:outline-none"
+                className="flex items-center gap-2 bg-white text-black font-black text-xs px-6 py-2.5 rounded-full transition-all duration-200 hover:bg-white/90 hover:shadow-[0_0_20px_rgba(255,255,255,0.35)] active:scale-95 cursor-pointer focus:outline-none"
               >
-                <Save size={13} /> Lưu ảnh đại diện
+                <Save size={14} /> Lưu ảnh đại diện
               </button>
             </div>
           </div>
@@ -489,13 +521,13 @@ export function ProfilePage() {
                 Tên hiển thị người dùng
               </label>
               <div className="relative">
-                <User size={14} className="absolute left-3 top-3 text-white/40" />
+                <User size={14} className="absolute left-3.5 top-3 text-white/40" />
                 <input 
                   type="text"
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
                   placeholder="Nhập tên người dùng mới"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 transition"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition shadow-inner"
                 />
               </div>
               <p className="text-[10px] text-white/40">
@@ -507,9 +539,9 @@ export function ProfilePage() {
               <button
                 type="submit"
                 disabled={usernameLoading}
-                className="flex items-center gap-1.5 bg-[#e50914] hover:bg-[#b80710] disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition shadow-md cursor-pointer focus:outline-none"
+                className="flex items-center gap-2 bg-white text-black font-black text-xs px-6 py-2.5 rounded-full transition-all duration-200 hover:bg-white/90 hover:shadow-[0_0_20px_rgba(255,255,255,0.35)] disabled:opacity-50 active:scale-95 cursor-pointer focus:outline-none"
               >
-                <Save size={13} /> {usernameLoading ? "Đang xử lý..." : "Lưu tên người dùng"}
+                <Save size={14} /> {usernameLoading ? "Đang xử lý..." : "Lưu tên người dùng"}
               </button>
             </div>
           </form>
@@ -524,21 +556,21 @@ export function ProfilePage() {
               </label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Mail size={14} className="absolute left-3 top-3 text-white/40" />
+                  <Mail size={14} className="absolute left-3.5 top-3 text-white/40" />
                   <input 
                     type="email"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                     disabled={otpSent}
                     placeholder="email-moi@gmail.com"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 transition disabled:opacity-60"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition shadow-inner disabled:opacity-60"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={handleSendEmailOtp}
                   disabled={sendingOtp || otpTimer > 0}
-                  className="px-3.5 py-2.5 rounded-lg bg-white/15 hover:bg-white/25 disabled:opacity-50 text-white text-xs font-bold transition border border-white/15 flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="px-4 py-2.5 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs font-bold transition border border-white/15 flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
                 >
                   <Send size={12} />
                   {sendingOtp ? "Đang gửi..." : otpTimer > 0 ? `Gửi lại (${otpTimer}s)` : "Gửi mã OTP"}
@@ -552,14 +584,14 @@ export function ProfilePage() {
                   Mã xác thực OTP (6 chữ số)
                 </label>
                 <div className="relative">
-                  <KeyRound size={14} className="absolute left-3 top-3 text-white/40" />
+                  <KeyRound size={14} className="absolute left-3.5 top-3 text-white/40" />
                   <input 
                     type="text"
                     maxLength={6}
                     value={emailOtp}
                     onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ""))}
                     placeholder="123456"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono tracking-widest text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 transition"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs font-mono tracking-widest text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition shadow-inner"
                   />
                 </div>
                 <p className="text-[10px] text-white/40">
@@ -573,16 +605,16 @@ export function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => { setOtpSent(false); setEmailOtp(""); }}
-                  className="px-4 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold transition"
+                  className="px-5 py-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold transition border border-white/10 active:scale-95"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={updatingEmail}
-                  className="flex items-center gap-1.5 bg-[#e50914] hover:bg-[#b80710] disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition shadow-md cursor-pointer focus:outline-none"
+                  className="flex items-center gap-2 bg-white text-black font-black text-xs px-6 py-2.5 rounded-full transition-all duration-200 hover:bg-white/90 hover:shadow-[0_0_20px_rgba(255,255,255,0.35)] disabled:opacity-50 active:scale-95 cursor-pointer focus:outline-none"
                 >
-                  <Save size={13} /> {updatingEmail ? "Đang xác thực..." : "Xác nhận đổi Email"}
+                  <Save size={14} /> {updatingEmail ? "Đang xác thực..." : "Xác nhận đổi Email"}
                 </button>
               </div>
             )}
@@ -593,7 +625,7 @@ export function ProfilePage() {
         {activeTab === "password" && (
           <div className="space-y-4 animate-fadeIn">
             {/* Toggle Mode Banner */}
-            <div className="flex items-center justify-between bg-white/5 p-2.5 rounded-lg border border-white/10 text-xs">
+            <div className="flex items-center justify-between bg-white/5 p-3 rounded-2xl border border-white/10 text-xs">
               <span className="text-white/70 font-medium">
                 {forgotMode ? "Khôi phục mật khẩu qua Email" : "Đổi mật khẩu đăng nhập"}
               </span>
@@ -604,7 +636,7 @@ export function ProfilePage() {
                   setErrorMsg("");
                   setSuccessMsg("");
                 }}
-                className="text-[#e50914] hover:underline font-bold flex items-center gap-1 text-[11px] focus:outline-none"
+                className="text-white/80 hover:text-white underline font-semibold flex items-center gap-1.5 text-xs focus:outline-none transition cursor-pointer"
               >
                 <HelpCircle size={13} />
                 {forgotMode ? "Đăng nhập bình thường" : "Quên mật khẩu?"}
@@ -619,13 +651,13 @@ export function ProfilePage() {
                     Mật khẩu hiện tại
                   </label>
                   <div className="relative">
-                    <Lock size={14} className="absolute left-3 top-3 text-white/40" />
+                    <Lock size={14} className="absolute left-3.5 top-3 text-white/40" />
                     <input 
                       type="password"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 transition"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition shadow-inner"
                     />
                   </div>
                 </div>
@@ -635,13 +667,13 @@ export function ProfilePage() {
                     Mật khẩu mới
                   </label>
                   <div className="relative">
-                    <KeyRound size={14} className="absolute left-3 top-3 text-white/40" />
+                    <KeyRound size={14} className="absolute left-3.5 top-3 text-white/40" />
                     <input 
                       type="password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="Tối thiểu 8 ký tự (chữ hoa, chữ thường, số, ký tự đặc biệt)"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 transition"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition shadow-inner"
                     />
                   </div>
                 </div>
@@ -651,13 +683,13 @@ export function ProfilePage() {
                     Xác nhận mật khẩu mới
                   </label>
                   <div className="relative">
-                    <ShieldCheck size={14} className="absolute left-3 top-3 text-white/40" />
+                    <ShieldCheck size={14} className="absolute left-3.5 top-3 text-white/40" />
                     <input 
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Nhập lại mật khẩu mới"
-                      className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 transition"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition shadow-inner"
                     />
                   </div>
                 </div>
@@ -666,16 +698,16 @@ export function ProfilePage() {
                   <button
                     type="submit"
                     disabled={updatingPassword}
-                    className="flex items-center gap-1.5 bg-[#e50914] hover:bg-[#b80710] disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition shadow-md cursor-pointer focus:outline-none"
+                    className="flex items-center gap-2 bg-white text-black font-black text-xs px-6 py-2.5 rounded-full transition-all duration-200 hover:bg-white/90 hover:shadow-[0_0_20px_rgba(255,255,255,0.35)] disabled:opacity-50 active:scale-95 cursor-pointer focus:outline-none"
                   >
-                    <Save size={13} /> {updatingPassword ? "Đang lưu..." : "Cập nhật mật khẩu"}
+                    <Save size={14} /> {updatingPassword ? "Đang lưu..." : "Cập nhật mật khẩu"}
                   </button>
                 </div>
               </form>
             ) : (
               /* FORGOT PASSWORD VIA OTP FORM */
               <form onSubmit={handleVerifyResetCode} className="space-y-3.5 animate-fadeIn">
-                <div className="p-3 rounded-lg bg-white/5 border border-white/10 flex items-center justify-between">
+                <div className="p-3 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
                   <div className="text-xs">
                     <p className="text-white/40">Gửi mã khôi phục về Email:</p>
                     <p className="text-white font-bold truncate max-w-[240px]">{user?.email}</p>
@@ -684,7 +716,7 @@ export function ProfilePage() {
                     type="button"
                     onClick={handleSendResetCode}
                     disabled={sendingResetCode}
-                    className="px-3 py-2 rounded-lg bg-white/15 hover:bg-white/25 disabled:opacity-50 text-white text-xs font-bold transition border border-white/15 flex items-center gap-1.5 cursor-pointer shrink-0"
+                    className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs font-bold transition border border-white/15 flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
                   >
                     <RefreshCw size={12} className={sendingResetCode ? "animate-spin" : ""} />
                     {sendingResetCode ? "Đang gửi..." : resetCodeSent ? "Gửi lại mã" : "Gửi mã khôi phục"}
@@ -698,14 +730,14 @@ export function ProfilePage() {
                         Mã khôi phục (6 chữ số)
                       </label>
                       <div className="relative">
-                        <KeyRound size={14} className="absolute left-3 top-3 text-white/40" />
+                        <KeyRound size={14} className="absolute left-3.5 top-3 text-white/40" />
                         <input 
                           type="text"
                           maxLength={6}
                           value={resetCode}
                           onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ""))}
                           placeholder="123456"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono tracking-widest text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 transition"
+                          className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs font-mono tracking-widest text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition shadow-inner"
                         />
                       </div>
                     </div>
@@ -715,13 +747,13 @@ export function ProfilePage() {
                         Mật khẩu mới
                       </label>
                       <div className="relative">
-                        <Lock size={14} className="absolute left-3 top-3 text-white/40" />
+                        <Lock size={14} className="absolute left-3.5 top-3 text-white/40" />
                         <input 
                           type="password"
                           value={resetPassword}
                           onChange={(e) => setResetPassword(e.target.value)}
                           placeholder="Mật khẩu mới từ 8 ký tự"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 transition"
+                          className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition shadow-inner"
                         />
                       </div>
                     </div>
@@ -731,13 +763,13 @@ export function ProfilePage() {
                         Xác nhận mật khẩu mới
                       </label>
                       <div className="relative">
-                        <ShieldCheck size={14} className="absolute left-3 top-3 text-white/40" />
+                        <ShieldCheck size={14} className="absolute left-3.5 top-3 text-white/40" />
                         <input 
                           type="password"
                           value={confirmResetPassword}
                           onChange={(e) => setConfirmResetPassword(e.target.value)}
                           placeholder="Nhập lại mật khẩu mới"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 transition"
+                          className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition shadow-inner"
                         />
                       </div>
                     </div>
@@ -746,9 +778,9 @@ export function ProfilePage() {
                       <button
                         type="submit"
                         disabled={verifyingResetCode}
-                        className="flex items-center gap-1.5 bg-[#e50914] hover:bg-[#b80710] disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-lg transition shadow-md cursor-pointer focus:outline-none"
+                        className="flex items-center gap-2 bg-white text-black font-black text-xs px-6 py-2.5 rounded-full transition-all duration-200 hover:bg-white/90 hover:shadow-[0_0_20px_rgba(255,255,255,0.35)] disabled:opacity-50 active:scale-95 cursor-pointer focus:outline-none"
                       >
-                        <Save size={13} /> {verifyingResetCode ? "Đang xác thực..." : "Xác nhận đặt lại mật khẩu"}
+                        <Save size={14} /> {verifyingResetCode ? "Đang xác thực..." : "Xác nhận đặt lại mật khẩu"}
                       </button>
                     </div>
                   </>
@@ -783,7 +815,7 @@ export function ProfilePage() {
             <button 
               type="button"
               onClick={handleSignOut}
-              className="flex items-center gap-1.5 text-white/40 hover:text-[#e50914] transition text-xs font-semibold cursor-pointer focus:outline-none"
+              className="flex items-center gap-1.5 text-white/40 hover:text-white transition text-xs font-semibold cursor-pointer focus:outline-none"
             >
               <LogOut size={13} /> Đăng xuất
             </button>
