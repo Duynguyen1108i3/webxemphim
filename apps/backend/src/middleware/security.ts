@@ -69,14 +69,23 @@ export function applySecurity(app: Express) {
     message: { error: "Quá nhiều yêu cầu từ IP này. Vui lòng thử lại sau 1 phút.", code: "TOO_MANY_REQUESTS" }
   }) as RequestHandler);
 
-  // Auth Limiter: 20 requests per 15 minutes on sensitive authentication routes
-  app.use("/api/auth", rateLimit({ 
+  // Auth Limiter: 30 requests per 15 minutes on sensitive authentication routes (login, register, otp, password reset)
+  const sensitiveAuthLimiter = rateLimit({ 
     windowMs: 15 * 60_000, 
-    limit: 20, 
+    limit: 30, 
     standardHeaders: true, 
     legacyHeaders: false,
     message: { error: "Thao tác quá nhiều lần. Vui lòng thử lại sau 15 phút.", code: "AUTH_RATE_LIMITED" }
-  }) as RequestHandler);
+  }) as RequestHandler;
+
+  app.use([
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/send-otp",
+    "/api/auth/verify-reset-code",
+    "/api/auth/send-change-email-otp",
+    "/api/auth/forgot-password"
+  ], sensitiveAuthLimiter);
 
   // User Profile Mutations Limiter: 30 requests per 15 minutes
   app.use("/api/users", rateLimit({

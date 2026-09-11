@@ -11,6 +11,17 @@ import { usePlaybackStore } from "../store/playbackStore";
 import { useAuthStore } from "../store/auth";
 import { decodeHtml } from "../lib/htmlUtils";
 
+const HOME_CATEGORIES = [
+  { id: "all", label: "Tất cả" },
+  { id: "action", label: "Hành động" },
+  { id: "adventure", label: "Phiêu lưu" },
+  { id: "anime", label: "Hoạt hình / Anime" },
+  { id: "comedy", label: "Hài hước" },
+  { id: "series", label: "Phim bộ" },
+  { id: "movies", label: "Phim lẻ" },
+  { id: "trending", label: "Thịnh hành" },
+];
+
 export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "new-popular" }) {
   const navigate = useNavigate();
   const { openDetailModal, openPlayback, openAuthModal } = usePlaybackStore();
@@ -93,17 +104,33 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
   const [heroIndex, setHeroIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-  // Auto-scroll every 6.5s unless hovered
+  const SLIDE_DURATION = 5000;
+
+  // Auto-scroll every 5s unless hovered on controls or tab is hidden
   useEffect(() => {
     if (heroMovies.length <= 1 || isPaused) return;
 
     const timer = setInterval(() => {
       setHeroIndex((prev) => (prev + 1) % heroMovies.length);
-    }, 6500);
+    }, SLIDE_DURATION);
 
     return () => clearInterval(timer);
-  }, [heroMovies.length, isPaused]);
+  }, [heroMovies.length, isPaused, heroIndex]);
+
+  // Pause auto-scroll when browser tab is inactive
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setIsPaused(true);
+      } else {
+        setIsPaused(false);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
 
   // Touch swipe gesture support for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -128,11 +155,47 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
   const inMyList = hero ? myList.some((item) => item.id === hero.id) : false;
   const [isHeroMuted, setIsHeroMuted] = useState(true);
 
-  const visibleRows = rows.slice(0, visibleCount);
-  const hasMoreRows = visibleCount < rows.length;
+  const handleToggleMyList = () => {
+    if (!hero) return;
+    if (!user) {
+      openAuthModal();
+      return;
+    }
+    toggleMyList(hero as NormalizedMovie);
+  };
+
+  const genresString = useMemo(() => {
+    if (!hero) return "";
+    if (hero.genres && hero.genres.length > 0) {
+      return hero.genres.map((g: any) => g.name).slice(0, 3).join(", ");
+    }
+    if ((hero as any).category && Array.isArray((hero as any).category)) {
+      return (hero as any).category.map((c: any) => c.name).slice(0, 3).join(", ");
+    }
+    return "";
+  }, [hero]);
+
+  const filteredRows = useMemo(() => {
+    if (selectedCategory === "all") return rows;
+    return rows.filter((row) => {
+      const t = row.title.toLowerCase();
+      if (selectedCategory === "action") return t.includes("hành động") || t.includes("action") || t.includes("chiến");
+      if (selectedCategory === "adventure") return t.includes("phiêu lưu") || t.includes("adventure") || t.includes("viễn tưởng");
+      if (selectedCategory === "anime") return t.includes("anime") || t.includes("hoạt hình") || t.includes("animation");
+      if (selectedCategory === "comedy") return t.includes("hài") || t.includes("comedy");
+      if (selectedCategory === "series") return t.includes("bộ") || t.includes("tv") || t.includes("series");
+      if (selectedCategory === "movies") return t.includes("lẻ") || t.includes("movie") || t.includes("film");
+      if (selectedCategory === "trending") return t.includes("thịnh hành") || t.includes("trending") || t.includes("hot") || t.includes("mới");
+      return true;
+    });
+  }, [rows, selectedCategory]);
+
+  const displayRows = filteredRows.length > 0 ? filteredRows : rows;
+  const visibleRows = displayRows.slice(0, visibleCount);
+  const hasMoreRows = visibleCount < displayRows.length;
 
   const handleLoadMore = () => {
-    setVisibleCount((prev) => Math.min(prev + 4, rows.length));
+    setVisibleCount((prev) => Math.min(prev + 4, displayRows.length));
   };
 
   // Map watch history to cards with progress bars
@@ -140,17 +203,11 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
     ...item.movieData,
     progress: item.progress,
   }));
-  const heroCopy = {
-    hidden: { opacity: 0, y: 28 },
-    visible: { opacity: 1, y: 0 }
-  };
 
   return (
     <main className="bg-transparent pb-16">
       <div className="px-3 sm:px-8 md:px-14 lg:px-16 pt-[72px] sm:pt-[76px] pb-3">
         <section 
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           className="group/hero relative min-h-[68vh] sm:min-h-[84vh] h-[72vh] sm:h-[85vh] overflow-hidden rounded-2xl bg-[#141414] shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/10 select-none touch-pan-y"
@@ -193,145 +250,221 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
           <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-black/30 z-[2] pointer-events-none" />
           
           <AnimatePresence mode="wait">
-            <motion.div
-              key={`info-${hero?.id}`}
-              className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-16 pb-12 pl-4 pr-4 sm:pt-20 sm:pb-16 sm:pl-12 md:pl-16"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {/* RytoxGroup Original Pill Badge */}
-              <div className="mb-2 flex items-center gap-2">
-                <span className="brand-logo text-base sm:text-lg font-extrabold tracking-tight text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.35)]">RYTOXGROUP</span>
-                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/60 bg-white/10 px-2 py-0.5 rounded border border-white/10">ORIGINAL</span>
-              </div>
+            {hero && (
+              <motion.div
+                key={`info-${hero.id}`}
+                className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-16 pb-12 pl-4 pr-4 sm:pt-20 sm:pb-16 sm:pl-12 md:pl-16"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+              >
+                {/* Brand / Tagline matching New & Popular page */}
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="brand-logo text-base sm:text-lg font-extrabold tracking-tight text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.35)]">
+                    RYTOXGROUP
+                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/60 bg-white/10 px-2 py-0.5 rounded border border-white/10">
+                    IMDb RADAR
+                  </span>
+                </div>
 
-              {isLoading ? (
-                <Skeleton className="h-14 w-80 rounded-lg" />
-              ) : (
-                <h1 className="hero-title text-2xl font-black leading-tight sm:text-4xl md:text-5xl lg:text-6xl text-white text-shadow line-clamp-2 max-w-3xl">
-                  {hero?.title ?? "RytoxGroup"}
-                </h1>
-              )}
-              
-              <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs sm:text-sm font-semibold text-white/90">
-                <span className="text-[#46d369] font-bold">{hero && "98% Match"}</span>
-                <span className="text-white/30">•</span>
-                <span>{hero?.releaseYear || "2025"}</span>
-                <span className="text-white/30">•</span>
-                <span className="rounded border border-white/35 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold tracking-wider">{hero?.maturityRating?.replace("_", "-") || "16+"}</span>
-                <span className="text-white/30">•</span>
-                <span>{hero?.runtimeMinutes ? `${hero.runtimeMinutes}m` : "HD"}</span>
-                <span className="text-white/30">•</span>
-                <span className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wider">HD</span>
-              </div>
-              
-              <p className="synopsis mt-2.5 sm:mt-3.5 line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm leading-relaxed text-white/80 md:text-base max-w-2xl">
-                {decodeHtml(hero?.synopsis ?? "")}
-              </p>
-              
-              <div className="mt-4 sm:mt-6 flex flex-wrap items-center gap-2.5 sm:gap-3">
-                {hero && (hero as any).animeUrl && (
-                  <a
-                    href="https://animevietsub.id/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center rounded-full glass-button px-4 sm:px-5 text-xs font-bold text-white transition focus:outline-none"
-                  >
-                    Nguồn AnimeVietsub
-                  </a>
+                {isLoading ? (
+                  <Skeleton className="h-14 w-80 rounded-lg" />
+                ) : (
+                  <h1 className="hero-title text-2xl font-black leading-tight sm:text-4xl md:text-5xl lg:text-6xl text-white text-shadow line-clamp-2 max-w-3xl">
+                    {hero.title || (hero as any).name || "RytoxGroup"}
+                  </h1>
                 )}
-                {hero && (
-                  <button
-                    onClick={() => openPlayback(hero as NormalizedMovie, "hero")}
-                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 text-xs sm:text-sm font-bold text-black transition hover:bg-white/90 active:bg-white/80 focus:outline-none shadow-xl active:scale-95 duration-150 cursor-pointer"
-                  >
-                    <Play size={18} fill="currentColor" /> Play
-                  </button>
-                )}
-                {hero && (
-                  <button
-                    onClick={() => openDetailModal(hero as NormalizedMovie, "hero")}
-                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full glass-button px-5 sm:px-7 text-xs sm:text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
-                  >
-                    <Info size={18} /> More Info
-                  </button>
-                )}
-                {hero && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!user) {
-                        openAuthModal();
-                        return;
-                      }
-                      toggleMyList(hero as NormalizedMovie);
-                    }}
-                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full glass-button px-5 sm:px-7 text-xs sm:text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
-                  >
-                    {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
-                    {inMyList ? "In My List" : "My List"}
-                  </button>
-                )}
-              </div>
-            </motion.div>
+                
+                {/* Metadata Row matching New & Popular page */}
+                <div className="mt-3 sm:mt-4 flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs sm:text-sm font-semibold text-white/90">
+                  <span className="text-amber-400 font-bold">
+                    ★ {hero.averageRating ? hero.averageRating.toFixed(1) : (hero as any).match ? `${(hero as any).match}%` : "8.5"} IMDb
+                  </span>
+                  <span className="text-white/30">•</span>
+                  <span>{hero.releaseYear || (hero as any).year || "2026"}</span>
+                  <span className="text-white/30">•</span>
+                  <span className="rounded border border-white/35 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold tracking-wider">
+                    4K Ultra HD
+                  </span>
+                  <span className="text-white/30">•</span>
+                  <span>{hero.runtimeMinutes ? `${hero.runtimeMinutes}m` : "HD"}</span>
+                  <span className="text-white/30">•</span>
+                  <span className="rounded bg-white/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold tracking-wider">
+                    {(hero as any).episode_current || (hero.mediaType === "tv" ? "TV Series" : "Movie")}
+                  </span>
+                  {genresString && (
+                    <>
+                      <span className="text-white/30">•</span>
+                      <span className="text-white/70">{genresString}</span>
+                    </>
+                  )}
+                </div>
+                
+                {/* Synopsis */}
+                <p className="synopsis mt-2.5 sm:mt-3.5 line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm leading-relaxed text-white/80 md:text-base max-w-2xl">
+                  {decodeHtml(hero.synopsis || (hero as any).description || "Xem phim online chất lượng cao miễn phí tại RytoxGroup.")}
+                </p>
+                
+                {/* Synchronized Action Buttons matching New & Popular page */}
+                <div 
+                  onMouseEnter={() => setIsPaused(true)}
+                  onMouseLeave={() => setIsPaused(false)}
+                  className="mt-4 sm:mt-6 flex flex-wrap items-center gap-2.5 sm:gap-3"
+                >
+                  {hero && (hero as any).animeUrl && (
+                    <a
+                      href="https://animevietsub.id/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="nf-button inline-flex h-11 sm:h-12 items-center justify-center rounded-full glass-button px-4 sm:px-5 text-xs font-bold text-white transition focus:outline-none"
+                    >
+                      Nguồn AnimeVietsub
+                    </a>
+                  )}
+                  {hero && (
+                    <button
+                      type="button"
+                      onClick={() => openPlayback(hero as NormalizedMovie, "hero")}
+                      className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 text-xs sm:text-sm font-bold text-black transition hover:bg-white/90 active:bg-white/80 focus:outline-none shadow-xl active:scale-95 duration-150 cursor-pointer"
+                    >
+                      <Play size={16} fill="currentColor" /> Xem ngay
+                    </button>
+                  )}
+                  {hero && (
+                    <button
+                      type="button"
+                      onClick={() => openDetailModal(hero as NormalizedMovie, "hero")}
+                      className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full glass-button px-5 sm:px-7 text-xs sm:text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
+                    >
+                      <Info size={16} /> Chi tiết
+                    </button>
+                  )}
+                  {hero && (
+                    <button
+                      type="button"
+                      onClick={handleToggleMyList}
+                      className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full glass-button px-5 sm:px-7 text-xs sm:text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
+                    >
+                      {inMyList ? <Check size={16} className="text-[#46d369]" /> : <Plus size={16} />}
+                      {inMyList ? "Đã lưu" : "Danh sách của tôi"}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
 
-          {/* Previous / Next Arrow Controls on Hover */}
+          {/* Previous / Next Navigation Controls matching New & Popular page */}
           {heroMovies.length > 1 && (
-            <>
+            <div className="absolute inset-y-0 left-0 right-0 z-20 flex items-center justify-between px-3 sm:px-4 pointer-events-none">
               <button
-                onClick={() => setHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length)}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 h-11 w-11 rounded-full glass-button opacity-0 group-hover/hero:opacity-100 transition-all duration-300 active:scale-95 cursor-pointer text-white shadow-lg hidden md:inline-flex items-center justify-center"
+                type="button"
+                onClick={() =>
+                  setHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length)
+                }
+                className="pointer-events-auto p-2 sm:p-2.5 rounded-full bg-black/40 hover:bg-black/70 border border-white/20 text-white backdrop-blur-md transition hover:scale-110 active:scale-95 cursor-pointer shadow-xl flex items-center justify-center"
                 aria-label="Previous movie"
               >
                 <ChevronLeft size={22} />
               </button>
               <button
+                type="button"
                 onClick={() => setHeroIndex((prev) => (prev + 1) % heroMovies.length)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 h-11 w-11 rounded-full glass-button opacity-0 group-hover/hero:opacity-100 transition-all duration-300 active:scale-95 cursor-pointer text-white shadow-lg hidden md:inline-flex items-center justify-center"
+                className="pointer-events-auto p-2 sm:p-2.5 rounded-full bg-black/40 hover:bg-black/70 border border-white/20 text-white backdrop-blur-md transition hover:scale-110 active:scale-95 cursor-pointer shadow-xl flex items-center justify-center"
                 aria-label="Next movie"
               >
                 <ChevronRight size={22} />
               </button>
-            </>
+            </div>
           )}
 
-          {/* Carousel Indicator Bars matching User's screenshot: — ━ — */}
+          {/* Horizontal Rounded Indicator Pill Bars (— ━ —) matching New & Popular page */}
           {heroMovies.length > 1 && (
-            <div className="absolute bottom-3.5 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 sm:gap-2.5 p-1 sm:p-1.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl select-none">
-              {heroMovies.map((m, idx) => (
-                <button
-                  key={m.id || idx}
-                  onClick={() => setHeroIndex(idx)}
-                  aria-label={`Slide ${idx + 1}`}
-                  className={`h-1 sm:h-1.5 rounded-full transition-all duration-400 cursor-pointer ${
-                    currentHeroIndex === idx
-                      ? "w-7 sm:w-9 bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)]"
-                      : "w-3.5 sm:w-5 bg-white/30 hover:bg-white/60 hover:w-7"
-                  }`}
-                />
-              ))}
+            <div 
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+              className="absolute bottom-3.5 right-4 sm:bottom-5 sm:right-12 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shadow-lg select-none"
+            >
+              {heroMovies.map((m, idx) => {
+                const isActive = currentHeroIndex === idx;
+                return (
+                  <button
+                    key={m.id || idx}
+                    type="button"
+                    onClick={() => setHeroIndex(idx)}
+                    className={`h-1 sm:h-1.5 rounded-full transition-all duration-400 cursor-pointer relative overflow-hidden ${
+                      isActive
+                        ? "w-7 sm:w-9 bg-white/30"
+                        : "w-3.5 sm:w-5 bg-white/30 hover:bg-white/60 hover:w-7"
+                    }`}
+                    aria-label={`Go to slide ${idx + 1}`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        key={`hero-progress-${currentHeroIndex}`}
+                        className="absolute inset-0 bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)] rounded-full"
+                        initial={{ width: "0%" }}
+                        animate={{ width: isPaused ? "0%" : "100%" }}
+                        transition={{ duration: SLIDE_DURATION / 1000, ease: "linear" }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
           
           {hero && (
-            <div className="absolute bottom-4 sm:bottom-10 right-0 z-20 hidden sm:flex items-center gap-3.5 select-none pr-4 sm:pr-8 md:pr-12">
+            <div className="absolute bottom-3.5 sm:bottom-5 left-4 sm:left-12 z-20 hidden sm:flex items-center gap-3.5 select-none">
               <button
                 onClick={() => setIsHeroMuted(!isHeroMuted)}
-                className="nf-icon glass-button grid h-9 w-9 place-items-center rounded-full text-white cursor-pointer"
+                className="nf-icon glass-button grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full text-white cursor-pointer bg-black/40 hover:bg-black/70 border border-white/20 backdrop-blur-md"
                 aria-label={isHeroMuted ? "Unmute preview" : "Mute preview"}
               >
-                {isHeroMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                {isHeroMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
               </button>
-              <div className="border-l-4 border-white/70 bg-black/45 px-5 py-1 text-xs font-semibold text-white">
-                {hero.maturityRating?.replace("_", "-") || "16+"}
-              </div>
             </div>
           )}
         </section>
       </div>
+
+      {/* Category / Genre Capsule Filter Bar matching New & Popular page */}
+      <div className="px-3 sm:px-8 md:px-14 lg:px-16 pt-3 sm:pt-4 pb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 border-b border-white/10 pb-3 sm:pb-4">
+          <div>
+            <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight">
+              Khám phá Kho Phim
+            </h2>
+            <p className="text-[11px] sm:text-xs text-white/50 mt-0.5">
+              Phim chiếu rạp, bom tấn truyền hình & Anime chọn lọc đặc sắc
+            </p>
+          </div>
+
+          {/* Capsule Filter Scroll */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none max-w-full sm:max-w-2xl overscroll-x-contain touch-pan-x">
+            {HOME_CATEGORIES.map((cat) => {
+              const isSelected = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 select-none cursor-pointer ${
+                    isSelected
+                      ? "bg-white text-black font-black shadow-[0_2px_12px_rgba(255,255,255,0.3)] border border-white"
+                      : "bg-white/5 text-white/70 border border-white/10 hover:bg-white/15 hover:text-white"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
 
       <Suspense fallback={<RowSkeleton />}>
         <div className="space-y-8 px-4 sm:px-8 md:px-14 lg:px-16">
