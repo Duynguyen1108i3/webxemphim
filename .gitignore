@@ -10,3 +10,5 @@ playwright-report
 test-results
 *.log
 otp_code.txt
+.dev_auth_store.json
+apps/backend/.dev_auth_store.json

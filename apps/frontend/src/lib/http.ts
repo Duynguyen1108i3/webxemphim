@@ -44,7 +44,7 @@ const messageForStatus = (status: number, apiCode?: string, backendMessage?: str
     }
     return new ApiError("REQUEST_FAILED", "Vui lòng nhập đầy đủ thông tin.", status);
   }
-  if (status >= 500) return new ApiError("SERVER_ERROR", "Máy chủ gặp lỗi. Vui lòng thử lại.", status, true);
+  if (status >= 500) return new ApiError("SERVER_ERROR", backendMessage || "Máy chủ gặp lỗi. Vui lòng thử lại.", status, true);
   return new ApiError("REQUEST_FAILED", backendMessage || "Không thể xử lý yêu cầu. Vui lòng kiểm tra thông tin và thử lại.", status);
 };
 

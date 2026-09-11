@@ -190,7 +190,7 @@ export function NewAndPopularPage() {
                   <button
                     type="button"
                     onClick={() => openDetailModal(hero, "hero")}
-                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 text-xs sm:text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-xl active:scale-95 duration-300 cursor-pointer"
+                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 text-xs sm:text-sm font-bold text-black transition hover:bg-white/90 active:bg-white/80 focus:outline-none shadow-xl active:scale-95 duration-150 cursor-pointer"
                   >
                     <Info size={16} className="sm:w-[18px] sm:h-[18px]" /> Chi tiết IMDb
                   </button>

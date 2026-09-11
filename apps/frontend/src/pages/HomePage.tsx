@@ -245,7 +245,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                 {hero && (
                   <button
                     onClick={() => openPlayback(hero as NormalizedMovie, "hero")}
-                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 text-xs sm:text-sm font-bold text-black transition hover:bg-white/90 focus:outline-none shadow-xl active:scale-95 duration-300 cursor-pointer"
+                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 text-xs sm:text-sm font-bold text-black transition hover:bg-white/90 active:bg-white/80 focus:outline-none shadow-xl active:scale-95 duration-150 cursor-pointer"
                   >
                     <Play size={18} fill="currentColor" /> Play
                   </button>
@@ -259,8 +259,8 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                   </button>
                 )}
                 {hero && (
-                  <Button
-                    variant="ghost"
+                  <button
+                    type="button"
                     onClick={() => {
                       if (!user) {
                         openAuthModal();
@@ -268,11 +268,11 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                       }
                       toggleMyList(hero as NormalizedMovie);
                     }}
-                    className="nf-button h-11 sm:h-12 rounded-full px-5 sm:px-7 glass-button text-white flex items-center justify-center gap-2 text-xs sm:text-sm font-bold active:scale-95 duration-300 cursor-pointer"
+                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full glass-button px-5 sm:px-7 text-xs sm:text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
                   >
                     {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
                     {inMyList ? "In My List" : "My List"}
-                  </Button>
+                  </button>
                 )}
               </div>
             </motion.div>
@@ -283,14 +283,14 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
             <>
               <button
                 onClick={() => setHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length)}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 h-11 w-11 rounded-full glass-capsule glass-capsule--icon opacity-0 group-hover/hero:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer text-white shadow-lg hidden md:inline-flex items-center justify-center"
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-20 h-11 w-11 rounded-full glass-button opacity-0 group-hover/hero:opacity-100 transition-all duration-300 active:scale-95 cursor-pointer text-white shadow-lg hidden md:inline-flex items-center justify-center"
                 aria-label="Previous movie"
               >
                 <ChevronLeft size={22} />
               </button>
               <button
                 onClick={() => setHeroIndex((prev) => (prev + 1) % heroMovies.length)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 h-11 w-11 rounded-full glass-capsule glass-capsule--icon opacity-0 group-hover/hero:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer text-white shadow-lg hidden md:inline-flex items-center justify-center"
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-20 h-11 w-11 rounded-full glass-button opacity-0 group-hover/hero:opacity-100 transition-all duration-300 active:scale-95 cursor-pointer text-white shadow-lg hidden md:inline-flex items-center justify-center"
                 aria-label="Next movie"
               >
                 <ChevronRight size={22} />
@@ -320,7 +320,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
             <div className="absolute bottom-4 sm:bottom-10 right-0 z-20 hidden sm:flex items-center gap-3.5 select-none pr-4 sm:pr-8 md:pr-12">
               <button
                 onClick={() => setIsHeroMuted(!isHeroMuted)}
-                className="grid h-9 w-9 place-items-center rounded-full border border-white/60 bg-black/35 text-white hover:bg-white/10 transition hover:border-white focus:outline-none cursor-pointer"
+                className="nf-icon glass-button grid h-9 w-9 place-items-center rounded-full text-white cursor-pointer"
                 aria-label={isHeroMuted ? "Unmute preview" : "Mute preview"}
               >
                 {isHeroMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}

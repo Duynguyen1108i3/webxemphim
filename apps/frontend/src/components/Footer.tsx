@@ -2,7 +2,7 @@ import { Facebook, Heart, Instagram, Twitter, Youtube } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="mx-auto max-w-5xl px-4 py-10 text-zinc-400 sm:px-6 md:px-8 flex flex-col items-center justify-center gap-5 text-center">
+    <footer className="mx-auto max-w-5xl px-4 pt-10 pb-28 md:pb-10 text-zinc-400 sm:px-6 md:px-8 flex flex-col items-center justify-center gap-5 text-center">
       {/* Social Logos */}
       <div className="flex items-center justify-center gap-6">
         <a href="#" className="hover:text-white transition duration-200" aria-label="Facebook">

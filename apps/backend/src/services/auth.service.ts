@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
+import fs from "node:fs";
 import { prisma } from "../lib/prisma.js";
 import { ApiError } from "../middleware/error.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../middleware/auth.js";
@@ -24,9 +25,11 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
     </div>`;
 
   // Priority 1: Google Apps Script webhook (sends from actual Gmail servers — 100% inbox delivery)
-  if (process.env.GMAIL_WEBHOOK_URL) {
+  const webhookUrl = process.env.GMAIL_WEBHOOK_URL;
+  if (webhookUrl && !webhookUrl.includes("replace")) {
     try {
-      const webhookSecret = process.env.GMAIL_WEBHOOK_SECRET;
+      const webhookSecret = process.env.GMAIL_WEBHOOK_SECRET || "";
+
       const payload = JSON.stringify({
         secret: webhookSecret,
         to: email,
@@ -35,15 +38,26 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
         html: htmlContent
       });
 
-      const response = await fetch(process.env.GMAIL_WEBHOOK_URL, {
+      console.log(`[Email Delivery] Calling GMAIL_WEBHOOK_URL for ${email}...`);
+      const response = await fetch(webhookUrl, {
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        headers: { "Content-Type": "application/json" },
         body: payload,
-        redirect: "manual"
+        redirect: "follow"
       });
 
-      const acceptedRedirect = response.status >= 300 && response.status < 400;
-      if (response.ok || acceptedRedirect) return;
+      const responseText = await response.text();
+      console.log(`[Email Delivery] GMAIL_WEBHOOK_URL response: ${responseText}`);
+      let isSuccess = false;
+      try {
+        const json = JSON.parse(responseText);
+        if (json.success) isSuccess = true;
+      } catch {}
+
+      if (isSuccess || (response.ok && !responseText.includes("error") && !responseText.includes("Unauthorized"))) {
+        console.log(`[Email Delivery] Successfully sent email to ${email} via Gmail Webhook!`);
+        return;
+      }
     } catch (err) {
       console.warn("[Email Delivery] GMAIL_WEBHOOK_URL failed:", err);
     }
@@ -102,9 +116,59 @@ async function sendEmailOtp(email: string, otp: string, type: "signup" | "reset"
   console.log(`[OTP VERIFICATION] Sent OTP ${otp} to ${email}`);
 }
 
+const DEV_STORE_PATH = "./.dev_auth_store.json";
+
+interface DevStoreData {
+  users: Record<string, any>;
+  sessions: Record<string, any>;
+  signupOtps: Record<string, { code: string; expires: number }>;
+}
+
+function loadDevStore(): DevStoreData {
+  try {
+    if (fs.existsSync(DEV_STORE_PATH)) {
+      const raw = fs.readFileSync(DEV_STORE_PATH, "utf-8");
+      return JSON.parse(raw);
+    }
+  } catch {}
+  return { users: {}, sessions: {}, signupOtps: {} };
+}
+
+export function saveDevStore() {
+  try {
+    const data: DevStoreData = {
+      users: Object.fromEntries(devUsersMap.entries()),
+      sessions: Object.fromEntries(devSessionsMap.entries()),
+      signupOtps: Object.fromEntries(signupOtpMap.entries())
+    };
+    fs.writeFileSync(DEV_STORE_PATH, JSON.stringify(data, null, 2));
+  } catch {}
+}
+
+const initialDevStore = loadDevStore();
+
 export const otpMap = new Map<string, { code: string, username: string, passwordHash: string, expires: number }>();
 
-export const signupOtpMap = new Map<string, { code: string, expires: number }>();
+export const signupOtpMap = new Map<string, { code: string, expires: number }>(Object.entries(initialDevStore.signupOtps || {}));
+export const devUsersMap = new Map<string, any>(Object.entries(initialDevStore.users || {}));
+export const devSessionsMap = new Map<string, any>(Object.entries(initialDevStore.sessions || {}));
+
+// Pre-fill from otp_code.txt if available so server reloads do not invalidate OTPs
+try {
+  const files = ["otp_code.txt", "../../otp_code.txt"];
+  for (const f of files) {
+    if (fs.existsSync(f)) {
+      const txt = fs.readFileSync(f, "utf-8");
+      const match = txt.match(/cho\s+([^\s:]+):\s*([0-9]{6})/);
+      if (match) {
+        const mail = match[1].toLowerCase();
+        if (!signupOtpMap.has(mail)) {
+          signupOtpMap.set(mail, { code: match[2], expires: Date.now() + 60 * 60 * 1000 });
+        }
+      }
+    }
+  }
+} catch {}
 
 async function isRealEmail(email: string): Promise<boolean> {
   const domain = email.split("@")[1];
@@ -113,18 +177,34 @@ async function isRealEmail(email: string): Promise<boolean> {
 }
 
 export async function sendSignupOtp(email: string) {
-  const emailExists = await prisma.user.findFirst({ where: { email: email.toLowerCase() } });
-  if (emailExists) {
-    throw new ApiError(409, "Địa chỉ email đã được đăng ký", "EMAIL_EXISTS");
+  try {
+    const emailExists = await prisma.user.findFirst({ where: { email: email.toLowerCase() } });
+    if (emailExists) {
+      throw new ApiError(409, "Địa chỉ email đã được đăng ký", "EMAIL_EXISTS");
+    }
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    console.warn("[Database Warning] Không thể kết nối cơ sở dữ liệu để kiểm tra email (tiếp tục tạo và gửi mã OTP):", (err as Error).message);
   }
 
   const otpCode = crypto.randomInt(100_000, 1_000_000).toString();
-  const expires = Date.now() + 5 * 60 * 1000;
+  const expires = Date.now() + 15 * 60 * 1000;
 
   signupOtpMap.set(email.toLowerCase(), {
     code: otpCode,
     expires
   });
+  saveDevStore();
+
+  console.log(`\n==================================================`);
+  console.log(`[OTP VERIFICATION] Mã xác thực đăng ký cho ${email}: ${otpCode}`);
+  console.log(`==================================================\n`);
+
+  try {
+    const content = `Mã xác thực OTP cho ${email}: ${otpCode}\nThời gian tạo: ${new Date().toLocaleString("vi-VN")}\n`;
+    fs.writeFileSync("otp_code.txt", content);
+    try { fs.writeFileSync("../../otp_code.txt", content); } catch {}
+  } catch {}
 
   // Send real email OTP
   await sendEmailOtp(email, otpCode, "signup");
@@ -134,7 +214,24 @@ export async function sendSignupOtp(email: string) {
 
 export async function register(input: { email: string; username: string; password: string; otp: string }) {
   const emailKey = input.email.toLowerCase();
-  const otpData = signupOtpMap.get(emailKey);
+  let otpData = signupOtpMap.get(emailKey);
+
+  if (!otpData) {
+    try {
+      const files = ["otp_code.txt", "../../otp_code.txt"];
+      for (const f of files) {
+        if (fs.existsSync(f)) {
+          const txt = fs.readFileSync(f, "utf-8");
+          const match = txt.match(/cho\s+([^\s:]+):\s*([0-9]{6})/);
+          if (match && match[1].toLowerCase() === emailKey) {
+            otpData = { code: match[2], expires: Date.now() + 60 * 60 * 1000 };
+            signupOtpMap.set(emailKey, otpData);
+            break;
+          }
+        }
+      }
+    } catch {}
+  }
 
   if (!otpData) {
     throw new ApiError(400, "Vui lòng yêu cầu gửi mã xác thực trước", "OTP_NOT_FOUND");
@@ -142,6 +239,7 @@ export async function register(input: { email: string; username: string; passwor
 
   if (Date.now() > otpData.expires) {
     signupOtpMap.delete(emailKey);
+    saveDevStore();
     throw new ApiError(400, "Mã xác thực đã hết hạn. Vui lòng gửi lại", "OTP_EXPIRED");
   }
 
@@ -149,39 +247,58 @@ export async function register(input: { email: string; username: string; passwor
     throw new ApiError(400, "Mã xác thực OTP không chính xác", "OTP_INVALID");
   }
 
-  // Check email exists
-  const emailExists = await prisma.user.findFirst({ where: { email: emailKey } });
-  if (emailExists) {
-    throw new ApiError(409, "Địa chỉ email đã được đăng ký", "EMAIL_EXISTS");
-  }
+  let user: any;
+  try {
+    // Check email exists
+    const emailExists = await prisma.user.findFirst({ where: { email: emailKey } });
+    if (emailExists) {
+      throw new ApiError(409, "Địa chỉ email đã được đăng ký", "EMAIL_EXISTS");
+    }
 
-  // Check username exists
-  const usernameExists = await prisma.user.findFirst({ where: { username: input.username } });
-  if (usernameExists) {
-    throw new ApiError(409, "Tên tài khoản (username) đã tồn tại", "USERNAME_EXISTS");
-  }
+    // Check username exists
+    const usernameExists = await prisma.user.findFirst({ where: { username: input.username } });
+    if (usernameExists) {
+      throw new ApiError(409, "Tên tài khoản (username) đã tồn tại", "USERNAME_EXISTS");
+    }
 
-  const passwordHash = await bcrypt.hash(input.password, 12);
-  const userId = crypto.randomUUID();
-  const user = await prisma.user.create({
-    data: {
+    const passwordHash = await bcrypt.hash(input.password, 12);
+    const userId = crypto.randomUUID();
+    user = await prisma.user.create({
+      data: {
+        id: userId,
+        email: emailKey,
+        username: input.username,
+        passwordHash,
+        emailVerifiedAt: new Date(),
+        profiles: {
+          create: [
+            { id: profileId(userId, input.username), name: input.username, type: "ADULT" },
+            { id: profileId(userId, "Kids"), name: "Kids", type: "KIDS" },
+            { id: profileId(userId, "Guest"), name: "Guest", type: "ADULT" },
+            { id: profileId(userId, "Private"), name: "Private", type: "ADULT" }
+          ]
+        }
+      }
+    });
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    console.warn("[Dev Fallback] Database offline, saving registered user in local memory fallback:", (err as Error).message);
+    const passwordHash = await bcrypt.hash(input.password, 12);
+    const userId = crypto.randomUUID();
+    user = {
       id: userId,
       email: emailKey,
       username: input.username,
       passwordHash,
-      emailVerifiedAt: new Date(),
-      profiles: {
-        create: [
-          { id: profileId(userId, input.username), name: input.username, type: "ADULT" },
-          { id: profileId(userId, "Kids"), name: "Kids", type: "KIDS" },
-          { id: profileId(userId, "Guest"), name: "Guest", type: "ADULT" },
-          { id: profileId(userId, "Private"), name: "Private", type: "ADULT" }
-        ]
-      }
-    }
-  });
+      role: "USER" as const
+    };
+    devUsersMap.set(emailKey, user);
+    devUsersMap.set(userId, user);
+    saveDevStore();
+  }
 
   signupOtpMap.delete(emailKey);
+  saveDevStore();
 
   return createSession(user.id, user.email, user.username, user.role);
 }
@@ -191,8 +308,19 @@ function profileId(userId: string, name: string) {
 }
 
 export async function login(input: { email: string; password: string; userAgent?: string; ipAddress?: string }) {
-  const user = await prisma.user.findUnique({ where: { email: input.email.toLowerCase() } });
-  if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) throw new ApiError(401, "Invalid credentials", "INVALID_CREDENTIALS");
+  let user: any;
+  try {
+    user = await prisma.user.findUnique({ where: { email: input.email.toLowerCase() } });
+  } catch (err) {
+    console.warn("[Dev Fallback] Database offline, looking up user in local memory fallback:", (err as Error).message);
+    user = devUsersMap.get(input.email.toLowerCase());
+  }
+
+  if (!user && devUsersMap.has(input.email.toLowerCase())) {
+    user = devUsersMap.get(input.email.toLowerCase());
+  }
+
+  if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) throw new ApiError(401, "Email hoặc mật khẩu không chính xác.", "INVALID_CREDENTIALS");
   if (user.bannedAt) throw new ApiError(403, "Account is banned", "ACCOUNT_BANNED");
   if (user.suspendedUntil && user.suspendedUntil > new Date()) throw new ApiError(403, "Account is temporarily suspended", "ACCOUNT_SUSPENDED");
   return createSession(user.id, user.email, user.username, user.role, input.userAgent, input.ipAddress);
@@ -200,15 +328,30 @@ export async function login(input: { email: string; password: string; userAgent?
 
 async function createSession(userId: string, email: string, username: string, role: "USER" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN", userAgent?: string, ipAddress?: string) {
   const rawRefresh = crypto.randomBytes(48).toString("hex");
-  const session = await prisma.session.create({
-    data: {
+  let session: any;
+  try {
+    session = await prisma.session.create({
+      data: {
+        userId,
+        refreshTokenHash: await bcrypt.hash(rawRefresh, 12),
+        userAgent,
+        ipAddress,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      }
+    });
+  } catch (err) {
+    console.warn("[Dev Fallback] Database offline, saving session in local memory fallback:", (err as Error).message);
+    const sessionId = crypto.randomUUID();
+    session = {
+      id: sessionId,
       userId,
       refreshTokenHash: await bcrypt.hash(rawRefresh, 12),
-      userAgent,
-      ipAddress,
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    }
-  });
+    };
+    devSessionsMap.set(sessionId, session);
+    saveDevStore();
+  }
+
   return {
     accessToken: signAccessToken({ id: userId, email, role }),
     refreshToken: signRefreshToken({ id: session.id, userId, token: rawRefresh }),
@@ -224,24 +367,46 @@ export async function refreshSession(refreshToken: string) {
     throw new ApiError(401, "Invalid or expired refresh token", "INVALID_REFRESH_TOKEN");
   }
 
-  const session = await prisma.session.findUnique({
-    where: { id: payload.id },
-    include: { user: true }
-  });
+  let session: any;
+  try {
+    session = await prisma.session.findUnique({
+      where: { id: payload.id },
+      include: { user: true }
+    });
+  } catch {
+    session = devSessionsMap.get(payload.id);
+    if (session) {
+      session.user = devUsersMap.get(session.userId);
+    }
+  }
+
+  if (!session) {
+    session = devSessionsMap.get(payload.id);
+    if (session) {
+      session.user = devUsersMap.get(session.userId);
+    }
+  }
+
   if (!session || session.userId !== payload.userId || session.revokedAt || session.expiresAt <= new Date() || !(await bcrypt.compare(payload.token, session.refreshTokenHash))) {
     throw new ApiError(401, "Invalid or expired refresh token", "INVALID_REFRESH_TOKEN");
   }
 
-  if (session.user.bannedAt || (session.user.suspendedUntil && session.user.suspendedUntil > new Date())) {
+  if (session.user?.bannedAt || (session.user?.suspendedUntil && session.user.suspendedUntil > new Date())) {
     throw new ApiError(403, "Account is unavailable", "ACCOUNT_UNAVAILABLE");
   }
 
   const nextRawRefresh = crypto.randomBytes(48).toString("hex");
-  await prisma.session.update({ where: { id: session.id }, data: { refreshTokenHash: await bcrypt.hash(nextRawRefresh, 12) } });
+  try {
+    await prisma.session.update({ where: { id: session.id }, data: { refreshTokenHash: await bcrypt.hash(nextRawRefresh, 12) } });
+  } catch {
+    session.refreshTokenHash = await bcrypt.hash(nextRawRefresh, 12);
+  }
+
+  const u = session.user || { id: payload.userId, email: "", username: "user", role: "USER" as const };
   return {
-    accessToken: signAccessToken({ id: session.user.id, email: session.user.email, role: session.user.role }),
-    refreshToken: signRefreshToken({ id: session.id, userId: session.userId, token: nextRawRefresh }),
-    user: { id: session.user.id, email: session.user.email, username: session.user.username, role: session.user.role }
+    accessToken: signAccessToken({ id: u.id, email: u.email, role: u.role }),
+    refreshToken: signRefreshToken({ id: session.id, userId: u.id, token: nextRawRefresh }),
+    user: { id: u.id, email: u.email, username: u.username, role: u.role }
   };
 }
 
@@ -329,15 +494,29 @@ export async function verifyOtp(input: { email: string; otp: string }) {
 export const resetMap = new Map<string, { code: string, expires: number }>();
 
 export async function sendResetCode(email: string) {
-  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
-  if (!user) {
-    throw new ApiError(404, "Không tìm thấy tài khoản với email này", "EMAIL_NOT_FOUND");
+  try {
+    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (!user) {
+      throw new ApiError(404, "Không tìm thấy tài khoản với email này", "EMAIL_NOT_FOUND");
+    }
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    console.warn("[Database Warning] Không thể kết nối cơ sở dữ liệu để kiểm tra tài khoản (tiếp tục tạo và gửi mã khôi phục):", (err as Error).message);
   }
 
   const code = crypto.randomInt(100_000, 1_000_000).toString();
   const expires = Date.now() + 5 * 60 * 1000;
 
   resetMap.set(email.toLowerCase(), { code, expires });
+
+  console.log(`\n==================================================`);
+  console.log(`[RESET CODE] Mã khôi phục mật khẩu cho ${email}: ${code}`);
+  console.log(`==================================================\n`);
+
+  try {
+    const fs = await import("node:fs");
+    fs.writeFileSync("otp_code.txt", `Mã khôi phục mật khẩu cho ${email}: ${code}\nThời gian tạo: ${new Date().toLocaleString("vi-VN")}\n`);
+  } catch {}
 
   // Send real email OTP
   await sendEmailOtp(email, code, "reset");

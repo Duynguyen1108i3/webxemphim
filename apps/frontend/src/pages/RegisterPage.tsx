@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authApi, useAuthStore } from "../store/auth";
 import { Loader2 } from "lucide-react";
+import { LiquidGlassBackground } from "../components/LiquidGlassBackground";
 
 export function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -33,18 +34,16 @@ export function RegisterPage() {
     }
 
     if (!username) {
-      errors.username = "Tên tài khoản không được để trống.";
-    } else if (username.length < 3 || username.length > 32) {
-      errors.username = "Tên tài khoản phải từ 3 đến 32 ký tự.";
-    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      errors.username = "Tên tài khoản chỉ được chứa chữ cái, chữ số và dấu gạch dưới (_).";
+      errors.username = "Tên hiển thị không được để trống.";
+    } else if (username.length < 2) {
+      errors.username = "Tên hiển thị phải có ít nhất 2 ký tự.";
     }
 
     if (!password) {
       errors.password = "Mật khẩu không được để trống.";
     } else {
       if (password.length < 8) {
-        errors.password = "Mật khẩu phải chứa nhất 8 ký tự.";
+        errors.password = "Mật khẩu phải chứa ít nhất 8 ký tự.";
       } else if (!/[A-Z]/.test(password)) {
         errors.password = "Mật khẩu phải chứa ít nhất 1 chữ cái viết hoa.";
       } else if (!/[a-z]/.test(password)) {
@@ -62,10 +61,8 @@ export function RegisterPage() {
       errors.confirmPassword = "Mật khẩu xác nhận không trùng khớp.";
     }
 
-    if (otpSent && !otpCode) {
-      errors.otp = "Vui lòng nhập mã xác thực OTP.";
-    } else if (otpSent && otpCode.length !== 6) {
-      errors.otp = "Mã xác thực phải gồm 6 chữ số.";
+    if (otpSent && (!otpCode || otpCode.length !== 6)) {
+      errors.otp = "Vui lòng nhập mã xác thực gồm 6 chữ số.";
     }
 
     setFieldErrors(errors);
@@ -73,12 +70,8 @@ export function RegisterPage() {
   };
 
   const handleSendOtpClick = async () => {
-    if (!email) {
-      setFieldErrors(prev => ({ ...prev, email: "Email không được để trống." }));
-      return;
-    }
-    if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
-      setFieldErrors(prev => ({ ...prev, email: "Địa chỉ email không hợp lệ." }));
+    if (!email || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
+      setFieldErrors(prev => ({ ...prev, email: "Vui lòng nhập địa chỉ email hợp lệ trước khi gửi mã." }));
       return;
     }
 
@@ -88,8 +81,7 @@ export function RegisterPage() {
     try {
       await authApi.sendOtp(email);
       setOtpSent(true);
-      setOtpCode("");
-      if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
+      setFieldErrors(prev => ({ ...prev, email: undefined }));
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -107,16 +99,12 @@ export function RegisterPage() {
       return;
     }
 
-    if (!otpSent) {
-      setError("Vui lòng nhấn nút 'Gửi mã' ở dòng Email và điền mã xác thực OTP trước.");
-      return;
-    }
-
     setError("");
     setLoading(true);
 
     try {
-      await authApi.register(email, username, password, otpCode);
+      const user = await authApi.register(email, username, password, otpCode);
+      setUser(user);
       navigate("/login", {
         state: {
           email,
@@ -128,7 +116,7 @@ export function RegisterPage() {
       if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Máy chủ gặp lỗi. Vui lòng thử lại.");
+        setError("Đăng ký thất bại. Vui lòng thử lại sau.");
       }
     } finally {
       setLoading(false);
@@ -136,28 +124,29 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-transparent select-none">
-      {/* Background Image with opacity to let ambient background show through */}
-      <div className="absolute inset-0 bg-[url('https://assets.nflxext.com/ffe/siteui/vlv3/ca6a761f-bd50-44d5-be40-699a737c9d4e/web_translate/VN-vi-20260120-trifectadaily-perspective_alpha_website_large.jpg')] bg-cover bg-center bg-no-repeat opacity-40 -z-10" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/70 -z-10" />
+    <div className="relative min-h-screen w-full bg-[#060608] select-none overflow-x-hidden">
+      {/* Pure Monochromatic Liquid Glass Fluid Background (Zero Color) */}
+      <LiquidGlassBackground />
 
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between px-6 py-6 sm:px-12">
-        <span className="brand-logo text-2xl font-black text-[#e50914] tracking-tighter">RytoxGroup</span>
+        <Link to="/" className="brand-logo text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-[0_2px_12px_rgba(255,255,255,0.35)] hover:opacity-90 transition">
+          RytoxGroup
+        </Link>
       </header>
 
       {/* Center card */}
       <main className="relative z-10 flex min-h-[calc(100vh-92px)] items-center justify-center p-4">
-        <div className="w-full max-w-[450px] rounded-2xl liquid-glass px-6 py-12 sm:px-16 sm:py-16 shadow-2xl">
-          <h1 className="text-3xl font-bold text-white mb-7">Đăng Ký</h1>
+        <div className="w-full max-w-[460px] rounded-3xl liquid-glass p-7 sm:p-11 shadow-[0_24px_80px_rgba(0,0,0,0.85)] border border-white/20">
+          <h1 className="text-2xl sm:text-3xl font-black text-white mb-6 tracking-tight">Đăng Ký</h1>
 
           {error && (
-            <div className="mb-4 rounded bg-[#e87c03] p-3.5 text-sm font-medium text-white shadow">
+            <div className="mb-4 rounded-2xl bg-red-500/15 border border-red-500/30 p-3.5 text-xs sm:text-sm font-medium text-red-200 backdrop-blur-md">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
             {/* Email Field with inline Send OTP Text Button */}
             <div className="relative w-full">
               <div className="relative flex items-center w-full">
@@ -170,20 +159,20 @@ export function RegisterPage() {
                     if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
                   }}
                   placeholder="Địa chỉ Email"
-                  className={`w-full h-14 rounded-xl glass-input border ${fieldErrors.email ? "border-red-500" : "border-zinc-700/50"} pl-5 pr-20 text-white placeholder-zinc-400 focus:outline-none transition-all`}
+                  className={`w-full h-13 sm:h-14 rounded-2xl bg-white/[0.06] border ${fieldErrors.email ? "border-red-400/80 focus:border-red-400" : "border-white/15 focus:border-white/40"} pl-5 pr-24 text-white placeholder-white/40 focus:outline-none focus:bg-white/[0.10] focus:ring-2 focus:ring-white/20 transition-all text-sm sm:text-base backdrop-blur-xl shadow-inner`}
                   required
                 />
                 <button
                   type="button"
                   onClick={handleSendOtpClick}
                   disabled={loading || !email}
-                  className="absolute right-4 text-sm font-bold text-[#e50914] hover:text-[#b20710] disabled:opacity-50 transition cursor-pointer select-none whitespace-nowrap bg-transparent border-none"
+                  className="absolute right-3 px-3.5 py-1.5 rounded-full text-xs font-bold text-white bg-white/15 hover:bg-white/25 border border-white/20 transition active:scale-95 disabled:opacity-40 backdrop-blur-md cursor-pointer shadow-sm select-none"
                 >
                   {otpSent ? "Gửi lại" : "Gửi mã"}
                 </button>
               </div>
               {fieldErrors.email && (
-                <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.email}</p>
+                <p className="mt-1 text-xs text-red-400 font-semibold px-1">{fieldErrors.email}</p>
               )}
             </div>
 
@@ -200,13 +189,13 @@ export function RegisterPage() {
                     if (fieldErrors.otp) setFieldErrors(prev => ({ ...prev, otp: undefined }));
                   }}
                   placeholder="Nhập mã OTP (6 chữ số)"
-                  className={`w-full h-14 rounded-xl glass-input border ${fieldErrors.otp ? "border-red-500" : "border-zinc-700/50"} px-5 text-white placeholder-zinc-400 focus:outline-none transition-all font-semibold tracking-widest text-center text-lg`}
+                  className={`w-full h-13 sm:h-14 rounded-2xl bg-white/[0.06] border ${fieldErrors.otp ? "border-red-400/80 focus:border-red-400" : "border-white/15 focus:border-white/40"} px-5 text-white placeholder-white/40 focus:outline-none focus:bg-white/[0.10] focus:ring-2 focus:ring-white/20 transition-all font-semibold tracking-widest text-center text-lg backdrop-blur-xl shadow-inner`}
                   required
                 />
                 {fieldErrors.otp && (
-                  <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.otp}</p>
+                  <p className="mt-1 text-xs text-red-400 font-semibold px-1">{fieldErrors.otp}</p>
                 )}
-                <p className="mt-1.5 text-[11px] text-zinc-400 leading-normal">
+                <p className="mt-1.5 text-[11px] text-white/60 leading-normal px-1">
                   Mã xác thực 6 chữ số đã được gửi đến email <strong className="text-white">{email}</strong>. Vui lòng kiểm tra hộp thư đến (hoặc thư mục Spam).
                 </p>
               </div>
@@ -222,11 +211,11 @@ export function RegisterPage() {
                   if (fieldErrors.username) setFieldErrors(prev => ({ ...prev, username: undefined }));
                 }}
                 placeholder="Tên tài khoản (username)"
-                className={`w-full h-14 rounded-xl glass-input border ${fieldErrors.username ? "border-red-500" : "border-zinc-700/50"} px-5 text-white placeholder-zinc-400 focus:outline-none transition-all`}
+                className={`w-full h-13 sm:h-14 rounded-2xl bg-white/[0.06] border ${fieldErrors.username ? "border-red-400/80 focus:border-red-400" : "border-white/15 focus:border-white/40"} px-5 text-white placeholder-white/40 focus:outline-none focus:bg-white/[0.10] focus:ring-2 focus:ring-white/20 transition-all text-sm sm:text-base backdrop-blur-xl shadow-inner`}
                 required
               />
               {fieldErrors.username && (
-                <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.username}</p>
+                <p className="mt-1 text-xs text-red-400 font-semibold px-1">{fieldErrors.username}</p>
               )}
             </div>
 
@@ -240,45 +229,45 @@ export function RegisterPage() {
                   if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
                 }}
                 placeholder="Mật khẩu (tối thiểu 8 ký tự)"
-                className={`w-full h-14 rounded-xl glass-input border ${fieldErrors.password ? "border-red-500" : "border-zinc-700/50"} px-5 text-white placeholder-zinc-400 focus:outline-none transition-all`}
+                className={`w-full h-13 sm:h-14 rounded-2xl bg-white/[0.06] border ${fieldErrors.password ? "border-red-400/80 focus:border-red-400" : "border-white/15 focus:border-white/40"} px-5 text-white placeholder-white/40 focus:outline-none focus:bg-white/[0.10] focus:ring-2 focus:ring-white/20 transition-all text-sm sm:text-base backdrop-blur-xl shadow-inner`}
                 required
               />
               {fieldErrors.password && (
-                <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.password}</p>
+                <p className="mt-1 text-xs text-red-400 font-semibold px-1">{fieldErrors.password}</p>
               )}
-              {/* Password strength checklist */}
-              <div className="mt-2.5 p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 text-xs text-zinc-400 flex flex-col gap-1.5 select-none">
-                <p className="font-bold text-zinc-300 mb-0.5">Yêu cầu mật khẩu:</p>
+              {/* Password strength checklist in pure liquid glass */}
+              <div className="mt-2.5 p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-xs text-white/70 backdrop-blur-md flex flex-col gap-2 select-none">
+                <p className="font-bold text-white/90">Yêu cầu mật khẩu:</p>
                 <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className={password.length >= 8 ? "text-green-500" : "text-zinc-500"}>
+                  <div className="flex items-center gap-2">
+                    <span className={password.length >= 8 ? "text-white font-bold drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-white/30"}>
                       {password.length >= 8 ? "✓" : "○"}
                     </span>
-                    <span className={password.length >= 8 ? "text-zinc-300 font-medium" : ""}>Tối thiểu 8 ký tự</span>
+                    <span className={password.length >= 8 ? "text-white font-medium" : "text-white/60"}>Tối thiểu 8 ký tự</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={/[A-Z]/.test(password) ? "text-green-500" : "text-zinc-500"}>
+                  <div className="flex items-center gap-2">
+                    <span className={/[A-Z]/.test(password) ? "text-white font-bold drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-white/30"}>
                       {/[A-Z]/.test(password) ? "✓" : "○"}
                     </span>
-                    <span className={/[A-Z]/.test(password) ? "text-zinc-300 font-medium" : ""}>1 chữ viết hoa</span>
+                    <span className={/[A-Z]/.test(password) ? "text-white font-medium" : "text-white/60"}>1 chữ viết hoa</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={/[a-z]/.test(password) ? "text-green-500" : "text-zinc-500"}>
+                  <div className="flex items-center gap-2">
+                    <span className={/[a-z]/.test(password) ? "text-white font-bold drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-white/30"}>
                       {/[a-z]/.test(password) ? "✓" : "○"}
                     </span>
-                    <span className={/[a-z]/.test(password) ? "text-zinc-300 font-medium" : ""}>1 chữ viết thường</span>
+                    <span className={/[a-z]/.test(password) ? "text-white font-medium" : "text-white/60"}>1 chữ viết thường</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={/[0-9]/.test(password) ? "text-green-500" : "text-zinc-500"}>
+                  <div className="flex items-center gap-2">
+                    <span className={/[0-9]/.test(password) ? "text-white font-bold drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-white/30"}>
                       {/[0-9]/.test(password) ? "✓" : "○"}
                     </span>
-                    <span className={/[0-9]/.test(password) ? "text-zinc-300 font-medium" : ""}>1 chữ số</span>
+                    <span className={/[0-9]/.test(password) ? "text-white font-medium" : "text-white/60"}>1 chữ số</span>
                   </div>
-                  <div className="flex items-center gap-1.5 col-span-2">
-                    <span className={/[^a-zA-Z0-9]/.test(password) ? "text-green-500" : "text-zinc-500"}>
+                  <div className="flex items-center gap-2 col-span-2">
+                    <span className={/[^a-zA-Z0-9]/.test(password) ? "text-white font-bold drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-white/30"}>
                       {/[^a-zA-Z0-9]/.test(password) ? "✓" : "○"}
                     </span>
-                    <span className={/[^a-zA-Z0-9]/.test(password) ? "text-zinc-300 font-medium" : ""}>1 ký tự đặc biệt (!@#...)</span>
+                    <span className={/[^a-zA-Z0-9]/.test(password) ? "text-white font-medium" : "text-white/60"}>1 ký tự đặc biệt (!@#...)</span>
                   </div>
                 </div>
               </div>
@@ -294,25 +283,25 @@ export function RegisterPage() {
                   if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: undefined }));
                 }}
                 placeholder="Xác nhận mật khẩu"
-                className={`w-full h-14 rounded-xl glass-input border ${fieldErrors.confirmPassword ? "border-red-500" : "border-zinc-700/50"} px-5 text-white placeholder-zinc-400 focus:outline-none transition-all`}
+                className={`w-full h-13 sm:h-14 rounded-2xl bg-white/[0.06] border ${fieldErrors.confirmPassword ? "border-red-400/80 focus:border-red-400" : "border-white/15 focus:border-white/40"} px-5 text-white placeholder-white/40 focus:outline-none focus:bg-white/[0.10] focus:ring-2 focus:ring-white/20 transition-all text-sm sm:text-base backdrop-blur-xl shadow-inner`}
                 required
               />
               {fieldErrors.confirmPassword && (
-                <p className="mt-1 text-xs text-red-500 font-semibold">{fieldErrors.confirmPassword}</p>
+                <p className="mt-1 text-xs text-red-400 font-semibold px-1">{fieldErrors.confirmPassword}</p>
               )}
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-4 flex h-12 w-full items-center justify-center rounded-full bg-[#e50914] font-bold text-white hover:bg-[#b20710] hover:shadow-lg hover:shadow-red-950/20 active:scale-95 transition disabled:opacity-50 cursor-pointer text-base duration-300"
+              className="mt-4 flex h-12 sm:h-13 w-full items-center justify-center rounded-2xl bg-white text-black font-black hover:bg-white/90 hover:shadow-[0_8px_30px_rgba(255,255,255,0.25)] active:scale-98 transition duration-300 disabled:opacity-50 cursor-pointer text-sm sm:text-base"
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Đăng Ký"}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin text-black" /> : "Đăng Ký"}
             </button>
           </form>
 
           {/* Login Redirect info */}
-          <div className="mt-8 text-sm text-zinc-500 font-medium">
+          <div className="mt-7 text-sm text-white/50 font-medium text-center">
             <p>
               Bạn đã có tài khoản?{" "}
               <Link to="/login" className="text-white hover:underline font-bold ml-1">

@@ -13,6 +13,7 @@ import { Button, Skeleton } from "@streamforge/ui";
 import type { MovieCardDto } from "@streamforge/shared-types";
 
 import { useAuthStore } from "../store/auth";
+import { InteractiveNavScrubber } from "./InteractiveNavScrubber";
 
 const iosSpringTransition = {
   type: "spring",
@@ -510,38 +511,7 @@ export function AppShell() {
             </button>
             
             <NavLink to="/" className={`brand-logo text-xs font-black tracking-tight text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)] sm:text-sm md:text-base ${searchExpanded ? "hidden md:block" : ""}`}>RytoxGroup</NavLink>
-            <nav className={`hidden items-center gap-2 text-sm font-semibold bg-white/5 border border-white/10 p-1.5 rounded-full backdrop-blur-md shadow-inner relative whitespace-nowrap ${searchExpanded ? "xl:flex" : "md:flex"}`}>
-              {[
-                { to: "/", label: "Home" },
-                { to: "/anime", label: "Anime" },
-                { to: "/new-popular", label: "New & Popular" },
-                { to: "/my-list", label: "My List" },
-                { to: "/search", label: "Browse by Languages" },
-              ].map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className="relative px-5 py-2.5 rounded-full transition-colors duration-300 z-10 select-none text-white/70 hover:text-white"
-                >
-                  {({ isActive }) => (
-                    <>
-                      {isActive && (
-                        <motion.div
-                          layoutId="active-nav-pill"
-                          className="absolute inset-0 bg-white/15 border border-white/20 rounded-full shadow-[0_3px_12px_rgba(255,255,255,0.12)] z-[-1]"
-                          style={{
-                            backdropFilter: "blur(20px) saturate(180%)",
-                            WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                          }}
-                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                        />
-                      )}
-                      <span className={isActive ? "text-white font-bold" : ""}>{item.label}</span>
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
+            <InteractiveNavScrubber variant="header" searchExpanded={searchExpanded} />
           </div>
           <nav className="flex items-center gap-2.5 text-sm font-semibold text-white">
             {/* Inline Expanding Search Bar */}
@@ -903,6 +873,11 @@ export function AppShell() {
         </motion.div>
       )}
       
+      {/* Mobile Floating Bottom Dock with Drag & Scrub gesture */}
+      {!activePlayback && location.pathname !== "/profile" && (
+        <InteractiveNavScrubber variant="mobile-dock" />
+      )}
+
       {/* Footer component */}
       {location.pathname !== "/profile" && <Footer />}
 
