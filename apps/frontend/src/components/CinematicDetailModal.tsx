@@ -180,15 +180,7 @@ export function CinematicDetailModal() {
     setShowAllSimilar(false);
   }, [displayMovieId, seasonsList.length]);
 
-  if (!movie) return null;
-
   const displayMovie = data?.movie ?? movie;
-  const inMyList = displayMovie ? myList.some((item) => item.id === displayMovie.id) : false;
-  const allSimilarTitles = (similarData ?? []).filter((item) => item.id !== displayMovie.id);
-  const similarTitles = showAllSimilar ? allSimilarTitles.slice(0, 24) : allSimilarTitles.slice(0, 6);
-  
-  const activeSeason = displayMovie.seasons?.find((s) => s.id === selectedSeasonId) || displayMovie.seasons?.[0];
-  const activeEpisodes = activeSeason?.episodes || [];
 
   const cleanSynopsis = useMemo(() => {
     if (!displayMovie) return "";
@@ -204,6 +196,15 @@ export function CinematicDetailModal() {
     }
     return text;
   }, [displayMovie]);
+
+  if (!movie || !displayMovie) return null;
+
+  const inMyList = displayMovie ? myList.some((item) => item.id === displayMovie.id) : false;
+  const allSimilarTitles = (similarData ?? []).filter((item) => item.id !== displayMovie.id);
+  const similarTitles = showAllSimilar ? allSimilarTitles.slice(0, 24) : allSimilarTitles.slice(0, 6);
+  
+  const activeSeason = displayMovie.seasons?.find((s) => s.id === selectedSeasonId) || displayMovie.seasons?.[0];
+  const activeEpisodes = activeSeason?.episodes || [];
 
   const episodes = activeEpisodes.length > 0 ? activeEpisodes.map((ep: any) => ({
     id: String(ep.id),
