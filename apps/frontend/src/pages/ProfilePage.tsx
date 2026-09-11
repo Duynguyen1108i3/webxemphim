@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { ArrowLeft, Check, Camera, LogOut, Save, User, Mail, Lock, KeyRound, Send, ShieldCheck, Sparkles, HelpCircle, RefreshCw, X, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore, authApi } from "../store/auth";
@@ -34,6 +34,104 @@ export function ProfilePage() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<"general" | "username" | "email" | "password">("general");
+
+  const activeTabIndex = useMemo(() => {
+    const idx = PROFILE_TABS.findIndex((t) => t.id === activeTab);
+    return idx !== -1 ? idx : 0;
+  }, [activeTab]);
+
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [hoveredTabIndex, setHoveredTabIndex] = useState<number>(activeTabIndex);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const startPointerPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const hasDragged = useRef(false);
+
+  useEffect(() => {
+    if (!isScrubbing) {
+      setHoveredTabIndex(activeTabIndex);
+    }
+  }, [activeTabIndex, isScrubbing]);
+
+  const startScrubbing = (index: number, e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+
+    startPointerPos.current = { x: e.clientX, y: e.clientY };
+    hasDragged.current = false;
+    setIsScrubbing(true);
+    setHoveredTabIndex(index);
+
+    const onPointerMove = (ev: PointerEvent) => {
+      const deltaX = Math.abs(ev.clientX - startPointerPos.current.x);
+      const deltaY = Math.abs(ev.clientY - startPointerPos.current.y);
+
+      if (deltaX > 6 || deltaY > 6) {
+        hasDragged.current = true;
+      }
+
+      let closestIdx = -1;
+      let minDistance = Infinity;
+
+      tabRefs.current.forEach((tabEl, i) => {
+        if (!tabEl) return;
+        const rect = tabEl.getBoundingClientRect();
+
+        if (ev.clientX >= rect.left && ev.clientX <= rect.right) {
+          closestIdx = i;
+          minDistance = 0;
+        } else {
+          const dist = Math.min(
+            Math.abs(ev.clientX - rect.left),
+            Math.abs(ev.clientX - rect.right)
+          );
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestIdx = i;
+          }
+        }
+      });
+
+      if (closestIdx !== -1) {
+        setHoveredTabIndex((prev) => {
+          if (prev !== closestIdx) {
+            if (typeof navigator !== "undefined" && navigator.vibrate) {
+              try {
+                navigator.vibrate(8);
+              } catch {
+                // Ignore vibration errors
+              }
+            }
+            return closestIdx;
+          }
+          return prev;
+        });
+      }
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+
+      setIsScrubbing(false);
+
+      setHoveredTabIndex((finalIdx) => {
+        const dest = PROFILE_TABS[finalIdx];
+        if (dest) {
+          setActiveTab(dest.id as any);
+          setErrorMsg("");
+          setSuccessMsg("");
+          setForgotMode(false);
+        }
+        return finalIdx;
+      });
+    };
+
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+  };
+
+  const displayedTabIndex = isScrubbing ? hoveredTabIndex : activeTabIndex;
 
   useEffect(() => {
     if (!user) {
@@ -365,29 +463,31 @@ export function ProfilePage() {
           </div>
         )}
 
-        {/* Profile Navigation Tabs styled identically to Home Menu Bar */}
+        {/* Profile Navigation Tabs styled identically to Home Menu Bar with drag & hold scrubber */}
         <nav
           aria-label="Profile Tabs"
-          className="relative flex items-center justify-between gap-1 p-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-inner mb-6 select-none"
+          className={`relative flex items-center justify-between gap-1 p-1.5 rounded-full backdrop-blur-md shadow-inner mb-6 select-none touch-none transition-all duration-300 ${
+            isScrubbing
+              ? "bg-white/10 border border-white/35 shadow-[0_0_24px_rgba(255,255,255,0.22)] ring-1 ring-white/20"
+              : "bg-white/5 border border-white/10"
+          }`}
         >
-          {PROFILE_TABS.map((tab) => {
+          {PROFILE_TABS.map((tab, index) => {
             const Icon = tab.icon;
-            const active = activeTab === tab.id;
+            const isTarget = displayedTabIndex === index;
             return (
               <button
                 key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id as any);
-                  setErrorMsg("");
-                  setSuccessMsg("");
-                  setForgotMode(false);
+                ref={(el) => {
+                  tabRefs.current[index] = el;
                 }}
+                onPointerDown={(e) => startScrubbing(index, e)}
                 type="button"
                 className={`relative flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-full transition-all duration-200 z-10 cursor-pointer select-none text-white/60 hover:text-white active:scale-95 text-xs ${
-                  active ? "text-white" : ""
-                }`}
+                  isTarget ? "text-white" : ""
+                } ${isScrubbing && !isTarget ? "opacity-50" : "opacity-100"}`}
               >
-                {active && (
+                {isTarget && (
                   <motion.div
                     layoutId="active-profile-tab-pill"
                     className="absolute inset-0 bg-white/20 border border-white/25 rounded-full shadow-[0_3px_14px_rgba(255,255,255,0.15)] z-[-1] backdrop-blur-xl"
@@ -397,12 +497,12 @@ export function ProfilePage() {
                 <Icon
                   size={14}
                   className={`transition-transform duration-200 ${
-                    active ? "scale-110 text-white" : "text-white/60"
+                    isTarget ? "scale-110 text-white" : "text-white/60"
                   }`}
                 />
                 <span
                   className={`transition-all duration-200 truncate ${
-                    active ? "font-bold text-white scale-105" : "font-medium"
+                    isTarget ? "font-bold text-white scale-105" : "font-medium"
                   }`}
                 >
                   {tab.label}
