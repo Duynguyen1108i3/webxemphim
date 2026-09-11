@@ -148,8 +148,50 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
     setTouchStartX(null);
   };
 
+  // Prefetch detailed metadata (including full synopsis / content) for candidate hero movies
+  const [heroDetails, setHeroDetails] = useState<Record<string, NormalizedMovie>>({});
+
+  useEffect(() => {
+    if (!heroMovies || heroMovies.length === 0) return;
+    heroMovies.forEach((m) => {
+      const slug = m.slug || m.id;
+      if (!slug || heroDetails[slug]) return;
+      movieApi
+        .getMovieDetail(slug)
+        .then((res) => {
+          if (res?.movie) {
+            setHeroDetails((prev) => ({
+              ...prev,
+              [slug]: res.movie,
+              [m.id]: res.movie,
+            }));
+          }
+        })
+        .catch(() => {});
+    });
+  }, [heroMovies]);
+
   const currentHeroIndex = heroMovies.length > 0 ? (heroIndex % heroMovies.length) : 0;
-  const hero = heroMovies[currentHeroIndex] || rows[0]?.items[0];
+  const rawHero = heroMovies[currentHeroIndex] || rows[0]?.items[0];
+  const heroKey = rawHero?.slug || rawHero?.id || "";
+  const hero = (heroKey && heroDetails[heroKey])
+    ? { ...rawHero, ...heroDetails[heroKey], id: rawHero.id }
+    : rawHero;
+
+  const cleanSynopsis = useMemo(() => {
+    if (!hero) return "";
+    const raw = hero.synopsis || hero.description || (hero as any).content || "";
+    const text = decodeHtml(raw)
+      .replace(/<[^>]*>?/gm, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!text || text.toLowerCase().includes("chất lượng cao")) {
+      const title = hero.title || (hero as any).name || "";
+      const year = hero.releaseYear || (hero as any).year || 2026;
+      return `Khám phá câu chuyện lôi cuốn đầy kịch tính trong bộ phim ${title} (${year}) với chất lượng hình ảnh sắc nét chuẩn rạp chiếu.`;
+    }
+    return text;
+  }, [hero]);
 
   const { myList, toggleMyList, watchHistory } = usePlaybackStore();
   const inMyList = hero ? myList.some((item) => item.id === hero.id) : false;
@@ -304,7 +346,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                 
                 {/* Synopsis */}
                 <p className="synopsis mt-2.5 sm:mt-3.5 line-clamp-2 sm:line-clamp-3 text-xs sm:text-sm leading-relaxed text-white/80 md:text-base max-w-2xl">
-                  {decodeHtml(hero.synopsis || (hero as any).description || "Xem phim online chất lượng cao miễn phí tại RytoxGroup.")}
+                  {cleanSynopsis}
                 </p>
                 
                 {/* Synchronized Action Buttons matching New & Popular page */}

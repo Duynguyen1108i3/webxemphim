@@ -1082,7 +1082,7 @@ function normalizePhim4kMovie(item: any, isDetail = false, imageCdnUrl?: unknown
           seasonsMap[season].push({
             id: ep.slug || `${slug}-ep-${idx + 1}`,
             title: ep.name || `Tập ${idx + 1}`,
-            synopsis: item.content || item.description || "Xem phim online chất lượng cao.",
+            synopsis: item.content || item.description || "",
             runtimeMinutes: parsedRuntime,
             posterUrl: backdropUrl,
             seasonNumber: season,
@@ -1106,7 +1106,7 @@ function normalizePhim4kMovie(item: any, isDetail = false, imageCdnUrl?: unknown
     id: slug,
     slug: slug,
     title,
-    synopsis: item.content || item.description || "Xem phim online chất lượng cao.",
+    synopsis: item.content || item.description || "",
     posterUrl,
     backdropUrl,
     trailerUrl: null,
@@ -1125,7 +1125,7 @@ function normalizePhim4kMovie(item: any, isDetail = false, imageCdnUrl?: unknown
     episode_current: item.episode_current || "",
     category: Array.isArray(item.category) ? item.category : [],
     country: Array.isArray(item.country) ? item.country : [],
-    description: item.content || item.description || "Xem phim online chất lượng cao.",
+    description: item.content || item.description || "",
     cast: Array.isArray(item.actor) 
       ? item.actor.filter(Boolean) 
       : (typeof item.actor === "string" ? item.actor.split(",").map((s: string) => s.trim()).filter(Boolean) : []),
