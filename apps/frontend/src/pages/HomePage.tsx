@@ -472,46 +472,10 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
         </section>
       </div>
 
-      {/* Category / Genre Capsule Filter Bar matching New & Popular page */}
-      <div className="px-3 sm:px-8 md:px-14 lg:px-16 pt-3 sm:pt-4 pb-2">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 border-b border-white/10 pb-3 sm:pb-4">
-          <div>
-            <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight">
-              Khám phá Kho Phim
-            </h2>
-            <p className="text-[11px] sm:text-xs text-white/50 mt-0.5">
-              Phim chiếu rạp, bom tấn truyền hình & Anime chọn lọc đặc sắc
-            </p>
-          </div>
-
-          {/* Capsule Filter Scroll */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none max-w-full sm:max-w-2xl overscroll-x-contain touch-pan-x">
-            {HOME_CATEGORIES.map((cat) => {
-              const isSelected = selectedCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 select-none cursor-pointer ${
-                    isSelected
-                      ? "bg-white text-black font-black shadow-[0_2px_12px_rgba(255,255,255,0.3)] border border-white"
-                      : "bg-white/5 text-white/70 border border-white/10 hover:bg-white/15 hover:text-white"
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-
       <Suspense fallback={<RowSkeleton />}>
         <div className="space-y-8 px-4 sm:px-8 md:px-14 lg:px-16">
           {continueWatchingItems.length > 0 && (
-            <MovieRow title={`Continue Watching for ${currentProfileName}`} items={continueWatchingItems as any[]} />
+            <MovieRow title={`Tiếp tục xem của ${currentProfileName}`} items={continueWatchingItems as any[]} />
           )}
           {isLoading ? (
             <RowSkeleton />

@@ -4,7 +4,7 @@ export function LiquidGlassBackground() {
   return (
     <div
       aria-hidden="true"
-      className="auth-liquid-screen fixed inset-0 pointer-events-none -z-20 overflow-hidden bg-[#060608] select-none"
+      className="auth-liquid-screen fixed inset-0 pointer-events-none -z-20 overflow-hidden bg-[#060608] select-none [contain:strict] [transform:translate3d(0,0,0)]"
     >
       {/* Absolute dark base to completely seal off any external colors */}
       <div className="absolute inset-0 bg-[#060608]" />

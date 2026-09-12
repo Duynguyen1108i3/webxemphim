@@ -210,7 +210,10 @@ export function AppShell() {
   }, [initialized, user, activeMovieDetail, activePlayback, activeEpisodeId, navigate, location.search]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 16);
+    const onScroll = () => {
+      const isScrolled = window.scrollY > 16;
+      setScrolled((prev) => (prev !== isScrolled ? isScrolled : prev));
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -381,42 +384,21 @@ export function AppShell() {
 
   useEffect(() => {
     if (!hovered) return;
-    const updatePosition = () => {
-      hoverFrame.current = null;
-      const rect = hovered.anchor.getBoundingClientRect();
-      const isOutOfView = rect.bottom < 72 || rect.top > window.innerHeight - 24 || rect.right < 0 || rect.left > window.innerWidth;
-      if (isOutOfView) {
-        setHovered(null);
-        return;
-      }
-      setHovered((current) => {
-        if (!current || current.anchor !== hovered.anchor) return current;
-        if (
-          Math.abs(current.rect.top - rect.top) < 0.5 &&
-          Math.abs(current.rect.left - rect.left) < 0.5 &&
-          Math.abs(current.rect.width - rect.width) < 0.5
-        ) {
-          return current;
-        }
-        return { ...current, rect };
-      });
+
+    const handleScroll = () => {
+      clearOpenTimer();
+      clearCloseTimer();
+      setHovered(null);
     };
-    const requestPosition = () => {
-      if (hoverFrame.current != null) return;
-      hoverFrame.current = window.requestAnimationFrame(updatePosition);
-    };
-    window.addEventListener("scroll", requestPosition, { passive: true });
-    window.addEventListener("resize", requestPosition);
-    requestPosition();
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll, { passive: true });
+
     return () => {
-      window.removeEventListener("scroll", requestPosition);
-      window.removeEventListener("resize", requestPosition);
-      if (hoverFrame.current != null) {
-        window.cancelAnimationFrame(hoverFrame.current);
-        hoverFrame.current = null;
-      }
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
     };
-  }, [hovered?.anchor]);
+  }, [hovered]);
 
   const handleOpen = (movie: MovieCardDto) => {
     setHovered(null);

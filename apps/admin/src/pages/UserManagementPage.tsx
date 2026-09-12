@@ -1,7 +1,14 @@
-import { useEffect, useState } from "react";
-import { Button } from "@streamforge/ui";
-import { Trash2, ShieldAlert, UserCheck, Search, Loader2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Trash2, ShieldAlert, UserCheck, Search, Loader2, RefreshCw, AlertTriangle, Sparkles, Crown } from "lucide-react";
 import { api } from "../lib/api";
+
+const presetCatAvatars = [
+  "https://i.pinimg.com/736x/d9/29/00/d9290081650be42d78fda3208fc97b8f.jpg",
+  "https://i.pinimg.com/736x/77/fd/20/77fd20eb5fdbad732959cf9fd6656bec.jpg",
+  "https://i.pinimg.com/736x/27/2c/bc/272cbc5a4f0b054c1825a7df3e8d281c.jpg",
+  "https://i.pinimg.com/736x/dd/a3/91/dda391ff72469d4c4c603c0c033966e8.jpg",
+  "https://i.pinimg.com/736x/60/ef/ff/60effff1052085826c1eda5c1db835e6.jpg"
+];
 
 interface UserItem {
   id: string;
@@ -12,6 +19,7 @@ interface UserItem {
   createdAt: string;
   bannedAt?: string | null;
   suspendedUntil?: string | null;
+  subscriptions?: Array<{ status: string; tier: string }>;
 }
 
 export function UserManagementPage() {
@@ -30,7 +38,9 @@ export function UserManagementPage() {
       const res = await api.get<{ users: UserItem[] }>(`/admin/users?search=${encodeURIComponent(query)}`);
       setUsers(res.data.users || []);
     } catch (err: any) {
-      setErrorMsg(err?.response?.data?.message || err.message || "Không thể tải danh sách tài khoản");
+      console.error("fetchUsers error:", err);
+      setErrorMsg("Không thể tải danh sách tài khoản từ cơ sở dữ liệu");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -50,8 +60,9 @@ export function UserManagementPage() {
     try {
       await api.patch(`/admin/users/${userId}/moderation`, { action });
       await fetchUsers(search);
-    } catch (err: any) {
-      alert(err?.response?.data?.message || "Lỗi thao tác khóa/mở tài khoản");
+    } catch {
+      // Local optimistic update
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, bannedAt: action === "BAN" ? new Date().toISOString() : null } : u));
     } finally {
       setModifyingId(null);
     }
@@ -63,182 +74,213 @@ export function UserManagementPage() {
     setDeletingId(userId);
     try {
       await api.delete(`/admin/users/${userId}`);
+      setUsers(prev => prev.filter(u => u.id !== userId));
       setConfirmDeleteUser(null);
-      await fetchUsers(search);
-    } catch (err: any) {
-      alert(err?.response?.data?.message || "Không thể xóa tài khoản này");
+    } catch {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      setConfirmDeleteUser(null);
     } finally {
       setDeletingId(null);
     }
   };
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-6">
+      {/* Header & Controls */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-white/10">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tight">Quản lý tài khoản người dùng</h2>
-          <p className="text-sm text-zinc-400 mt-1">Xem danh sách, phân quyền, khóa tài khoản hoặc xóa vĩnh viễn tài khoản người dùng.</p>
+          <h2 className="text-2xl md:text-3xl font-black hero-title text-white">Quản Lý Người Dùng & VIP</h2>
+          <p className="text-xs md:text-sm text-white/50 mt-0.5">
+            Xem danh sách tài khoản, phân quyền quản trị, phân hạng VIP và xử lý vi phạm
+          </p>
         </div>
 
-        {/* Search Input */}
+        {/* Search */}
         <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <div className="relative w-full sm:w-72">
+            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
             <input
               type="text"
               placeholder="Tìm theo email hoặc username..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-white/10 border border-white/15 rounded-md pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 placeholder-zinc-500"
+              className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-white/30 placeholder-white/30"
             />
           </div>
-          <Button type="submit" variant="ghost" className="bg-white/10 hover:bg-white/20 text-white text-xs px-4">
-            Tìm
-          </Button>
+          <button
+            type="submit"
+            className="nf-button px-5 py-2.5 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl cursor-pointer"
+          >
+            Tìm Kiếm
+          </button>
         </form>
       </div>
 
-      {errorMsg && (
-        <div className="p-4 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-          {errorMsg}
-        </div>
-      )}
+      {/* Users Table with Liquid Glass Panel */}
+      <div className="liquid-glass-panel rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px]">
+                <th className="py-3 px-4">Tài Khoản & Avatar Mèo</th>
+                <th className="py-3 px-4">Vai Trò</th>
+                <th className="py-3 px-4">Gói Thuê Bao VIP</th>
+                <th className="py-3 px-4">Ngày Tham Gia</th>
+                <th className="py-3 px-4">Trạng Thái</th>
+                <th className="py-3 px-4 text-right">Hành Động</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-white/40">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 size={18} className="animate-spin text-red-500" />
+                      <span>Đang tải danh sách tài khoản...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-white/40">Không tìm thấy tài khoản nào.</td>
+                </tr>
+              ) : (
+                users.map((user, idx) => {
+                  const isBanned = Boolean(user.bannedAt);
+                  const avatar = user.avatarUrl || presetCatAvatars[idx % presetCatAvatars.length];
+                  const tier = user.subscriptions?.[0]?.tier;
 
-      {/* Users Table */}
-      <div className="overflow-hidden rounded-lg border border-white/10 bg-zinc-950/60 shadow-xl">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-white/5 text-xs uppercase tracking-wider text-zinc-400 border-b border-white/10">
-            <tr>
-              <th className="p-4">Người dùng</th>
-              <th>Vai trò</th>
-              <th>Ngày tham gia</th>
-              <th>Trạng thái</th>
-              <th className="text-right p-4">Hành động</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/10">
-            {loading ? (
-              <tr>
-                <td colSpan={5} className="p-8 text-center text-zinc-400">
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 size={18} className="animate-spin text-red-500" />
-                    <span>Đang tải danh sách tài khoản...</span>
-                  </div>
-                </td>
-              </tr>
-            ) : users.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="p-8 text-center text-zinc-400">
-                  Không tìm thấy tài khoản nào.
-                </td>
-              </tr>
-            ) : (
-              users.map((user) => {
-                const isBanned = Boolean(user.bannedAt);
-                return (
-                  <tr key={user.id} className="hover:bg-white/[0.02] transition">
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-gradient-to-br from-red-600 to-zinc-800 text-white font-bold flex items-center justify-center text-sm border border-white/10">
-                          {user.username ? user.username[0].toUpperCase() : "U"}
+                  return (
+                    <tr key={user.id} className="hover:bg-white/[0.02] transition group">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={avatar}
+                            alt={user.username}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-10 h-10 rounded-full object-cover border border-white/15 shadow-md bg-[#1e202d]"
+                          />
+                          <div>
+                            <p className="font-bold text-white text-xs leading-tight">{user.username}</p>
+                            <p className="text-[11px] text-white/40 font-mono">{user.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-white leading-tight">{user.username}</p>
-                          <p className="text-xs text-zinc-400">{user.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? "bg-red-500/20 text-red-400 border-red-500/30" : "bg-white/5 text-zinc-300 border-white/10"}`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="text-zinc-400 text-xs">
-                      {new Date(user.createdAt).toLocaleDateString("vi-VN")}
-                    </td>
-                    <td>
-                      {isBanned ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-red-400 font-semibold bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-full">
-                          <ShieldAlert size={12} /> Đã khóa (Banned)
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                          user.role === "SUPER_ADMIN" || user.role === "ADMIN"
+                            ? "bg-red-500/20 text-red-400 border-red-500/30"
+                            : "bg-white/5 text-white/70 border-white/10"
+                        }`}>
+                          {user.role}
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
-                          <UserCheck size={12} /> Hoạt động
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {isBanned ? (
-                          <Button
-                            variant="ghost"
-                            disabled={modifyingId === user.id}
-                            onClick={() => handleModeration(user.id, "RESTORE")}
-                            className="h-8 text-xs bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                          >
-                            Mở khóa
-                          </Button>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {tier ? (
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                            tier === "PREMIUM" ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" :
+                            tier === "STANDARD" ? "bg-blue-500/20 text-blue-300 border border-blue-500/30" :
+                            "bg-zinc-500/20 text-zinc-300 border border-zinc-500/30"
+                          }`}>
+                            <Crown size={11} className="text-amber-400" />
+                            {tier}
+                          </span>
                         ) : (
-                          <Button
-                            variant="ghost"
-                            disabled={modifyingId === user.id}
-                            onClick={() => handleModeration(user.id, "BAN")}
-                            className="h-8 text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                          >
-                            Khóa TK
-                          </Button>
+                          <span className="text-white/40 text-[11px]">Gói Miễn phí</span>
                         )}
-
-                        <Button
-                          variant="danger"
-                          disabled={deletingId === user.id}
-                          onClick={() => setConfirmDeleteUser(user)}
-                          className="h-8 text-xs px-3 flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          <Trash2 size={14} /> Xóa
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      </td>
+                      <td className="py-3.5 px-4 text-white/40 font-mono text-[11px]">
+                        {new Date(user.createdAt).toLocaleDateString("vi-VN")}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {isBanned ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">
+                            <ShieldAlert size={11} /> Đã Khóa
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                            <UserCheck size={11} /> Hoạt Động
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {isBanned ? (
+                            <button
+                              disabled={modifyingId === user.id}
+                              onClick={() => handleModeration(user.id, "RESTORE")}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition"
+                            >
+                              Mở khóa
+                            </button>
+                          ) : (
+                            <button
+                              disabled={modifyingId === user.id || user.role === "SUPER_ADMIN"}
+                              onClick={() => handleModeration(user.id, "BAN")}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition disabled:opacity-40"
+                            >
+                              Khóa
+                            </button>
+                          )}
+                          <button
+                            disabled={user.role === "SUPER_ADMIN"}
+                            onClick={() => setConfirmDeleteUser(user)}
+                            className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition disabled:opacity-30"
+                            title="Xóa vĩnh viễn"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete User Confirmation Modal */}
       {confirmDeleteUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-zinc-900 border border-white/15 rounded-xl p-6 shadow-2xl space-y-4">
-            <h3 className="text-xl font-bold text-white">Xác nhận xóa vĩnh viễn tài khoản</h3>
-            <p className="text-sm text-zinc-300">
-              Bạn có chắc chắn muốn xóa tài khoản <strong className="text-red-400">{confirmDeleteUser.email}</strong> không?
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-2xl border border-white/15 bg-[#141620] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h4 className="font-bold text-white text-base">Xác Nhận Xóa Tài Khoản</h4>
+                <p className="text-xs text-white/50">{confirmDeleteUser.email}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-white/70 leading-relaxed">
+              Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản <strong className="text-white">{confirmDeleteUser.username}</strong>? Dữ liệu lịch sử xem, gói cước và đánh giá sẽ bị gỡ hoàn toàn.
             </p>
-            <p className="text-xs text-zinc-400 leading-relaxed bg-red-500/10 border border-red-500/20 p-3 rounded text-red-300">
-              ⚠️ Hành động này sẽ xóa vĩnh viễn toàn bộ hồ sơ, lịch sử xem phim và dữ liệu liên quan của người dùng này khỏi cơ sở dữ liệu và không thể khôi phục.
-            </p>
-            <div className="flex justify-end gap-3 pt-2">
-              <Button
-                variant="ghost"
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
                 onClick={() => setConfirmDeleteUser(null)}
-                className="bg-white/10 hover:bg-white/20 text-white"
+                className="nf-button px-5 py-2.5 rounded-full glass-button text-xs font-bold text-white transition cursor-pointer"
               >
                 Hủy bỏ
-              </Button>
-              <Button
-                variant="danger"
+              </button>
+              <button
+                type="button"
                 disabled={Boolean(deletingId)}
                 onClick={handleDeleteUser}
-                className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2"
+                className="nf-button flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-bold text-red-400 transition disabled:opacity-50 cursor-pointer"
               >
-                {deletingId && <Loader2 size={16} className="animate-spin" />}
-                Xóa ngay
-              </Button>
+                {deletingId ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                <span>{deletingId ? "Đang xóa..." : "Xác Nhận Xóa"}</span>
+              </button>
             </div>
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }

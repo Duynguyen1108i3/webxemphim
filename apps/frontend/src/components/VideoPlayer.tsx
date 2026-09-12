@@ -1,5 +1,5 @@
 import Hls from "hls.js";
-import { Check, ChevronUp, Download, Gauge, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Check, ChevronUp, Download, Gauge, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForward, Subtitles, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PlaybackSourceDto } from "@streamforge/shared-types";
 import { useAuthStore } from "../store/auth";
@@ -110,6 +110,80 @@ export function VideoPlayer({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showSpeedMenu]);
+
+  // Subtitle / Closed Captions state
+  const [selectedSubtitle, setSelectedSubtitle] = useState<string>("off");
+  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
+  const subtitleMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showSubtitleMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (subtitleMenuRef.current && !subtitleMenuRef.current.contains(e.target as Node)) {
+        setShowSubtitleMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSubtitleMenu]);
+
+  const handleSubtitleChange = (lang: string) => {
+    setSelectedSubtitle(lang);
+    setShowSubtitleMenu(false);
+    const video = videoRef.current;
+    if (!video || !video.textTracks) return;
+
+    for (let i = 0; i < video.textTracks.length; i++) {
+      const track = video.textTracks[i];
+      if (lang === "off") {
+        track.mode = "disabled";
+      } else if (track.language === lang || track.label === lang) {
+        track.mode = "showing";
+      } else {
+        track.mode = "disabled";
+      }
+    }
+  };
+
+  // Auto-next Episode Countdown state
+  const [showNextCountdown, setShowNextCountdown] = useState(false);
+  const [countdown, setCountdown] = useState(10);
+  const [dismissedCountdown, setDismissedCountdown] = useState(false);
+
+  useEffect(() => {
+    if (!hasNextEpisode || !onNextEpisode || dismissedCountdown) {
+      setShowNextCountdown(false);
+      return;
+    }
+
+    if (duration > 20 && currentTime >= duration - 15) {
+      if (!showNextCountdown) {
+        setShowNextCountdown(true);
+        setCountdown(10);
+      }
+    } else {
+      if (showNextCountdown && currentTime < duration - 18) {
+        setShowNextCountdown(false);
+      }
+    }
+  }, [currentTime, duration, hasNextEpisode, onNextEpisode, dismissedCountdown, showNextCountdown]);
+
+  useEffect(() => {
+    if (!showNextCountdown) return;
+
+    if (countdown <= 0) {
+      setShowNextCountdown(false);
+      onNextEpisode?.();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [showNextCountdown, countdown, onNextEpisode]);
+
 
   // Scrubbing & Hover States for Smooth Dragging Progress Bar
   const [isScrubbing, setIsScrubbing] = useState(false);
@@ -847,6 +921,56 @@ export function VideoPlayer({
             </div>
 
             <div className="flex items-center gap-2 shrink-0 relative">
+              {/* Subtitles CC Button & Popover */}
+              <div ref={subtitleMenuRef} className="relative z-50">
+                <button
+                  type="button"
+                  onClick={() => setShowSubtitleMenu(!showSubtitleMenu)}
+                  className={`flex items-center gap-1.5 h-10 px-3.5 rounded-full glass-capsule text-xs sm:text-sm font-bold transition active:scale-95 cursor-pointer shadow-md ${
+                    selectedSubtitle !== "off" ? "text-white bg-white/30 border border-white/40" : "text-white"
+                  }`}
+                  aria-label="Subtitles and captions"
+                >
+                  <Subtitles size={16} className="text-white/90" />
+                  <span className="hidden sm:inline">CC</span>
+                  <ChevronUp size={13} className={`text-white/70 transition-transform duration-200 ${showSubtitleMenu ? "rotate-180" : ""}`} />
+                </button>
+
+                {showSubtitleMenu && (
+                  <div className="absolute bottom-12 right-0 z-[150] flex flex-col w-44 rounded-2xl liquid-glass border border-white/20 backdrop-blur-2xl p-1.5 shadow-[0_12px_48px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
+                    <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/50 border-b border-white/10 mb-1">
+                      Phụ đề / Lồng tiếng
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSubtitleChange("off")}
+                      className={`flex items-center justify-between px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                        selectedSubtitle === "off" ? "bg-white/25 text-white border border-white/30 shadow-[0_0_12px_rgba(255,255,255,0.2)]" : "text-white/80 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <span>Tắt phụ đề (Off)</span>
+                      {selectedSubtitle === "off" && <Check size={13} />}
+                    </button>
+                    {(source?.subtitles && source.subtitles.length > 0 ? source.subtitles : [
+                      { language: "vi", label: "Tiếng Việt (Vietsub)", url: "" },
+                      { language: "en", label: "English (Engsub)", url: "" }
+                    ]).map((sub) => (
+                      <button
+                        key={sub.language}
+                        type="button"
+                        onClick={() => handleSubtitleChange(sub.language)}
+                        className={`flex items-center justify-between px-3 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                          selectedSubtitle === sub.language ? "bg-white/25 text-white border border-white/30 shadow-[0_0_12px_rgba(255,255,255,0.2)]" : "text-white/80 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        <span className="truncate">{sub.label}</span>
+                        {selectedSubtitle === sub.language && <Check size={13} />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Speed selection - Custom Liquid Glass Popover */}
               <div ref={speedMenuRef} className="relative z-50">
                 <button
@@ -904,6 +1028,51 @@ export function VideoPlayer({
           </div>
         </div>
       </div>
+
+      {/* Netflix-style Auto Next Episode Countdown Overlay Card */}
+      {showNextCountdown && hasNextEpisode && onNextEpisode && (
+        <div className="absolute bottom-24 right-4 sm:right-8 z-40 max-w-sm rounded-2xl liquid-glass p-4 border border-white/20 shadow-[0_16px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-red-600/80 text-white shadow-sm">
+              Tập tiếp theo
+            </span>
+            <button
+              onClick={() => {
+                setDismissedCountdown(true);
+                setShowNextCountdown(false);
+              }}
+              className="text-white/60 hover:text-white p-1 rounded-full hover:bg-white/10 transition cursor-pointer"
+              aria-label="Dismiss countdown"
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <p className="text-sm font-bold text-white mb-1">
+            Tự động chuyển tập sau <span className="text-red-400 font-extrabold">{countdown}s</span>...
+          </p>
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              onClick={() => {
+                setShowNextCountdown(false);
+                onNextEpisode();
+              }}
+              className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white hover:bg-white/90 text-black font-bold text-xs transition active:scale-95 shadow-lg cursor-pointer"
+            >
+              <Play size={13} fill="currentColor" /> Phát ngay
+            </button>
+            <button
+              onClick={() => {
+                setDismissedCountdown(true);
+                setShowNextCountdown(false);
+              }}
+              className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs transition active:scale-95 cursor-pointer"
+            >
+              Hủy
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

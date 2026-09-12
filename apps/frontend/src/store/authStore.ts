@@ -77,15 +77,25 @@ async function refreshAccessToken(): Promise<AuthUser | null> {
 }
 
 function getStoredItem(key: string): string | null {
-  return localStorage.getItem(`rytoxgroup:${key}`) || localStorage.getItem(`streamforge:${key}`);
+  try {
+    return localStorage.getItem(`rytoxgroup:${key}`) || localStorage.getItem(`streamforge:${key}`);
+  } catch {
+    return null;
+  }
 }
 function setStoredItem(key: string, val: string) {
-  localStorage.setItem(`rytoxgroup:${key}`, val);
-  localStorage.setItem(`streamforge:${key}`, val);
+  try {
+    localStorage.setItem(`rytoxgroup:${key}`, val);
+    localStorage.setItem(`streamforge:${key}`, val);
+  } catch (err) {
+    console.warn("Storage quota exceeded or storage unavailable:", err);
+  }
 }
 function removeStoredItem(key: string) {
-  localStorage.removeItem(`rytoxgroup:${key}`);
-  localStorage.removeItem(`streamforge:${key}`);
+  try {
+    localStorage.removeItem(`rytoxgroup:${key}`);
+    localStorage.removeItem(`streamforge:${key}`);
+  } catch {}
 }
 
 function resetLocalAuth(set: (state: Partial<AuthState>) => void) {
@@ -104,16 +114,33 @@ export const useAuthStore = create<AuthState>((set) => ({
   initialized: false,
   setUser: (user) => {
     if (user) {
-      setStoredItem("auth:user", JSON.stringify(user));
-      if (user.avatarUrl) {
-        setStoredItem("profile:avatar", user.avatarUrl);
-        set({ user, avatarUrl: user.avatarUrl });
-      } else {
-        set({ user });
-      }
+      set((state) => {
+        const mergedProfiles = (user.profiles && user.profiles.length > 0)
+          ? user.profiles
+          : (state.user?.profiles || []);
+        const effectiveAvatar = user.avatarUrl !== undefined
+          ? (user.avatarUrl || null)
+          : (state.avatarUrl || null);
+        
+        const updatedUser: AuthUser = {
+          ...user,
+          avatarUrl: effectiveAvatar || undefined,
+          profiles: mergedProfiles
+        };
+
+        setStoredItem("auth:user", JSON.stringify(updatedUser));
+        if (effectiveAvatar) {
+          setStoredItem("profile:avatar", effectiveAvatar);
+        } else {
+          removeStoredItem("profile:avatar");
+        }
+
+        return { user: updatedUser, avatarUrl: effectiveAvatar };
+      });
     } else {
       removeStoredItem("auth:user");
-      set({ user });
+      removeStoredItem("profile:avatar");
+      set({ user: null, avatarUrl: null });
     }
     usePlaybackStore.getState().loadUserData();
   },
@@ -126,7 +153,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   setAvatarUrl: (avatarUrl) => {
     if (avatarUrl) setStoredItem("profile:avatar", avatarUrl);
     else removeStoredItem("profile:avatar");
-    set({ avatarUrl });
+
+    set((state) => {
+      const updatedUser = state.user
+        ? { ...state.user, avatarUrl: avatarUrl || undefined }
+        : null;
+      if (updatedUser) {
+        setStoredItem("auth:user", JSON.stringify(updatedUser));
+      }
+      return {
+        avatarUrl,
+        user: updatedUser
+      };
+    });
   },
   initialize: async () => {
     // Fast path: try to restore from localStorage first for instant UI
@@ -302,3 +341,16 @@ export const authApi = {
     return protectedRequest<T>(path, options);
   }
 };
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === "rytoxgroup:profile:avatar" || e.key === "streamforge:profile:avatar") {
+      const newAvatar = e.newValue || null;
+      useAuthStore.setState((state) => ({
+        avatarUrl: newAvatar,
+        user: state.user ? { ...state.user, avatarUrl: newAvatar || undefined } : null
+      }));
+    }
+  });
+}
+

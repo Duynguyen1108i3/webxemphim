@@ -75,7 +75,7 @@ export function ShellMobileDrawer({
                       }}
                       className="flex items-center gap-2.5 text-left text-sm font-semibold text-white/60 hover:text-white"
                     >
-                      {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
+                      {avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:") || avatarUrl.startsWith("/") || avatarUrl.includes("/")) ? (
                         <img src={avatarUrl} className="h-6 w-6 rounded object-cover border border-white/20" alt="Avatar" />
                       ) : (
                         <span className={`grid h-6 w-6 place-items-center rounded bg-gradient-to-br ${avatarUrl || "from-blue-500 to-cyan-300"}`}>

@@ -300,7 +300,7 @@ export async function register(input: { email: string; username: string; passwor
   signupOtpMap.delete(emailKey);
   saveDevStore();
 
-  return createSession(user.id, user.email, user.username, user.role);
+  return createSession(user.id, user.email, user.username, user.role, undefined, undefined, user.avatarUrl ?? null);
 }
 
 function profileId(userId: string, name: string) {
@@ -323,10 +323,10 @@ export async function login(input: { email: string; password: string; userAgent?
   if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) throw new ApiError(401, "Email hoặc mật khẩu không chính xác.", "INVALID_CREDENTIALS");
   if (user.bannedAt) throw new ApiError(403, "Account is banned", "ACCOUNT_BANNED");
   if (user.suspendedUntil && user.suspendedUntil > new Date()) throw new ApiError(403, "Account is temporarily suspended", "ACCOUNT_SUSPENDED");
-  return createSession(user.id, user.email, user.username, user.role, input.userAgent, input.ipAddress);
+  return createSession(user.id, user.email, user.username, user.role, input.userAgent, input.ipAddress, user.avatarUrl);
 }
 
-async function createSession(userId: string, email: string, username: string, role: "USER" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN", userAgent?: string, ipAddress?: string) {
+async function createSession(userId: string, email: string, username: string, role: "USER" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN", userAgent?: string, ipAddress?: string, avatarUrl?: string | null) {
   const rawRefresh = crypto.randomBytes(48).toString("hex");
   let session: any;
   try {
@@ -355,7 +355,7 @@ async function createSession(userId: string, email: string, username: string, ro
   return {
     accessToken: signAccessToken({ id: userId, email, role }),
     refreshToken: signRefreshToken({ id: session.id, userId, token: rawRefresh }),
-    user: { id: userId, email, username, role }
+    user: { id: userId, email, username, role, avatarUrl: avatarUrl ?? null }
   };
 }
 
@@ -402,11 +402,11 @@ export async function refreshSession(refreshToken: string) {
     session.refreshTokenHash = await bcrypt.hash(nextRawRefresh, 12);
   }
 
-  const u = session.user || { id: payload.userId, email: "", username: "user", role: "USER" as const };
+  const u = session.user || { id: payload.userId, email: "", username: "user", role: "USER" as const, avatarUrl: null };
   return {
     accessToken: signAccessToken({ id: u.id, email: u.email, role: u.role }),
     refreshToken: signRefreshToken({ id: session.id, userId: u.id, token: nextRawRefresh }),
-    user: { id: u.id, email: u.email, username: u.username, role: u.role }
+    user: { id: u.id, email: u.email, username: u.username, role: u.role, avatarUrl: u.avatarUrl ?? null }
   };
 }
 

@@ -219,7 +219,7 @@ export function ShellNavbar({
           >
             <Bell size={22} />
             {hasNotification && (
-              <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)] animate-pulse" />
+              <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-red-500 border border-white shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse" />
             )}
           </button>
           
@@ -230,39 +230,81 @@ export function ShellNavbar({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: 8 }}
                 transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
-                className="absolute right-0 top-full mt-2 w-80 rounded-2xl liquid-glass py-2 shadow-2xl z-50"
+                className="absolute right-0 top-full mt-2 w-84 sm:w-96 rounded-2xl liquid-glass py-3 shadow-2xl z-50 border border-white/20"
               >
-                <div className="px-4 py-2 border-b border-white/10 text-xs font-bold text-white/50 uppercase tracking-wider">
-                  Phim Mới Cập Nhật
+                <div className="flex items-center justify-between px-4 pb-2 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-white uppercase tracking-wider">
+                      Trung tâm Thông báo
+                    </span>
+                    {hasNotification && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-600 text-white">
+                        Mới
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-white/50">Rytox Cinema</span>
                 </div>
-                {latestMovies.length > 0 ? (
-                  <div className="max-h-80 overflow-y-auto font-sans">
-                    {latestMovies.map((movie) => (
+
+                {/* System announcements & new releases feed */}
+                <div className="max-h-96 overflow-y-auto font-sans divide-y divide-white/5">
+                  {/* Pinned system feature update */}
+                  <div className="p-3.5 hover:bg-white/5 transition text-left">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                        TÍNH NĂNG MỚI
+                      </span>
+                      <span className="text-[10px] text-white/40">Hôm nay</span>
+                    </div>
+                    <p className="text-xs font-bold text-white">Đã ra mắt Đánh giá sao, Phụ đề CC & Tự động chuyển tập! ⭐</p>
+                    <p className="text-[11px] text-white/60 mt-1 leading-relaxed">
+                      Bạn có thể chấm điểm 1-10 sao, gửi bình luận và tùy chỉnh bật/tắt phụ đề Vietsub trực tiếp trong Player.
+                    </p>
+                  </div>
+
+                  {latestMovies.length > 0 ? (
+                    latestMovies.map((movie) => (
                       <button
                         key={movie.slug}
                         onClick={() => {
                           toggleNotification();
                           usePlaybackStore.getState().openDetailModal(movie, `notif-${movie.id}`);
                         }}
-                        className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-white/5 transition text-left cursor-pointer focus:outline-none"
+                        className="flex items-center gap-3 w-full p-3.5 hover:bg-white/5 transition text-left cursor-pointer focus:outline-none group"
                       >
                         <img
                           src={movie.posterUrl || movie.backdropUrl}
-                          className="h-12 aspect-[2/3] object-cover rounded border border-white/10 shadow-md shrink-0"
+                          className="h-14 aspect-[2/3] object-cover rounded-lg border border-white/10 shadow-md shrink-0 group-hover:scale-105 transition-transform"
                           alt=""
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-white truncate">{movie.title}</p>
-                          <p className="text-xs text-white/40 mt-0.5 truncate">{movie.description || "Danh mục phim mới cập nhật."}</p>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-red-400">PHIM MỚI</span>
+                            <span className="text-[10px] text-white/40">• {movie.releaseYear || "2024"}</span>
+                          </div>
+                          <p className="text-xs font-bold text-white truncate group-hover:text-red-300 transition">{movie.title}</p>
+                          <p className="text-[11px] text-white/50 mt-0.5 line-clamp-1">{movie.description || "Đã có bản phát Full HD phụ đề tiếng Việt."}</p>
                         </div>
                       </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="px-4 py-6 text-center text-xs text-white/40">
-                    Không có thông báo mới.
-                  </div>
-                )}
+                    ))
+                  ) : (
+                    <div className="px-4 py-8 text-center text-xs text-white/40">
+                      Không có thông báo mới.
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 px-4 border-t border-white/10 flex justify-between items-center text-[11px] text-white/50">
+                  <span>Kho phim được cập nhật mỗi ngày</span>
+                  <button
+                    onClick={() => {
+                      toggleNotification();
+                    }}
+                    className="text-white/80 hover:text-white font-semibold transition"
+                  >
+                    Đóng
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -279,7 +321,7 @@ export function ShellNavbar({
             aria-label="Account Menu"
           >
             {user ? (
-              avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? (
+              avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:") || avatarUrl.startsWith("/") || avatarUrl.includes("/")) ? (
                 <img src={avatarUrl} className="h-8 w-8 rounded-full object-cover border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300" alt="Avatar" />
               ) : (
                 <span className={`grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br ${avatarUrl || "from-blue-500 to-cyan-300"} border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300`}>

@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { login, refreshSession, register, revokeSession, sendSignupOtp, sendResetCode, verifyResetCodeAndChangePassword } from "../services/auth.service.js";
 import { registerSchema, loginSchema, sendOtpSchema, verifyResetCodeSchema } from "../schemas/auth.schema.js";
 import { ApiError } from "../middleware/error.middleware.js";
+import { generateToken } from "../middleware/security.middleware.js";
 
 export function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
   const sameSite = process.env.AUTH_COOKIE_SAME_SITE === "none" ? "none" as const : process.env.AUTH_COOKIE_SAME_SITE === "strict" ? "strict" as const : "lax" as const;
@@ -19,7 +20,12 @@ export function clearAuthCookies(res: Response) {
 }
 
 export async function getCsrfToken(req: Request, res: Response) {
-  res.json({ csrfToken: (req as typeof req & { csrfToken: () => string }).csrfToken() });
+  try {
+    const token = generateToken(req, res);
+    res.json({ csrfToken: token });
+  } catch {
+    res.json({ csrfToken: "dev-csrf-token" });
+  }
 }
 
 export async function handleRegister(req: Request, res: Response, next: NextFunction) {

@@ -52,7 +52,7 @@ function slugify(value: string) {
     .replace(/(^-|-$)+/g, "");
 }
 
-export function MovieRow({ title, items, ranked = false, compact = false }: { title: string; items: MovieCardDto[]; ranked?: boolean; compact?: boolean }) {
+export const MovieRow = React.memo(function MovieRow({ title, items, ranked = false, compact = false }: { title: string; items: MovieCardDto[]; ranked?: boolean; compact?: boolean }) {
   const { openDetailModal, openPlayback, activeMovieDetail, activePlayback } = usePlaybackStore();
   const isContinueWatching = title.startsWith("Continue Watching") || title.startsWith("Tiếp tục xem");
   const [hovered, setHovered] = useState<{ movie: MovieCardDto; anchor: HTMLElement; rect: DOMRect } | null>(null);
@@ -82,7 +82,6 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
     if (el) {
       el.addEventListener("scroll", updateScrollState, { passive: true });
       updateScrollState();
-      // Recalculate on window resize
       const handleResize = () => updateScrollState();
       window.addEventListener("resize", handleResize);
       return () => {
@@ -94,7 +93,6 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
 
   const openHoverTimer = useRef<number | null>(null);
   const closeHoverTimer = useRef<number | null>(null);
-  const hoverFrame = useRef<number | null>(null);
 
   const clearOpenTimer = () => { if (openHoverTimer.current != null) { window.clearTimeout(openHoverTimer.current); openHoverTimer.current = null; } };
   const clearCloseTimer = () => { if (closeHoverTimer.current != null) { window.clearTimeout(closeHoverTimer.current); closeHoverTimer.current = null; } };
@@ -114,77 +112,25 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
     }
   }, [activeMovieDetail, activePlayback]);
 
+  // When user scrolls, immediately close any hover preview to avoid layout thrashing
   useEffect(() => {
-    if (!hovered) return;
-
-    const updatePosition = () => {
-      hoverFrame.current = null;
-      const rect = hovered.anchor.getBoundingClientRect();
-      const isOutOfView = rect.bottom < 72 || rect.top > window.innerHeight - 24 || rect.right < 0 || rect.left > window.innerWidth;
-
-      if (isOutOfView) {
+    const handleScroll = () => {
+      clearOpenTimer();
+      clearCloseTimer();
+      if (hovered) {
         setHovered(null);
-        return;
-      }
-
-      setHovered((current) => {
-        if (!current || current.anchor !== hovered.anchor) return current;
-        if (
-          Math.abs(current.rect.top - rect.top) < 0.5 &&
-          Math.abs(current.rect.left - rect.left) < 0.5 &&
-          Math.abs(current.rect.width - rect.width) < 0.5
-        ) {
-          return current;
-        }
-        return { ...current, rect };
-      });
-    };
-
-    const requestPosition = () => {
-      if (hoverFrame.current != null) return;
-      hoverFrame.current = window.requestAnimationFrame(updatePosition);
-    };
-
-    window.addEventListener("scroll", requestPosition, { passive: true });
-    window.addEventListener("resize", requestPosition);
-    requestPosition();
-
-    return () => {
-      window.removeEventListener("scroll", requestPosition);
-      window.removeEventListener("resize", requestPosition);
-      if (hoverFrame.current != null) {
-        window.cancelAnimationFrame(hoverFrame.current);
-        hoverFrame.current = null;
       }
     };
-  }, [hovered?.anchor]);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hovered]);
 
   return (
     <>
-      <motion.section
+      <section
         id={title ? `row-${slugify(title)}` : undefined}
         className={`relative z-20 space-y-2 ${compact ? "px-0" : "px-4 sm:px-8 md:px-14 lg:px-16"}`}
-        initial={{ opacity: 0, y: 24 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-10% 0px" }}
-        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* Dynamic ambient background reflection of the row's movie posters */}
-        <div 
-          className="absolute inset-0 -z-10 pointer-events-none overflow-hidden blur-[90px] saturate-[160%] select-none scale-[1.05] transition-all duration-700"
-          style={{ opacity: "var(--ambient-opacity, 0.25)" }}
-        >
-          <div className="flex gap-4">
-            {items.slice(0, 10).map((movie) => (
-              <img
-                key={`bg-${movie.id}`}
-                src={movie.posterUrl || movie.backdropUrl}
-                alt=""
-                className="w-40 aspect-[2/3] object-cover rounded-md shrink-0"
-              />
-            ))}
-          </div>
-        </div>
         <h2 className="text-lg font-bold text-white md:text-xl">{title}</h2>
         
         {/* Row Container with hover group for arrows */}
@@ -247,7 +193,7 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
             </button>
           )}
         </div>
-      </motion.section>
+      </section>
       <AnimatePresence>
         {hovered && !activeMovieDetail && !activePlayback && (
           <HoverPreview
@@ -273,7 +219,7 @@ export function MovieRow({ title, items, ranked = false, compact = false }: { ti
       {/* Detail modal now handled globally in AppShell */}
     </>
   );
-}
+});
 
 export const MovieTile = React.memo(function MovieTile({
   movie,
@@ -297,25 +243,25 @@ export const MovieTile = React.memo(function MovieTile({
   const removeFromWatchHistory = usePlaybackStore((state) => state.removeFromWatchHistory);
 
   return (
-    <motion.article
-      whileHover={{ y: -6, scale: 1.025 }}
-      whileTap={{ scale: 0.96 }}
-      transition={{
-        type: "spring",
-        stiffness: 300,
-        damping: 24,
-        mass: 0.8
-      }}
-      className={className || "group relative z-10 w-[148px] shrink-0 rounded-[16px] transition sm:w-[180px] md:w-[214px] lg:w-[238px]"}
+    <article
+      className={
+        className ||
+        "group relative z-10 w-[148px] shrink-0 rounded-[16px] transition-transform duration-200 ease-out hover:-translate-y-1.5 hover:scale-[1.025] active:scale-[0.96] sm:w-[180px] md:w-[214px] lg:w-[238px]"
+      }
       onMouseEnter={(event) => onHover(event.currentTarget)}
-      onPointerEnter={(event) => onHover(event.currentTarget)}
       onMouseLeave={onHoverEnd}
-      onPointerLeave={onHoverEnd}
       onFocus={(event) => onHover(event.currentTarget)}
       onBlur={onHoverEnd}
     >
-      <button onClick={onOpen} className="movie-card relative block w-full overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-white/70" aria-label={`Open ${movie.title}`}>
-        <img src={movie.backdropUrl || movie.posterUrl} alt={movie.title} loading="lazy" onError={(event) => handleImageError(event, movie.title)} className="aspect-video w-full object-cover transition duration-500 group-hover:brightness-90" />
+      <button onClick={onOpen} className="movie-card relative block w-full overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-white/70 bg-gradient-to-br from-[#1d1f2c] to-[#0c0e15]" aria-label={`Open ${movie.title}`}>
+        <img
+          src={movie.backdropUrl || movie.posterUrl}
+          alt={movie.title}
+          loading={index < 3 ? "eager" : "lazy"}
+          decoding="async"
+          onError={(event) => handleImageError(event, movie.title)}
+          className="aspect-video w-full object-cover transition-opacity duration-300 group-hover:brightness-90"
+        />
         {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
           <div className="absolute bottom-1.5 left-2.5 right-2.5 h-1 rounded-full bg-zinc-700/50 z-10 overflow-hidden">
             <div className="h-full bg-[#e50914] rounded-full shadow-[0_0_6px_#e50914]" style={{ width: `${(movie as any).progress}%` }} />
@@ -356,7 +302,7 @@ export const MovieTile = React.memo(function MovieTile({
           <X className="h-4 w-4 md:h-3 md:w-3" />
         </button>
       )}
-    </motion.article>
+    </article>
   );
 });
 

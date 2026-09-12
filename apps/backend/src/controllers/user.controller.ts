@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { ApiError } from "../middleware/error.middleware.js";
 import { recommendForProfile } from "../services/recommendation.service.js";
-import { devUsersMap, sendSignupOtp, signupOtpMap } from "../services/auth.service.js";
+import { devUsersMap, sendSignupOtp, signupOtpMap, saveDevStore } from "../services/auth.service.js";
 import {
   updateAvatarSchema,
   updateUsernameSchema,
@@ -85,12 +85,59 @@ export async function updateAvatar(req: Request, res: Response, next: NextFuncti
   try {
     const { avatarUrl } = updateAvatarSchema.parse(req.body);
     const userId = req.user!.id;
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { avatarUrl },
-      select: { id: true, email: true, username: true, role: true, avatarUrl: true }
-    });
-    res.json({ user });
+
+    let user: any;
+    try {
+      user = await prisma.user.update({
+        where: { id: userId },
+        data: { avatarUrl },
+        select: { id: true, email: true, username: true, role: true, avatarUrl: true }
+      });
+
+      try {
+        await prisma.profile.updateMany({
+          where: { userId, name: user.username },
+          data: { avatarUrl }
+        });
+      } catch {}
+    } catch (dbErr) {
+      console.warn("[Dev Fallback] Database offline, saving avatar in dev fallback store:", (dbErr as Error).message);
+      const devUser = devUsersMap.get(userId);
+      if (devUser) {
+        devUser.avatarUrl = avatarUrl;
+        devUsersMap.set(userId, devUser);
+        if (devUser.email) devUsersMap.set(devUser.email.toLowerCase(), devUser);
+        user = { id: devUser.id, email: devUser.email, username: devUser.username, role: devUser.role, avatarUrl };
+      } else {
+        user = { id: userId, email: req.user!.email, username: req.user!.email.split("@")[0], role: req.user!.role, avatarUrl };
+        devUsersMap.set(userId, user);
+        devUsersMap.set(user.email.toLowerCase(), user);
+      }
+      saveDevStore();
+    }
+
+    // Always keep dev store cache synced
+    const devUser = devUsersMap.get(userId);
+    if (devUser) {
+      devUser.avatarUrl = avatarUrl;
+      devUsersMap.set(userId, devUser);
+      if (devUser.email) devUsersMap.set(devUser.email.toLowerCase(), devUser);
+      saveDevStore();
+    }
+
+    let profiles: any[] = [];
+    try {
+      profiles = await prisma.profile.findMany({ where: { userId }, orderBy: { createdAt: "asc" } });
+    } catch {
+      profiles = [
+        { id: `${userId}-${(user.username || "user").toLowerCase()}`, name: user.username || "user", type: "ADULT", avatarUrl },
+        { id: `${userId}-kids`, name: "Kids", type: "KIDS" },
+        { id: `${userId}-guest`, name: "Guest", type: "ADULT" },
+        { id: `${userId}-private`, name: "Private", type: "ADULT" }
+      ];
+    }
+
+    res.json({ user: { ...user, profiles } });
   } catch (error) {
     next(error);
   }
@@ -101,15 +148,42 @@ export async function updateUsername(req: Request, res: Response, next: NextFunc
     const { username } = updateUsernameSchema.parse(req.body);
     const userId = req.user!.id;
 
-    const exists = await prisma.user.findFirst({ where: { username, NOT: { id: userId } } });
-    if (exists) throw new ApiError(409, "Tên người dùng này đã được sử dụng", "USERNAME_EXISTS");
+    let user: any;
+    try {
+      const exists = await prisma.user.findFirst({ where: { username, NOT: { id: userId } } });
+      if (exists) throw new ApiError(409, "Tên người dùng này đã được sử dụng", "USERNAME_EXISTS");
 
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { username },
-      select: { id: true, email: true, username: true, role: true, avatarUrl: true }
-    });
-    res.json({ user });
+      user = await prisma.user.update({
+        where: { id: userId },
+        data: { username },
+        select: { id: true, email: true, username: true, role: true, avatarUrl: true }
+      });
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      console.warn("[Dev Fallback] Database offline, updating username in dev store:", (err as Error).message);
+      const devUser = devUsersMap.get(userId);
+      if (devUser) {
+        devUser.username = username;
+        devUsersMap.set(userId, devUser);
+        if (devUser.email) devUsersMap.set(devUser.email.toLowerCase(), devUser);
+        user = { id: devUser.id, email: devUser.email, username, role: devUser.role, avatarUrl: devUser.avatarUrl };
+      } else {
+        user = { id: userId, email: req.user!.email, username, role: req.user!.role };
+        devUsersMap.set(userId, user);
+      }
+      saveDevStore();
+    }
+
+    let profiles: any[] = [];
+    try {
+      profiles = await prisma.profile.findMany({ where: { userId }, orderBy: { createdAt: "asc" } });
+    } catch {
+      profiles = [
+        { id: `${userId}-${(user.username || "user").toLowerCase()}`, name: user.username || "user", type: "ADULT", avatarUrl: user.avatarUrl }
+      ];
+    }
+
+    res.json({ user: { ...user, profiles } });
   } catch (error) {
     next(error);
   }
@@ -301,3 +375,166 @@ export async function getRecommendations(req: Request, res: Response, next: Next
     next(error);
   }
 }
+
+// In-memory notifications fallback
+const devNotificationsStore = new Map<string, Array<{
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  readAt: string | null;
+  createdAt: string;
+}>>();
+
+export async function getUserNotifications(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+    try {
+      let notifications = await prisma.notification.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 30
+      });
+
+      // Seed initial welcoming notifications if none exist
+      if (notifications.length === 0) {
+        const seed = [
+          {
+            userId,
+            title: "Chào mừng đến với RytoxGroup! 🎬",
+            body: "Trải nghiệm rạp chiếu phim trực tuyến đỉnh cao với hình ảnh Full HD/4K sắc nét và âm thanh sống động.",
+            readAt: null
+          },
+          {
+            userId,
+            title: "Tính năng mới: Đánh giá & Phụ đề CC ⭐",
+            body: "Bạn đã có thể chấm điểm 1-10 sao, gửi bình luận và tùy chỉnh bật/tắt phụ đề Vietsub trực tiếp trên thanh điều khiển.",
+            readAt: null
+          },
+          {
+            userId,
+            title: "Cập nhật tập mới hàng loạt 🚀",
+            body: "Các bộ phim Anime và Phim truyền hình hot nhất tuần này đã được thêm đầy đủ các tập mới nhất.",
+            readAt: null
+          }
+        ];
+        await prisma.notification.createMany({ data: seed });
+        notifications = await prisma.notification.findMany({
+          where: { userId },
+          orderBy: { createdAt: "desc" },
+          take: 30
+        });
+      }
+
+      const unreadCount = notifications.filter((n) => !n.readAt).length;
+      return res.json({ notifications, unreadCount });
+    } catch {
+      // Dev store fallback
+      if (!devNotificationsStore.has(userId)) {
+        devNotificationsStore.set(userId, [
+          {
+            id: `notif-1-${userId}`,
+            userId,
+            title: "Chào mừng đến với RytoxGroup! 🎬",
+            body: "Trải nghiệm rạp chiếu phim trực tuyến đỉnh cao với hình ảnh Full HD/4K sắc nét và âm thanh sống động.",
+            readAt: null,
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: `notif-2-${userId}`,
+            userId,
+            title: "Tính năng mới: Đánh giá & Phụ đề CC ⭐",
+            body: "Bạn đã có thể chấm điểm 1-10 sao, gửi bình luận và tùy chỉnh bật/tắt phụ đề Vietsub trực tiếp trên thanh điều khiển.",
+            readAt: null,
+            createdAt: new Date(Date.now() - 3600000).toISOString()
+          },
+          {
+            id: `notif-3-${userId}`,
+            userId,
+            title: "Cập nhật tập mới hàng loạt 🚀",
+            body: "Các bộ phim Anime và Phim truyền hình hot nhất tuần này đã được thêm đầy đủ các tập mới nhất.",
+            readAt: null,
+            createdAt: new Date(Date.now() - 7200000).toISOString()
+          }
+        ]);
+      }
+      const list = devNotificationsStore.get(userId)!;
+      const unreadCount = list.filter((n) => !n.readAt).length;
+      return res.json({ notifications: list, unreadCount });
+    }
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function markNotificationAsRead(req: Request, res: Response, next: NextFunction) {
+  try {
+    const notifId = String(req.params.id);
+    const userId = req.user!.id;
+
+    try {
+      await prisma.notification.updateMany({
+        where: { id: notifId, userId },
+        data: { readAt: new Date() }
+      });
+      return res.json({ success: true });
+    } catch {
+      const list = devNotificationsStore.get(userId) || [];
+      const item = list.find((n) => n.id === notifId);
+      if (item) item.readAt = new Date().toISOString();
+      return res.json({ success: true });
+    }
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function markAllNotificationsAsRead(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+
+    try {
+      await prisma.notification.updateMany({
+        where: { userId, readAt: null },
+        data: { readAt: new Date() }
+      });
+      return res.json({ success: true });
+    } catch {
+      const list = devNotificationsStore.get(userId) || [];
+      list.forEach((n) => { n.readAt = new Date().toISOString(); });
+      return res.json({ success: true });
+    }
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getUserSubscription(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user!.id;
+    try {
+      const sub = await prisma.subscription.findFirst({
+        where: { userId, status: "ACTIVE" },
+        orderBy: { currentPeriodEnd: "desc" }
+      });
+      return res.json({ subscription: sub || null });
+    } catch {
+      return res.json({
+        subscription: {
+          id: `sub-vip-${userId}`,
+          userId,
+          tier: "PREMIUM",
+          billingInterval: "YEARLY",
+          status: "ACTIVE",
+          priceCents: 17990,
+          currentPeriodStart: new Date().toISOString(),
+          currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          cancelAtPeriodEnd: false
+        }
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+}
+

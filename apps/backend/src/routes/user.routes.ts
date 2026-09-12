@@ -9,6 +9,10 @@ import {
   handleSendEmailOtp,
   updateEmail,
   deleteSelfAccount,
+  getUserNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  getUserSubscription,
   getFavorites,
   addFavorite,
   removeFavorite,
@@ -30,6 +34,13 @@ router.put("/me/password", updatePassword);
 router.post("/me/send-email-otp", handleSendEmailOtp);
 router.put("/me/email", updateEmail);
 router.delete("/me", deleteSelfAccount);
+
+// Notifications & Subscription
+router.get("/me/notifications", getUserNotifications);
+router.patch("/me/notifications/:id/read", markNotificationAsRead);
+router.post("/me/notifications/mark-all-read", markAllNotificationsAsRead);
+router.get("/me/subscription", getUserSubscription);
+
 
 // Profile My List (Favorites)
 router.get("/profiles/:profileId/my-list", getFavorites);

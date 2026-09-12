@@ -1,1 +1,63 @@
-<div id="root"></div><script type="module" src="/src/main.tsx"></script>
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="description" content="RytoxGroup — Cinema Operations Center & Admin CMS" />
+    <meta name="theme-color" content="#141414" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;600;700;800;900&family=Anton&family=Dela+Gothic+One&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>RytoxGroup — Bảng Điều Khiển Quản Trị & Vận Hành Cinema</title>
+  </head>
+  <body class="bg-[#0c0d14] text-white">
+    <div id="root">
+      <div id="initial-splash" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#141414;gap:24px">
+        <style>
+          #initial-splash .sf-logo {
+            font-family: 'League Spartan', sans-serif;
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: #e50914;
+            letter-spacing: -0.02em;
+            text-shadow: 0 0 30px rgba(229, 9, 20, 0.4);
+            animation: sf-pulse 2s ease-in-out infinite;
+          }
+          #initial-splash .sf-badge {
+            font-family: 'Poppins', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 4px 14px;
+            border-radius: 9999px;
+          }
+          #initial-splash .sf-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(229,9,20,.2);
+            border-top-color: #e50914;
+            border-radius: 50%;
+            animation: sf-spin .8s linear infinite;
+          }
+          @keyframes sf-spin { to { transform: rotate(360deg); } }
+          @keyframes sf-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .75; transform: scale(0.98); } }
+        </style>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="sf-logo">RytoxGroup</span>
+          <span class="sf-badge">ADMIN CMS</span>
+        </div>
+        <div class="sf-spinner"></div>
+        <p style="color:rgba(255,255,255,.45);font-size:12px;font-family:Poppins,sans-serif;letter-spacing:.12em;text-transform:uppercase">
+          Đang khởi động trung tâm vận hành...
+        </p>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

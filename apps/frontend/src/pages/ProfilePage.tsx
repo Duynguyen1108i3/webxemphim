@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { ArrowLeft, Check, Camera, LogOut, Save, User, Mail, Lock, KeyRound, Send, ShieldCheck, Sparkles, HelpCircle, RefreshCw, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Camera, LogOut, Save, User, Mail, Lock, KeyRound, Send, ShieldCheck, Sparkles, HelpCircle, RefreshCw, X, Trash2, CreditCard, QrCode, Smartphone, Zap, CheckCircle2, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore, authApi } from "../store/auth";
 import { useNavigate } from "react-router-dom";
@@ -10,19 +10,15 @@ const PROFILE_TABS = [
   { id: "username", label: "Tên hiển thị", icon: Sparkles },
   { id: "email", label: "Địa chỉ Email", icon: Mail },
   { id: "password", label: "Mật khẩu", icon: Lock },
+  { id: "billing", label: "Gói cước VIP", icon: CreditCard },
 ] as const;
 
 const presetAvatars = [
-  { name: "Netflix Red", value: "https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" },
-  { name: "Cyberpunk", value: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80" },
-  { name: "Neon Hero", value: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=200&auto=format&fit=crop&q=80" },
-  { name: "Cinematic", value: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80" },
-  { name: "Anime Rei", value: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=200&auto=format&fit=crop&q=80" },
-  { name: "Obsidian", value: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80" },
-  { name: "Ruby Style", value: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80" },
-  { name: "Blue Glow", value: "from-blue-500 to-cyan-300" },
-  { name: "Neon Sunset", value: "from-yellow-400 to-orange-500" },
-  { name: "Purple Dream", value: "from-purple-500 to-pink-500" },
+  { name: "Gato Coder Fisheye", value: "https://i.pinimg.com/736x/d9/29/00/d9290081650be42d78fda3208fc97b8f.jpg" },
+  { name: "Mèo Coder Bàn Mini", value: "https://i.pinimg.com/736x/77/fd/20/77fd20eb5fdbad732959cf9fd6656bec.jpg" },
+  { name: "Mèo Ngủ Cạnh Mac", value: "https://i.pinimg.com/736x/27/2c/bc/272cbc5a4f0b054c1825a7df3e8d281c.jpg" },
+  { name: "Mèo Gõ Phím Siêu Tốc", value: "https://i.pinimg.com/736x/dd/a3/91/dda391ff72469d4c4c603c0c033966e8.jpg" },
+  { name: "Mèo Kính Trắng Chill", value: "https://i.pinimg.com/736x/60/ef/ff/60effff1052085826c1eda5c1db835e6.jpg" },
 ];
 
 export function ProfilePage() {
@@ -33,7 +29,8 @@ export function ProfilePage() {
   const setUser = useAuthStore(state => state.setUser);
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<"general" | "username" | "email" | "password">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "username" | "email" | "password" | "billing">("general");
+
 
   const activeTabIndex = useMemo(() => {
     const idx = PROFILE_TABS.findIndex((t) => t.id === activeTab);
@@ -141,25 +138,98 @@ export function ProfilePage() {
 
   // Avatar state
   const [inputAvatar, setInputAvatar] = useState(avatarUrl || "");
+  const [customUrlInput, setCustomUrlInput] = useState(() => (avatarUrl && avatarUrl.startsWith("http")) ? avatarUrl : "");
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false);
   const [uploadedPhotos, setUploadedPhotos] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem("streamforge:profile:uploaded_photos");
       const initialList: string[] = saved ? JSON.parse(saved) : [];
-      if (avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) && !initialList.includes(avatarUrl)) {
+      if (avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:") || avatarUrl.includes("/")) && !initialList.includes(avatarUrl)) {
         initialList.unshift(avatarUrl);
       }
       return initialList;
     } catch {
-      return avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.includes("/")) ? [avatarUrl] : [];
+      return avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:") || avatarUrl.includes("/")) ? [avatarUrl] : [];
     }
   });
+
+  useEffect(() => {
+    if (avatarUrl) {
+      setInputAvatar(avatarUrl);
+      if (avatarUrl.startsWith("http")) {
+        setCustomUrlInput(avatarUrl);
+      }
+    }
+  }, [avatarUrl]);
+
+  // Subscription & Payment State
+  const [subTier, setSubTier] = useState<"BASIC" | "STANDARD" | "PREMIUM">("PREMIUM");
+  const [subStatus, setSubStatus] = useState("ACTIVE");
+  const [billingInterval, setBillingInterval] = useState<"MONTHLY" | "YEARLY">("YEARLY");
+  const [periodEnd, setPeriodEnd] = useState("31/12/2026");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<"BASIC" | "STANDARD" | "PREMIUM">("PREMIUM");
+  const [selectedInterval, setSelectedInterval] = useState<"MONTHLY" | "YEARLY">("YEARLY");
+  const [selectedMethod, setSelectedMethod] = useState<"VIETQR" | "MOMO" | "CARD">("VIETQR");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      authApi.request<{ subscription: any }>("/subscriptions/me")
+        .then((res) => {
+          if (res.subscription) {
+            setSubTier(res.subscription.tier || "PREMIUM");
+            setSubStatus(res.subscription.status || "ACTIVE");
+            setBillingInterval(res.subscription.billingInterval || "YEARLY");
+            if (res.subscription.currentPeriodEnd) {
+              setPeriodEnd(new Date(res.subscription.currentPeriodEnd).toLocaleDateString("vi-VN"));
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
+
+  const handleSimulatePayment = async () => {
+    setIsProcessingPayment(true);
+    try {
+      await authApi.request("/subscriptions/simulate-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscriptionId: `sub-${user?.id || "user"}`,
+          paymentMethod: selectedMethod
+        })
+      });
+      setSubTier(selectedPlan);
+      setBillingInterval(selectedInterval);
+      setSubStatus("ACTIVE");
+      setSuccessMsg(`🎉 Chúc mừng bạn đã nâng cấp thành công gói ${selectedPlan} (${selectedInterval === "MONTHLY" ? "Hàng tháng" : "Hàng năm"})!`);
+      setShowUpgradeModal(false);
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Lỗi xử lý thanh toán");
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handleCancelAutoRenew = async () => {
+    if (!window.confirm("Bạn có chắc chắn muốn tắt tự động gia hạn gói cước không? Bạn vẫn sẽ xem được đến hết chu kỳ hiện tại.")) return;
+    try {
+      await authApi.request("/subscriptions/cancel", { method: "POST" });
+      setSuccessMsg("Đã tắt tự động gia hạn gói cước thành công.");
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Không thể hủy tự động gia hạn");
+    }
+  };
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addUploadedPhoto = (newPhotoUrl: string) => {
     setUploadedPhotos(prev => {
       const filtered = prev.filter(url => url !== newPhotoUrl);
-      const updated = [newPhotoUrl, ...filtered].slice(0, 10);
+      const updated = [newPhotoUrl, ...filtered].slice(0, 6);
       try {
         localStorage.setItem("streamforge:profile:uploaded_photos", JSON.stringify(updated));
       } catch (err) {
@@ -232,8 +302,55 @@ export function ProfilePage() {
     fileInputRef.current?.click();
   };
 
+  // Utility to auto crop square and compress avatar to ~20KB
+  const compressImageToAvatar = (file: File, maxSize = 256): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const width = img.width;
+          const height = img.height;
+          const minDim = Math.min(width, height);
+          const startX = (width - minDim) / 2;
+          const startY = (height - minDim) / 2;
+
+          const targetDim = Math.min(maxSize, minDim);
+          canvas.width = targetDim;
+          canvas.height = targetDim;
+
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(reader.result as string);
+            return;
+          }
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, targetDim, targetDim);
+
+          const compressed = canvas.toDataURL("image/jpeg", 0.88);
+          resolve(compressed);
+        } catch {
+          resolve(reader.result as string);
+        }
+      };
+      img.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleSelectAndSaveAvatar = async (val: string) => {
+    if (!val) return;
+    setIsSavingAvatar(true);
     setInputAvatar(val);
+    if (val.startsWith("http")) {
+      setCustomUrlInput(val);
+    }
     setAvatarUrl(val);
     if (user) {
       setUser({ ...user, avatarUrl: val });
@@ -243,36 +360,47 @@ export function ProfilePage() {
       showSuccess("Đã đổi và lưu ảnh đại diện thành công!");
     } catch (err: any) {
       console.warn("Avatar update notice:", err);
-      showSuccess("Đã đổi ảnh đại diện thành công!");
+      showSuccess("Đã cập nhật ảnh đại diện thành công!");
+    } finally {
+      setIsSavingAvatar(false);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 1.5 * 1024 * 1024) {
-      showError("Kích thước ảnh đại diện phải nhỏ hơn 1.5MB!");
+    if (!file.type.startsWith("image/")) {
+      showError("Vui lòng chọn tệp hình ảnh hợp lệ!");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      if (typeof reader.result === "string") {
-        const base64Str = reader.result;
-        addUploadedPhoto(base64Str);
-        await handleSelectAndSaveAvatar(base64Str);
-      }
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 10 * 1024 * 1024) {
+      showError("Kích thước tệp ảnh không được vượt quá 10MB!");
+      return;
+    }
+
+    try {
+      setIsSavingAvatar(true);
+      const compressed = await compressImageToAvatar(file, 256);
+      addUploadedPhoto(compressed);
+      await handleSelectAndSaveAvatar(compressed);
+    } catch (err) {
+      console.error("Lỗi khi xử lý hình ảnh:", err);
+      showError("Không thể xử lý hình ảnh đã chọn!");
+    } finally {
+      setIsSavingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleSaveAvatar = async () => {
-    if (!inputAvatar.trim()) return showError("Vui lòng chọn hoặc nhập liên kết ảnh đại diện!");
-    if (inputAvatar.startsWith("http") || inputAvatar.includes("/")) {
-      addUploadedPhoto(inputAvatar);
+    const targetVal = customUrlInput.trim() || inputAvatar.trim();
+    if (!targetVal) return showError("Vui lòng chọn hoặc nhập liên kết ảnh đại diện!");
+    if (targetVal.startsWith("http") || targetVal.startsWith("data:") || targetVal.includes("/")) {
+      addUploadedPhoto(targetVal);
     }
-    await handleSelectAndSaveAvatar(inputAvatar);
+    await handleSelectAndSaveAvatar(targetVal);
   };
 
   const handleUpdateUsername = async (e: React.FormEvent) => {
@@ -396,7 +524,7 @@ export function ProfilePage() {
 
   const displayName = user?.username || "Thành viên";
   const displayEmail = user?.email || "Chưa cập nhật email";
-  const isCustomImage = inputAvatar && (inputAvatar.startsWith("http") || inputAvatar.includes("/"));
+  const isCustomImage = Boolean(inputAvatar && (inputAvatar.startsWith("http") || inputAvatar.startsWith("data:") || inputAvatar.startsWith("/") || inputAvatar.includes("/")));
 
   return (
     <main className="min-h-screen bg-transparent px-4 pt-24 pb-16 sm:px-6 md:px-8 flex items-center justify-center relative">
@@ -517,12 +645,11 @@ export function ProfilePage() {
           <div className="space-y-4 animate-fadeIn">
             <div className="space-y-2">
               <label className="text-[11px] font-bold text-white/50 uppercase tracking-wider block">
-                Chọn mẫu ảnh đại diện
+                Bộ sưu tập ảnh mèo cute (Pinterest)
               </label>
-              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5">
-                {presetAvatars.map((item) => {
+              <div className="grid grid-cols-5 gap-2.5">
+                {presetAvatars.map((item, index) => {
                   const isSelected = inputAvatar === item.value;
-                  const isImg = item.value.startsWith("http") || item.value.includes("/") || item.value.startsWith("data:");
                   return (
                     <button
                       key={item.value}
@@ -530,12 +657,15 @@ export function ProfilePage() {
                       onClick={() => handleSelectAndSaveAvatar(item.value)}
                       className="flex flex-col items-center gap-1 focus:outline-none group cursor-pointer"
                     >
-                      <div className={`h-11 w-11 rounded-xl border-2 transition duration-200 ${isSelected ? "border-white scale-105 shadow-[0_0_16px_rgba(255,255,255,0.5)] ring-2 ring-white/60" : "border-white/10 hover:border-white/40"} aspect-square overflow-hidden`}>
-                        {isImg ? (
-                          <img src={item.value} className="h-full w-full object-cover aspect-square" alt={item.name} />
-                        ) : (
-                          <div className={`h-full w-full bg-gradient-to-br ${item.value}`} />
-                        )}
+                      <div className={`h-12 w-12 rounded-xl border-2 transition duration-200 ${isSelected ? "border-white scale-105 shadow-[0_0_16px_rgba(255,255,255,0.5)] ring-2 ring-white/60" : "border-white/10 hover:border-white/40"} aspect-square overflow-hidden`}>
+                        <img 
+                          src={item.value} 
+                          onError={(e) => {
+                            e.currentTarget.src = `/avatars/cat-${index + 1}.jpg`;
+                          }}
+                          className="h-full w-full object-cover aspect-square" 
+                          alt={item.name} 
+                        />
                       </div>
                       <span className="text-[9px] text-white/40 group-hover:text-white transition truncate max-w-full font-medium">{item.name}</span>
                     </button>
@@ -586,9 +716,15 @@ export function ProfilePage() {
               <div className="flex gap-2">
                 <input 
                   type="text"
-                  value={isCustomImage ? inputAvatar : ""}
-                  onChange={(e) => setInputAvatar(e.target.value)}
-                  placeholder="https://example.com/avatar.jpg"
+                  value={customUrlInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomUrlInput(val);
+                    if (val.trim().startsWith("http") || val.trim().startsWith("/")) {
+                      setInputAvatar(val.trim());
+                    }
+                  }}
+                  placeholder="https://example.com/cat.jpg"
                   className="flex-1 px-4 py-2.5 rounded-full bg-white/[0.06] border border-white/15 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/40 focus:bg-white/[0.10] transition-all shadow-inner"
                 />
                 <button
@@ -605,9 +741,18 @@ export function ProfilePage() {
               <button
                 type="button"
                 onClick={handleSaveAvatar}
-                className="flex items-center gap-2 bg-white text-black font-black text-xs px-6 py-2.5 rounded-full transition-all duration-200 hover:bg-white/90 hover:shadow-[0_0_20px_rgba(255,255,255,0.35)] active:scale-95 cursor-pointer focus:outline-none"
+                disabled={isSavingAvatar}
+                className="flex items-center gap-2 bg-white text-black font-black text-xs px-6 py-2.5 rounded-full transition-all duration-200 hover:bg-white/90 hover:shadow-[0_0_20px_rgba(255,255,255,0.35)] disabled:opacity-50 active:scale-95 cursor-pointer focus:outline-none"
               >
-                <Save size={14} /> Lưu ảnh đại diện
+                {isSavingAvatar ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" /> Đang lưu...
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} /> Lưu ảnh đại diện
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -889,6 +1034,233 @@ export function ProfilePage() {
             )}
           </div>
         )}
+
+        {/* TAB 5: VIP SUBSCRIPTION & BILLING */}
+
+        {activeTab === "billing" && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* VIP Status Holographic Hero Card */}
+            <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-purple-900/60 via-zinc-900/80 to-pink-900/40 p-6 sm:p-7 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl">
+              <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
+              <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-pink-500/20 blur-3xl pointer-events-none" />
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-200 border border-purple-400/40 text-[10px] font-black uppercase tracking-wider">
+                      {subTier} MEMBER
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <CheckCircle2 size={11} /> Đang hoạt động
+                    </span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-white">
+                    Gói {subTier === "PREMIUM" ? "Premium 4K Ultra HD" : subTier === "STANDARD" ? "Standard Full HD" : "Basic HD"}
+                  </h3>
+                  <p className="text-xs text-white/60 mt-1">
+                    Chu kỳ thanh toán: <span className="text-white font-semibold">{billingInterval === "YEARLY" ? "Hàng năm (Tiết kiệm 20%)" : "Hàng tháng"}</span> • Hạn dùng: <span className="text-white font-semibold">{periodEnd}</span>
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="flex items-center justify-center gap-2 bg-white hover:bg-white/90 text-black font-black text-xs px-6 py-3 rounded-full transition-all duration-200 shadow-xl active:scale-95 cursor-pointer shrink-0"
+                >
+                  <Zap size={14} fill="currentColor" /> Nâng cấp / Đổi gói
+                </button>
+              </div>
+
+              {/* VIP Perks Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-5 text-xs text-white/80">
+                <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03]">
+                  <Check size={14} className="text-purple-400 shrink-0" />
+                  <span>Hình ảnh 4K Ultra HD sắc nét & Âm thanh Dolby</span>
+                </div>
+                <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03]">
+                  <Check size={14} className="text-purple-400 shrink-0" />
+                  <span>Xem đồng thời trên 4 thiết bị cùng lúc</span>
+                </div>
+                <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03]">
+                  <Check size={14} className="text-purple-400 shrink-0" />
+                  <span>Tự động bỏ qua đoạn mở đầu (Skip Intro)</span>
+                </div>
+                <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03]">
+                  <Check size={14} className="text-purple-400 shrink-0" />
+                  <span>Kho phim 100% không quảng cáo làm gián đoạn</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Plan Management Info */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-white/10 bg-white/[0.03] text-xs">
+              <div>
+                <p className="font-bold text-white">Quản lý Gia hạn Tự động</p>
+                <p className="text-white/50 text-[11px] mt-0.5">Gói cước sẽ được gia hạn tự động khi đến ngày {periodEnd}.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelAutoRenew}
+                className="text-white/60 hover:text-white underline text-xs font-semibold self-start sm:self-auto cursor-pointer"
+              >
+                Hủy tự động gia hạn
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Upgrade & Payment Simulation Modal */}
+        {showUpgradeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn">
+            <div className="w-full max-w-xl rounded-3xl border border-white/20 bg-zinc-950 p-6 sm:p-7 shadow-2xl space-y-5">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div>
+                  <h3 className="text-lg font-black text-white">Nâng cấp Gói xem phim</h3>
+                  <p className="text-xs text-white/50 mt-0.5">Chọn gói cước và phương thức thanh toán thuận tiện nhất</p>
+                </div>
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="text-white/50 hover:text-white p-1 rounded-full hover:bg-white/10"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Step 1: Select Plan Tier */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-white/60 uppercase">1. Chọn gói cước</label>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { id: "BASIC", name: "Basic", price: "$7.99", quality: "720p HD", screens: "1 Thiết bị" },
+                    { id: "STANDARD", name: "Standard", price: "$12.99", quality: "1080p FHD", screens: "2 Thiết bị" },
+                    { id: "PREMIUM", name: "Premium", price: "$17.99", quality: "4K HDR", screens: "4 Thiết bị" }
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setSelectedPlan(p.id as any)}
+                      className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+                        selectedPlan === p.id
+                          ? "border-purple-400 bg-purple-500/20 shadow-[0_0_16px_rgba(168,85,247,0.3)]"
+                          : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-xs text-white">{p.name}</span>
+                        {selectedPlan === p.id && <Check size={14} className="text-purple-300" />}
+                      </div>
+                      <p className="text-sm font-black text-white mt-1">{p.price}<span className="text-[10px] font-normal text-white/50">/tháng</span></p>
+                      <p className="text-[10px] text-white/50 mt-1">{p.quality}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Step 2: Select Payment Method */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-white/60 uppercase">2. Phương thức thanh toán</label>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { id: "VIETQR", label: "VietQR Ngân hàng", icon: QrCode, badge: "Khuyên dùng" },
+                    { id: "MOMO", label: "Ví MoMo", icon: Smartphone, badge: "Nhanh chóng" },
+                    { id: "CARD", label: "Thẻ Visa / Master", icon: CreditCard, badge: "Quốc tế" }
+                  ].map((m) => {
+                    const Icon = m.icon;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSelectedMethod(m.id as any)}
+                        className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+                          selectedMethod === m.id
+                            ? "border-white bg-white/15 shadow-lg"
+                            : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Icon size={16} className={selectedMethod === m.id ? "text-white" : "text-white/60"} />
+                          <span className="text-xs font-bold text-white">{m.label}</span>
+                        </div>
+                        <span className="text-[10px] text-white/40">{m.badge}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Step 3: Payment Visual Preview */}
+              <div className="p-4 rounded-2xl border border-white/15 bg-black/50 space-y-3">
+                {selectedMethod === "VIETQR" && (
+                  <div className="flex items-center gap-4">
+                    <div className="h-24 w-24 rounded-xl bg-white p-1.5 shadow-md shrink-0 flex items-center justify-center">
+                      {/* Generative QR visual representation */}
+                      <div className="w-full h-full bg-zinc-900 rounded flex flex-col items-center justify-center p-1 text-center">
+                        <QrCode size={48} className="text-white" />
+                        <span className="text-[8px] text-white/70 font-mono">VIETQR SCAN</span>
+                      </div>
+                    </div>
+                    <div className="text-xs space-y-1">
+                      <p className="font-bold text-white">Quét mã VietQR qua bất kỳ App Ngân hàng</p>
+                      <p className="text-white/50 text-[11px]">Ngân hàng: <span className="text-white">MB Bank (Quân Đội)</span></p>
+                      <p className="text-white/50 text-[11px]">Số tài khoản: <span className="text-white font-mono font-bold">999988882024</span></p>
+                      <p className="text-white/50 text-[11px]">Nội dung: <span className="text-emerald-400 font-mono font-bold">RYTOX VIP {user?.email?.split("@")[0]}</span></p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedMethod === "MOMO" && (
+                  <div className="flex items-center gap-4">
+                    <div className="h-20 w-20 rounded-2xl bg-pink-600 flex items-center justify-center text-white font-black text-lg shadow-md shrink-0">
+                      MoMo
+                    </div>
+                    <div className="text-xs space-y-1">
+                      <p className="font-bold text-white">Thanh toán qua Ví điện tử MoMo</p>
+                      <p className="text-white/50 text-[11px]">Mở ứng dụng MoMo và xác nhận liên kết tự động</p>
+                      <p className="text-emerald-400 text-[11px] font-semibold">Tự động kích hoạt ngay sau 3 giây</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedMethod === "CARD" && (
+                  <div className="text-xs space-y-2">
+                    <p className="font-bold text-white">Thanh toán bằng Thẻ Quốc tế (Visa / Master)</p>
+                    <input
+                      type="text"
+                      placeholder="4111 2222 3333 4444"
+                      defaultValue="4111 •••• •••• 8888"
+                      className="w-full h-9 rounded-xl border border-white/15 bg-black px-3 text-xs text-white font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-white/60 hover:text-white transition cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSimulatePayment}
+                  disabled={isProcessingPayment}
+                  className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-black text-xs px-7 py-3 rounded-full transition-all duration-200 shadow-[0_4px_20px_rgba(168,85,247,0.4)] active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {isProcessingPayment ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={14} />
+                  )}
+                  {isProcessingPayment ? "Đang xử lý kích hoạt..." : `Kích hoạt gói ${selectedPlan} ngay`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {/* Footer Actions: Logout and Delete Account */}
         <div className="border-t border-white/10 mt-6 pt-4 flex items-center justify-between">
