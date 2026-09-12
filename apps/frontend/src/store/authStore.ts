@@ -107,11 +107,34 @@ function resetLocalAuth(set: (state: Partial<AuthState>) => void) {
   usePlaybackStore.getState().loadUserData();
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  profileId: null,
-  avatarUrl: getStoredItem("profile:avatar"),
-  initialized: false,
+function getInitialUser(): AuthUser | null {
+  try {
+    const raw = getStoredItem("auth:user");
+    if (!raw) return null;
+    const user = JSON.parse(raw) as AuthUser;
+    if (user.id?.startsWith("offline-")) return null;
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+function getInitialProfileId(): string | null {
+  try {
+    return getStoredItem("auth:profileId");
+  } catch {
+    return null;
+  }
+}
+
+export const useAuthStore = create<AuthState>((set) => {
+  const initialUser = getInitialUser();
+  const initialProfileId = getInitialProfileId() || initialUser?.username || null;
+  return {
+    user: initialUser,
+    profileId: initialProfileId,
+    avatarUrl: getStoredItem("profile:avatar") || initialUser?.avatarUrl || null,
+    initialized: Boolean(initialUser),
   setUser: (user) => {
     if (user) {
       set((state) => {
@@ -231,7 +254,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       resetLocalAuth(set);
     }
   }
-}));
+};
+});
 
 export const authApi = {
   async login(email: string, password: string): Promise<AuthUser> {

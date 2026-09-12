@@ -100,6 +100,10 @@ export function applySecurity(app: Express) {
     if (process.env.NODE_ENV !== "production" && req.headers["x-dev-admin"] === "true") {
       return next();
     }
+    // Exclude telemetry heartbeat beacons (sent via navigator.sendBeacon and periodic timers)
+    if (req.path === "/api/playback/heartbeat" || req.path === "/playback/heartbeat") {
+      return next();
+    }
     return (doubleCsrfProtection as RequestHandler)(req, res, next);
   });
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@streamforge/ui";
 import { Film, Plus, Search, Edit2, Trash2, Layers, Check, X, Play, Loader2, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
-import { api } from "../lib/api";
+import { api } from "../lib/adminApi";
 
 interface MovieItem {
   id: string;
@@ -95,7 +95,7 @@ export function MovieManagementPage() {
         {},
         { timeout: 90_000 }
       );
-      showToast(res.data?.message || "Đã đồng bộ phim thật từ PhimAPI thành công!");
+      showToast(res.data?.message || "Đã đồng bộ phim từ PhimAPI thành công!");
       await fetchMovies(search, 1);
       setPage(1);
     } catch (err: any) {
@@ -224,10 +224,10 @@ export function MovieManagementPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-full border border-white/10 backdrop-blur-md">
+        <div className="flex flex-wrap items-center gap-1.5 bg-white/5 p-1 rounded-full border border-white/10 backdrop-blur-md">
           <button
             onClick={() => setActiveTab("list")}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer ${
+            className={`h-9 px-4 inline-flex items-center justify-center rounded-full text-xs font-bold transition cursor-pointer ${
               activeTab === "list"
                 ? "bg-white text-black shadow-xl"
                 : "text-white/70 hover:text-white hover:bg-white/10"
@@ -238,21 +238,21 @@ export function MovieManagementPage() {
           <button
             onClick={handleSyncPhimApi}
             disabled={isSyncing}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-lg disabled:opacity-50"
+            className="h-9 inline-flex items-center justify-center gap-1.5 px-4 rounded-full text-xs font-bold transition cursor-pointer bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-lg disabled:opacity-50"
             title="Tự động đồng bộ các bộ phim mới nhất từ nguồn PhimAPI về hệ thống"
           >
             {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-            {isSyncing ? "Đang đồng bộ..." : "Đồng bộ từ PhimAPI"}
+            <span>{isSyncing ? "Đang đồng bộ..." : "Đồng bộ từ PhimAPI"}</span>
           </button>
           <button
             onClick={() => setActiveTab("create")}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer ${
+            className={`h-9 inline-flex items-center justify-center gap-1.5 px-4 rounded-full text-xs font-bold transition cursor-pointer ${
               activeTab === "create"
                 ? "bg-white text-black shadow-xl"
                 : "text-white/70 hover:text-white hover:bg-white/10"
             }`}
           >
-            <Plus size={14} /> Thêm phim mới
+            <Plus size={14} /> <span>Thêm phim mới</span>
           </button>
         </div>
       </div>
@@ -337,8 +337,8 @@ export function MovieManagementPage() {
                                 <span className="text-amber-400 font-bold flex items-center gap-1">
                                   <span>⭐</span> {m.averageRating.toFixed(1)} <span className="text-white/40 text-[11px] font-normal">/ 10</span>
                                 </span>
-                                <span className="text-[11px] text-emerald-400 font-medium">
-                                  {m._count.ratings} đánh giá thật
+                                <span className="text-[11px] text-white/50 font-medium">
+                                  {m._count.ratings} lượt đánh giá
                                 </span>
                               </div>
                             ) : (
@@ -550,13 +550,13 @@ export function MovieManagementPage() {
                 <button
                   type="button"
                   onClick={() => setEditingMovie(null)}
-                  className="nf-button px-5 py-2 rounded-full glass-button text-xs font-bold text-white transition cursor-pointer"
+                  className="h-10 px-5 inline-flex items-center justify-center rounded-full glass-button text-xs font-bold text-white transition cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="nf-button px-6 py-2 rounded-full bg-white text-black hover:bg-white/90 active:bg-white/80 text-xs font-bold transition shadow-xl cursor-pointer"
+                  className="h-10 px-6 inline-flex items-center justify-center rounded-full bg-white text-black hover:bg-white/90 active:bg-white/80 text-xs font-bold transition shadow-xl cursor-pointer"
                 >
                   Lưu thay đổi
                 </button>
@@ -577,13 +577,13 @@ export function MovieManagementPage() {
             <div className="flex justify-end gap-2 pt-3">
               <button
                 onClick={() => setDeletingMovie(null)}
-                className="nf-button px-5 py-2 rounded-full glass-button text-xs font-bold text-white transition cursor-pointer"
+                className="h-10 px-5 inline-flex items-center justify-center rounded-full glass-button text-xs font-bold text-white transition cursor-pointer"
               >
                 Hủy bỏ
               </button>
               <button
                 onClick={handleDeleteMovie}
-                className="nf-button px-5 py-2 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-bold text-red-400 transition cursor-pointer"
+                className="h-10 px-5 inline-flex items-center justify-center rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-bold text-red-400 transition cursor-pointer"
               >
                 Xác nhận Xóa
               </button>

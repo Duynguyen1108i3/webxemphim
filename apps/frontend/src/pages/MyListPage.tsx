@@ -10,7 +10,13 @@ import type { NormalizedMovie } from "../lib/movieApi";
 export function MyListPage() {
   const user = useAuthStore((state) => state.user);
   const myList = usePlaybackStore((state) => state.myList);
+  const isMyListLoading = usePlaybackStore((state) => state.isMyListLoading);
+  const loadUserData = usePlaybackStore((state) => state.loadUserData);
   const { openDetailModal } = usePlaybackStore();
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData, user?.id]);
 
   const [hovered, setHovered] = useState<{ movie: MovieCardDto; anchor: HTMLElement; rect: DOMRect } | null>(null);
 
@@ -105,10 +111,11 @@ export function MyListPage() {
         </div>
       ) : myList.length > 0 ? (
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 md:gap-2">
-          {myList.map((movie) => (
+          {myList.map((movie, index) => (
             <MovieTile
               key={movie.id}
               movie={movie as any}
+              index={index}
               className="group relative w-full cursor-pointer rounded-[16px] transition"
               onOpen={() => handleOpen(movie as any)}
               onHover={(anchor) => {
@@ -120,6 +127,12 @@ export function MyListPage() {
               }}
               onHoverEnd={scheduleHoverClose}
             />
+          ))}
+        </div>
+      ) : isMyListLoading ? (
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 md:gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="aspect-video w-full rounded-[16px] bg-white/5 animate-pulse border border-white/10" />
           ))}
         </div>
       ) : (

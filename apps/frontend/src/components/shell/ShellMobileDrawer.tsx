@@ -1,4 +1,4 @@
-import { X, User, LogIn, UserPlus } from "lucide-react";
+import { X, User, LogIn, UserPlus, ShieldCheck } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePlaybackStore } from "../../store/playbackStore";
@@ -68,6 +68,19 @@ export function ShellMobileDrawer({
                 <>
                   <p className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Tài khoản & Hồ sơ</p>
                   <div className="flex flex-col gap-3">
+                    {user && (user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                      <button 
+                        onClick={() => {
+                          onClose();
+                          navigate("/admin");
+                        }}
+                        className="flex items-center gap-2.5 text-left text-sm font-bold text-amber-400 hover:text-amber-300 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 shadow-sm"
+                      >
+                        <ShieldCheck size={18} className="text-amber-400" />
+                        <span>Trang quản lý Admin</span>
+                      </button>
+                    )}
+
                     <button 
                       onClick={() => {
                         onClose();

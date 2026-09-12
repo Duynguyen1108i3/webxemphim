@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Trash2, ShieldAlert, UserCheck, Search, Loader2, RefreshCw, AlertTriangle, Sparkles, Crown } from "lucide-react";
-import { api } from "../lib/api";
+import { api } from "../lib/adminApi";
 
 const presetCatAvatars = [
   "https://i.pinimg.com/736x/d9/29/00/d9290081650be42d78fda3208fc97b8f.jpg",
@@ -68,6 +68,19 @@ export function UserManagementPage() {
     }
   };
 
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    setModifyingId(userId);
+    try {
+      await api.patch(`/admin/users/${userId}/role`, { role: newRole });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+    } catch (err: any) {
+      console.error("Failed to update role:", err);
+      alert("Không thể cập nhật quyền tài khoản.");
+    } finally {
+      setModifyingId(null);
+    }
+  };
+
   const handleDeleteUser = async () => {
     if (!confirmDeleteUser) return;
     const userId = confirmDeleteUser.id;
@@ -96,7 +109,7 @@ export function UserManagementPage() {
         </div>
 
         {/* Search */}
-        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full sm:w-auto">
+        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2.5 w-full sm:w-auto">
           <div className="relative w-full sm:w-80">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
             <input
@@ -133,7 +146,7 @@ export function UserManagementPage() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px]">
-                <th className="py-3 px-4">Tài Khoản & Avatar Mèo</th>
+                <th className="py-3 px-4">Tài Khoản</th>
                 <th className="py-3 px-4">Vai Trò</th>
                 <th className="py-3 px-4">Gói Thuê Bao VIP</th>
                 <th className="py-3 px-4">Ngày Tham Gia</th>
@@ -179,13 +192,25 @@ export function UserManagementPage() {
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                          user.role === "SUPER_ADMIN" || user.role === "ADMIN"
-                            ? "bg-red-500/20 text-red-400 border-red-500/30"
-                            : "bg-white/5 text-white/70 border-white/10"
-                        }`}>
-                          {user.role}
-                        </span>
+                        <select
+                          value={user.role}
+                          disabled={modifyingId === user.id}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                          className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border cursor-pointer focus:outline-none transition ${
+                            user.role === "SUPER_ADMIN"
+                              ? "bg-red-500/20 text-red-300 border-red-500/40"
+                              : user.role === "ADMIN"
+                              ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                              : user.role === "MODERATOR"
+                              ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                              : "bg-white/5 text-white/70 border-white/10 hover:border-white/20"
+                          }`}
+                        >
+                          <option value="USER" className="bg-[#18181b] text-white">USER (Xem phim)</option>
+                          <option value="MODERATOR" className="bg-[#18181b] text-blue-300">MODERATOR (Kiểm duyệt)</option>
+                          <option value="ADMIN" className="bg-[#18181b] text-amber-300">ADMIN (Quản trị)</option>
+                          <option value="SUPER_ADMIN" className="bg-[#18181b] text-red-400">SUPER_ADMIN (Toàn quyền)</option>
+                        </select>
                       </td>
                       <td className="py-3.5 px-4">
                         {tier ? (
@@ -275,7 +300,7 @@ export function UserManagementPage() {
               <button
                 type="button"
                 onClick={() => setConfirmDeleteUser(null)}
-                className="nf-button px-5 py-2.5 rounded-full glass-button text-xs font-bold text-white transition cursor-pointer"
+                className="h-10 px-5 inline-flex items-center justify-center rounded-full glass-button text-xs font-bold text-white transition cursor-pointer"
               >
                 Hủy bỏ
               </button>
@@ -283,7 +308,7 @@ export function UserManagementPage() {
                 type="button"
                 disabled={Boolean(deletingId)}
                 onClick={handleDeleteUser}
-                className="nf-button flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-bold text-red-400 transition disabled:opacity-50 cursor-pointer"
+                className="h-10 px-5 inline-flex items-center justify-center gap-2 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-bold text-red-400 transition disabled:opacity-50 cursor-pointer"
               >
                 {deletingId ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                 <span>{deletingId ? "Đang xóa..." : "Xác Nhận Xóa"}</span>

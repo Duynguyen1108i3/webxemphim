@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck, Lock, ShieldAlert, CheckCircle2, RefreshCw, Key, Globe, Ban, Eye } from "lucide-react";
-import { api } from "../lib/api";
+import { api } from "../lib/adminApi";
 
 interface SecurityData {
   owaspCompliance: {
@@ -87,46 +87,46 @@ export function SecurityPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="liquid-glass-card rounded-2xl p-5 shadow-xl">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/60">Điểm Đánh Giá OWASP</span>
+            <span className="text-xs font-semibold text-white/60">Trạng Thái An Toàn</span>
             <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <ShieldCheck size={16} />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-black font-spartan text-emerald-400">100 / 100</p>
-          <p className="mt-1 text-[11px] text-white/40 font-medium">Toàn bộ 10 tiêu chuẩn vượt qua</p>
+          <p className="mt-3 text-2xl font-black font-spartan text-emerald-400">An Toàn</p>
+          <p className="mt-1 text-[11px] text-white/40 font-medium">Hệ thống hoạt động bình thường</p>
         </div>
 
         <div className="liquid-glass-card rounded-2xl p-5 shadow-xl">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/60">WAF Chặn 24h Qua</span>
+            <span className="text-xs font-semibold text-white/60">Lượt Chặn Nghi Vấn 24h</span>
             <span className="p-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20">
               <ShieldAlert size={16} />
             </span>
           </div>
           <p className="mt-3 text-2xl font-black font-spartan text-white">{data?.telemetry?.wafBlockedLast24h ?? 38} Lần</p>
-          <p className="mt-1 text-[11px] text-white/40 font-medium">Brute-force & Crawlers chặn tại edge</p>
+          <p className="mt-1 text-[11px] text-white/40 font-medium">Yêu cầu bất thường đã được chặn</p>
         </div>
 
         <div className="liquid-glass-card rounded-2xl p-5 shadow-xl">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/60">Phiên Đăng Nhập JWT</span>
+            <span className="text-xs font-semibold text-white/60">Phiên Đăng Nhập</span>
             <span className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
               <Key size={16} />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-black font-spartan text-white">{data?.telemetry?.activeTokensCount ?? 142} Active</p>
-          <p className="mt-1 text-[11px] text-white/40 font-medium">Kèm SameSite Strict + HttpOnly</p>
+          <p className="mt-3 text-2xl font-black font-spartan text-white">{data?.telemetry?.activeTokensCount ?? 142} Hoạt động</p>
+          <p className="mt-1 text-[11px] text-white/40 font-medium">Bảo vệ phiên tự động</p>
         </div>
 
         <div className="liquid-glass-card rounded-2xl p-5 shadow-xl">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-white/60">Trạng Thái Phòng Thủ</span>
+            <span className="text-xs font-semibold text-white/60">Bảo Vệ Hệ Thống</span>
             <span className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
               <Lock size={16} />
             </span>
           </div>
-          <p className="mt-3 text-2xl font-black font-spartan text-white">ENFORCED</p>
-          <p className="mt-1 text-[11px] text-emerald-400 font-semibold">CSRF + Helmet + Bcrypt 12</p>
+          <p className="mt-3 text-2xl font-black font-spartan text-white">KÍCH HOẠT</p>
+          <p className="mt-1 text-[11px] text-emerald-400 font-semibold">Bảo mật đa tầng</p>
         </div>
       </div>
 
@@ -134,11 +134,11 @@ export function SecurityPage() {
       <div className="liquid-glass-panel rounded-2xl p-6 shadow-2xl space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-black text-white text-base tracking-tight">Danh Mục Kiểm Định OWASP Top 10 & NIST CSF</h3>
-            <p className="text-xs text-white/50">Giám sát tính toàn vẹn của các lớp bảo mật ứng dụng và API endpoints</p>
+            <h3 className="font-black text-white text-base tracking-tight">Tiêu Chuẩn Bảo Mật Ứng Dụng</h3>
+            <p className="text-xs text-white/50">Giám sát các lớp bảo mật ứng dụng và API endpoints</p>
           </div>
           <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            ĐẠT CHUẨN 100%
+            HOẠT ĐỘNG TỐT
           </span>
         </div>
 
@@ -146,8 +146,8 @@ export function SecurityPage() {
           {(data?.owaspCompliance?.checks || [
             { code: "A01:2021", name: "Broken Access Control", status: "PASSED", detail: "Phân quyền chặt chẽ qua JWT middleware & cookie session" },
             { code: "A02:2021", name: "Cryptographic Failures", status: "PASSED", detail: "Bcrypt 12 rounds, mã hóa HTTPS TLS 1.3 và HSTS 1 năm" },
-            { code: "A03:2021", name: "Injection Prevention", status: "PASSED", detail: "Prisma parameterized queries & Zod schemas kiểm định 100% input" },
-            { code: "A04:2021", name: "Insecure Design", status: "PASSED", detail: "Rate limit phân tầng 30 req/15p trên Auth, 300 req/p toàn cục" },
+            { code: "A03:2021", name: "Injection Prevention", status: "PASSED", detail: "Kiểm định dữ liệu đầu vào và phòng chống SQL Injection" },
+            { code: "A04:2021", name: "Insecure Design", status: "PASSED", detail: "Rate limit phân tầng bảo vệ chống tấn công Brute-force" },
             { code: "A05:2021", name: "Security Misconfiguration", status: "PASSED", detail: "Helmet security headers: CSP, X-Content-Type, X-Frame-Options" },
             { code: "A07:2021", name: "Identification & Auth Failures", status: "PASSED", detail: "Mật khẩu tối thiểu 8 ký tự, đủ chữ hoa, thường, số, ký tự đặc biệt" },
             { code: "A08:2021", name: "Software & Data Integrity", status: "PASSED", detail: "Sanitize URL, DOMPurify tránh XSS lây nhiễm" },

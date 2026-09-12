@@ -3,6 +3,7 @@ import { Check, ChevronUp, Download, Gauge, Maximize, Pause, PictureInPicture2, 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PlaybackSourceDto } from "@streamforge/shared-types";
 import { useAuthStore } from "../store/auth";
+import { usePlaybackStore } from "../store/playbackStore";
 
 function isEmbedUrl(url: string): boolean {
   if (!url) return false;
@@ -92,6 +93,87 @@ export function VideoPlayer({
   const [speed, setSpeed] = useState(1);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const speedMenuRef = useRef<HTMLDivElement>(null);
+
+  // Real-time Concurrent Viewer Telemetry
+  const playbackSessionId = useRef<string>(
+    "vw_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now().toString(36)
+  );
+  const activePlayback = usePlaybackStore((state) => state.activePlayback);
+
+  const sendHeartbeat = useCallback((stopped = false) => {
+    const video = videoRef.current;
+    const currentSource = latestSourceRef.current;
+    const movie = activePlayback;
+
+    const movieId = movie?.id || currentSource?.movieId || (currentSource as any)?.id || "movie";
+    const movieTitle = movie?.title || currentSource?.title || "Phim";
+    const movieSlug = movie?.slug || movie?.id;
+    const posterUrl = movie?.posterUrl || movie?.backdropUrl;
+    const backdropUrl = movie?.backdropUrl || movie?.posterUrl;
+    const episodeId = currentSource?.currentEpisodeId;
+    const episodeTitle = currentSource?.title !== movieTitle ? currentSource?.title : undefined;
+
+    const curTime = video ? Math.floor(video.currentTime || 0) : 0;
+    const dur = video && video.duration && !isNaN(video.duration) ? Math.floor(video.duration) : 100;
+    const isPaused = video ? video.paused : !playing;
+
+    const payload = JSON.stringify({
+      sessionId: playbackSessionId.current,
+      movieId,
+      movieTitle,
+      movieSlug,
+      posterUrl,
+      backdropUrl,
+      episodeId,
+      episodeTitle,
+      currentTime: curTime,
+      duration: dur,
+      isPaused: stopped ? true : isPaused,
+      stopped
+    });
+
+    if (stopped) {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon("/api/playback/heartbeat", new Blob([payload], { type: "application/json" }));
+      } else {
+        fetch("/api/playback/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: payload,
+          keepalive: true
+        }).catch(() => {});
+      }
+      return;
+    }
+
+    fetch("/api/playback/heartbeat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: payload
+    }).catch(() => {});
+  }, [activePlayback, playing]);
+
+  // Periodic heartbeat timer while player is mounted
+  useEffect(() => {
+    sendHeartbeat(false);
+
+    const interval = setInterval(() => {
+      sendHeartbeat(false);
+    }, 5000);
+
+    const handleBeforeUnload = () => {
+      sendHeartbeat(true);
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      sendHeartbeat(true);
+    };
+  }, [sendHeartbeat]);
 
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);

@@ -88,6 +88,7 @@ export interface PlaybackState {
   openPlayback: (movie: NormalizedMovie, elementId: string, customUrl?: string) => void;
   closePlayback: () => void;
   myList: NormalizedMovie[];
+  isMyListLoading: boolean;
   toggleMyList: (movie: NormalizedMovie) => void;
   authModalOpen: boolean;
   openAuthModal: () => void;
@@ -106,13 +107,35 @@ const getWatchHistoryStorageKeys = () => {
   return { key, fallbackKey };
 };
 
+const getMyListStorageKeys = () => {
+  const user = useAuthStore.getState().user;
+  const email = user?.email || "";
+  const key = email ? `rytoxgroup:${email}:mylist` : "rytoxgroup:guest:mylist";
+  const fallbackKey = email ? `streamforge:${email}:mylist` : "streamforge:guest:mylist";
+  return { key, fallbackKey };
+};
+
+const getInitialMyList = (): NormalizedMovie[] => {
+  try {
+    const user = useAuthStore.getState().user;
+    const email = user?.email || "";
+    const key = email ? `rytoxgroup:${email}:mylist` : "rytoxgroup:guest:mylist";
+    const fallbackKey = email ? `streamforge:${email}:mylist` : "streamforge:guest:mylist";
+    const stored = localStorage.getItem(key) || localStorage.getItem(fallbackKey);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
 export const usePlaybackStore = create<PlaybackState>((set) => ({
   activeMovieDetail: null,
   activePlayback: null,
   clickedElementId: null,
   activeCustomUrl: null,
   scrollPosition: 0,
-  myList: [],
+  myList: getInitialMyList(),
+  isMyListLoading: false,
   authModalOpen: false,
   openAuthModal: () => set({ authModalOpen: true }),
   closeAuthModal: () => set({ authModalOpen: false }),
@@ -147,6 +170,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       if (!user) {
         set({
           myList: [],
+          isMyListLoading: false,
           watchHistory: parsedHistory,
           activePlayback: activePlaybackFromSession,
           activeEpisodeId: activeEpisodeIdFromSession,
@@ -157,10 +181,27 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       }
 
       const profileName = useAuthStore.getState().profileId || user.username;
-      const dbProfileId = user.profiles.find((profile) => profile.name === profileName)?.id ?? user.profiles[0]?.id;
+      const dbProfileId = user.profiles?.find((profile) => profile.name === profileName || profile.id === profileName)?.id ?? user.profiles?.[0]?.id;
+
+      const { key: mylistKey, fallbackKey: fallbackMylistKey } = getMyListStorageKeys();
+      const storedList = localStorage.getItem(mylistKey) || localStorage.getItem(fallbackMylistKey);
+      const parsedCached = storedList ? JSON.parse(storedList) : [];
+
+      const mapFavorites = (favorites: NormalizedMovie[]) => {
+        return favorites.map((m) => {
+          if (m.id === "ten-cau-la-gi" || m.title?.includes("Tên Cậu Là Gì")) {
+            return { ...m, runtimeMinutes: 106 };
+          }
+          return m;
+        });
+      };
+
+      const cachedFavorites = mapFavorites(parsedCached);
 
       if (!dbProfileId) {
         set({
+          myList: cachedFavorites,
+          isMyListLoading: false,
           watchHistory: parsedHistory,
           activePlayback: activePlaybackFromSession,
           activeEpisodeId: activeEpisodeIdFromSession,
@@ -170,19 +211,16 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         return;
       }
 
-      const email = user.email || "";
-      const mylistKey = `rytoxgroup:${email}:mylist`;
-      const fallbackMylistKey = `streamforge:${email}:mylist`;
-
-      // 1. Fetch My List from PostgreSQL DB via Express backend
-      const mapFavorites = (favorites: NormalizedMovie[]) => {
-        return favorites.map((m) => {
-          if (m.id === "ten-cau-la-gi" || m.title?.includes("Tên Cậu Là Gì")) {
-            return { ...m, runtimeMinutes: 106 };
-          }
-          return m;
-        });
-      };
+      // Immediately set cached myList so the screen is never blank while fetching
+      set((state) => ({
+        myList: cachedFavorites.length > 0 ? cachedFavorites : state.myList,
+        isMyListLoading: true,
+        watchHistory: parsedHistory,
+        activePlayback: activePlaybackFromSession,
+        activeEpisodeId: activeEpisodeIdFromSession,
+        clickedElementId: clickedElementIdFromSession,
+        activeCustomUrl: activeCustomUrlFromSession
+      }));
 
       // Flush sync queue first before querying the latest list
       flushSyncQueue(dbProfileId)
@@ -194,29 +232,24 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
             const mapped = mapFavorites(data.favorites);
             set({
               myList: mapped,
-              watchHistory: parsedHistory,
-              activePlayback: activePlaybackFromSession,
-              activeEpisodeId: activeEpisodeIdFromSession,
-              clickedElementId: clickedElementIdFromSession,
-              activeCustomUrl: activeCustomUrlFromSession
+              isMyListLoading: false
             });
             localStorage.setItem(mylistKey, JSON.stringify(mapped)); // Sync cache
             localStorage.setItem(fallbackMylistKey, JSON.stringify(mapped));
+          } else {
+            set({ isMyListLoading: false });
           }
         })
         .catch(() => {
-          const storedList = localStorage.getItem(mylistKey) || localStorage.getItem(fallbackMylistKey);
-          const parsed = storedList ? JSON.parse(storedList) : [];
+          const fallbackStoredList = localStorage.getItem(mylistKey) || localStorage.getItem(fallbackMylistKey);
+          const parsed = fallbackStoredList ? JSON.parse(fallbackStoredList) : [];
           set({
             myList: mapFavorites(parsed),
-            watchHistory: parsedHistory,
-            activePlayback: activePlaybackFromSession,
-            activeEpisodeId: activeEpisodeIdFromSession,
-            clickedElementId: clickedElementIdFromSession,
-            activeCustomUrl: activeCustomUrlFromSession
+            isMyListLoading: false
           });
         });
     } catch {
+      set({ isMyListLoading: false });
     }
   },
 
@@ -228,7 +261,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
     }
 
     const profileName = useAuthStore.getState().profileId || user.username;
-    const dbProfileId = user.profiles.find((profile) => profile.name === profileName)?.id ?? user.profiles[0]?.id;
+    const dbProfileId = user.profiles?.find((profile) => profile.name === profileName || profile.id === profileName)?.id ?? user.profiles?.[0]?.id;
     if (!dbProfileId) return;
 
     const email = user.email || "";
@@ -247,7 +280,18 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
             queueSyncAction(dbProfileId, { movieId: movie.id, action: "REMOVE" });
           });
       } else {
-        updated = [...state.myList, movie];
+        const movieToSave: NormalizedMovie = {
+          ...movie,
+          id: movie.id,
+          slug: movie.slug || movie.id,
+          title: movie.title,
+          posterUrl: movie.posterUrl || movie.backdropUrl || "",
+          backdropUrl: movie.backdropUrl || movie.posterUrl || "",
+          releaseYear: movie.releaseYear || 2026,
+          runtimeMinutes: movie.runtimeMinutes || 120,
+          averageRating: movie.averageRating || 0,
+        };
+        updated = [movieToSave, ...state.myList.filter((item) => item.id !== movie.id)];
 
         // Try to add to PostgreSQL DB, queue on failure
         authApi.request(`/users/profiles/${dbProfileId}/my-list`, {
@@ -255,16 +299,18 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify(movie)
+          body: JSON.stringify(movieToSave)
         }).catch(() => {
-          queueSyncAction(dbProfileId, { movieId: movie.id, action: "ADD", movie });
+          queueSyncAction(dbProfileId, { movieId: movie.id, action: "ADD", movie: movieToSave });
         });
       }
       
       localStorage.setItem(mylistKey, JSON.stringify(updated));
+      localStorage.setItem(fallbackMylistKey, JSON.stringify(updated));
       return { myList: updated };
     });
   },
+
 
   openDetailModal: (movie, elementId) => {
     const scrollY = window.scrollY;

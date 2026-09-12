@@ -42,6 +42,23 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   }
 }
 
+export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  if (process.env.NODE_ENV !== "production" && req.headers["x-dev-admin"] === "true") {
+    req.user = { id: "dev-admin-id", email: "admin@rytox.group", role: "SUPER_ADMIN" };
+    return next();
+  }
+  const bearer = req.headers.authorization?.replace("Bearer ", "");
+  const token = bearer || req.cookies?.accessToken;
+  if (token) {
+    try {
+      req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: "streamforge", issuer: "streamforge-api" }) as Express.Request["user"];
+    } catch {
+      // Ignore invalid token in optionalAuth
+    }
+  }
+  next();
+}
+
 export function requireRole(...roles: Role[]) {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) throw new ApiError(401, "Authentication required", "UNAUTHENTICATED");

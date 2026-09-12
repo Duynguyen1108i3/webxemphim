@@ -807,14 +807,22 @@ img { max-width: 100%; display: block; }
 .glass-capsule,
 .glass-button,
 .glass-search,
-.nf-icon,
+.nf-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .nf-button {
   display: inline-flex;
-  align-items: center !important;
-  justify-content: center !important;
-  line-height: 1 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 700;
+  min-height: 40px;
+  line-height: 1.25;
 }
 
 .glass-capsule > svg,
@@ -822,9 +830,9 @@ img { max-width: 100%; display: block; }
 .glass-search > svg,
 .nf-icon > svg,
 .nf-button > svg {
-  display: block !important;
-  margin: 0 !important;
-  flex-shrink: 0 !important;
+  display: block;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 /* Ensure motion.div wraps inside buttons are also centered */
@@ -858,4 +866,49 @@ a.nf-button {
 button:active {
   transform: scale(0.94) !important;
 }
+
+/* Admin Liquid Glass Card and Panels */
+.liquid-glass-card {
+  background: rgba(22, 24, 34, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.2), 0 20px 50px rgba(0, 0, 0, 0.55);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s, border-color 0.25s;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  contain: content;
+}
+
+.liquid-glass-card:hover {
+  background: rgba(26, 29, 42, 0.75);
+  border-color: rgba(255, 255, 255, 0.18);
+  border-top-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.3), 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 25px rgba(229, 9, 20, 0.1);
+}
+
+.liquid-glass-panel {
+  background: rgba(18, 20, 28, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), 0 25px 60px rgba(0, 0, 0, 0.6);
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  contain: content;
+}
+
+.pulse-green {
+  animation: radar-pulse 2s infinite;
+}
+
+@keyframes radar-pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
 

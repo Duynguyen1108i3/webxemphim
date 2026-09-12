@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { HomePage } from "../pages/HomePage";
+import { AdminGuard } from "../admin/components/AdminGuard";
 
 const MovieDetailPage = lazy(() => import("../pages/MovieDetailPage").then((module) => ({ default: module.MovieDetailPage })));
 const SearchPage = lazy(() => import("../pages/SearchPage").then((module) => ({ default: module.SearchPage })));
@@ -13,6 +14,14 @@ const LoginPage = lazy(() => import("../pages/LoginPage").then((module) => ({ de
 const RegisterPage = lazy(() => import("../pages/RegisterPage").then((module) => ({ default: module.RegisterPage })));
 const ForgotPasswordPage = lazy(() => import("../pages/ForgotPasswordPage").then((module) => ({ default: module.ForgotPasswordPage })));
 const NewAndPopularPage = lazy(() => import("../pages/NewAndPopularPage").then((module) => ({ default: module.NewAndPopularPage })));
+
+// Admin lazy pages
+const AdminShell = lazy(() => import("../admin/components/AdminShell").then((module) => ({ default: module.AdminShell })));
+const AdminDashboardPage = lazy(() => import("../admin/pages/DashboardPage").then((module) => ({ default: module.DashboardPage })));
+const AdminMoviePage = lazy(() => import("../admin/pages/MovieManagementPage").then((module) => ({ default: module.MovieManagementPage })));
+const AdminUserPage = lazy(() => import("../admin/pages/UserManagementPage").then((module) => ({ default: module.UserManagementPage })));
+const AdminBillingPage = lazy(() => import("../admin/pages/BillingPage").then((module) => ({ default: module.BillingPage })));
+const AdminSecurityPage = lazy(() => import("../admin/pages/SecurityPage").then((module) => ({ default: module.SecurityPage })));
 
 function PageLoader({ children, fallback = null }: { children: ReactNode; fallback?: ReactNode }) {
   return <Suspense fallback={fallback}>{children}</Suspense>;
@@ -35,6 +44,23 @@ export const router = createBrowserRouter([
       { path: "/profile", element: <PageLoader><ProfilePage /></PageLoader> },
       { path: "/my-list", element: <PageLoader><MyListPage /></PageLoader> },
       { path: "*", element: <PageLoader><NotFoundPage /></PageLoader> },
+    ],
+  },
+  {
+    path: "/admin",
+    element: (
+      <AdminGuard>
+        <PageLoader>
+          <AdminShell />
+        </PageLoader>
+      </AdminGuard>
+    ),
+    children: [
+      { index: true, element: <PageLoader><AdminDashboardPage /></PageLoader> },
+      { path: "movies", element: <PageLoader><AdminMoviePage /></PageLoader> },
+      { path: "users", element: <PageLoader><AdminUserPage /></PageLoader> },
+      { path: "billing", element: <PageLoader><AdminBillingPage /></PageLoader> },
+      { path: "security", element: <PageLoader><AdminSecurityPage /></PageLoader> },
     ],
   },
   { path: "/login", element: <PageLoader><LoginPage /></PageLoader> },

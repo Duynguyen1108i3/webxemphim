@@ -1,4 +1,4 @@
-import { Bell, Menu, Search, X, Sliders, User, LogIn, UserPlus } from "lucide-react";
+import { Bell, Menu, Search, X, Sliders, User, LogIn, UserPlus, ShieldCheck } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePlaybackStore } from "../../store/playbackStore";
@@ -352,6 +352,17 @@ export function ShellNavbar({
                     <div className="px-2 py-1.5 mb-1 text-xs font-bold text-white/50 border-b border-white/10 uppercase tracking-wider">
                       Hồ sơ của tôi
                     </div>
+
+                    {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                      <NavLink
+                        to="/admin"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 hover:text-amber-200 transition text-xs font-bold my-1 shadow-sm group"
+                      >
+                        <ShieldCheck size={15} className="text-amber-400 group-hover:scale-110 transition-transform" />
+                        <span>Trang quản lý Admin</span>
+                      </NavLink>
+                    )}
 
                     <NavLink to="/profile" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/10 transition text-xs font-semibold text-white/70 hover:text-white mt-1">
                       Cài đặt hồ sơ

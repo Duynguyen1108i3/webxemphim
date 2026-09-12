@@ -308,6 +308,7 @@ export async function addFavorite(req: Request, res: Response, next: NextFunctio
         backdropUrl: movie.backdropUrl || movie.thumb || "",
         releaseYear: parseInt(movie.releaseYear) || parseInt(movie.year) || 2024,
         runtimeMinutes: parseInt(movie.runtimeMinutes) || 120,
+        averageRating: parseFloat(movie.averageRating) || 0,
       },
       create: {
         id: movie.id,
@@ -320,6 +321,7 @@ export async function addFavorite(req: Request, res: Response, next: NextFunctio
         releaseYear: parseInt(movie.releaseYear) || parseInt(movie.year) || 2024,
         runtimeMinutes: parseInt(movie.runtimeMinutes) || 120,
         maturityRating: "PG_13",
+        averageRating: parseFloat(movie.averageRating) || 0,
       }
     });
 

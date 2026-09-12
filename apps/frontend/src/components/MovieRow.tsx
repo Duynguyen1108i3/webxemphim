@@ -262,22 +262,26 @@ export const MovieTile = React.memo(function MovieTile({
           onError={(event) => handleImageError(event, movie.title)}
           className="aspect-video w-full object-cover transition-opacity duration-300 group-hover:brightness-90"
         />
-        {(movie as any).progress !== undefined && (movie as any).progress > 0 && (
+        {(movie as any).progress !== undefined && (movie as any).progress > 0 ? (
           <div className="absolute bottom-1.5 left-2.5 right-2.5 h-1 rounded-full bg-zinc-700/50 z-10 overflow-hidden">
             <div className="h-full bg-[#e50914] rounded-full shadow-[0_0_6px_#e50914]" style={{ width: `${(movie as any).progress}%` }} />
           </div>
-        )}
-        {rank && <span className="absolute -left-1 bottom-0 text-[3.25rem] sm:text-[4rem] font-black leading-none text-black/70 [-webkit-text-stroke:1.5px_rgba(255,255,255,.72)] md:text-[5.5rem]">{rank}</span>}
+        ) : null}
+        {Boolean(rank) ? (
+          <span className="absolute -left-1 bottom-0 text-[3.25rem] sm:text-[4rem] font-black leading-none text-black/70 [-webkit-text-stroke:1.5px_rgba(255,255,255,.72)] md:text-[5.5rem]">
+            {rank}
+          </span>
+        ) : null}
         
         {/* Absolutely NO button, NO box, NO border - ONLY glowing star and score */}
-        {!isContinueWatching && ((movie as any).averageRating && Number((movie as any).averageRating) > 0) && (
+        {!isContinueWatching && Number((movie as any).averageRating) > 0 ? (
           <div className="absolute top-2 right-2 sm:right-2.5 z-10 flex items-center gap-1 text-[11px] sm:text-xs md:text-sm font-black pointer-events-none select-none">
             <span className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.95)]">★</span>
             <span className="text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.85)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] tracking-tight font-black">
               {Number((movie as any).averageRating).toFixed(1)}
             </span>
           </div>
-        )}
+        ) : null}
 
         <span className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/85 to-transparent" />
         <span className="absolute bottom-2 left-2 line-clamp-1 pr-2 text-xs font-bold text-white md:text-sm">{movie.title}</span>
@@ -427,7 +431,7 @@ export const HoverPreview = React.memo(function HoverPreview({
               }} className="nf-icon glass-button ml-auto grid h-10 w-10 place-items-center rounded-full text-white" aria-label="Episodes and info"><ChevronDown size={20} /></button>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-sm text-white/75">
-              <span className="font-bold text-[#46d369]">★ {movie.averageRating ? movie.averageRating.toFixed(1) : "8.0"} IMDb</span>
+              <span className="font-bold text-[#46d369]">★ {Number(movie.averageRating) > 0 ? Number(movie.averageRating).toFixed(1) : "8.0"} IMDb</span>
               <Badge className="px-1.5 py-0.5 text-xs bg-white/5 border-white/10">{movie.maturityRating.replace("_", "-")}</Badge>
               <span>{formatRuntime(movie.runtimeMinutes)}</span>
               <span className="rounded border border-white/20 px-1 text-[11px] bg-white/5">HD</span>

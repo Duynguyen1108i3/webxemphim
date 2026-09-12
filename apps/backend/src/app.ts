@@ -6,6 +6,7 @@ import movieRoutes from "./routes/movie.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import subscriptionRoutes from "./routes/subscription.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import playbackRoutes from "./routes/playback.routes.js";
 
 export function createApp() {
   const app = express();
@@ -14,6 +15,7 @@ export function createApp() {
   app.get("/api/health", (_req, res) => res.json({ ok: true, service: "rytoxgroup-api" }));
   app.use("/api/auth", authRoutes);
   app.use("/api/movies", movieRoutes);
+  app.use("/api/playback", playbackRoutes);
   app.use("/api/users", userRoutes);
   app.use("/api/subscriptions", subscriptionRoutes);
   app.use("/api/admin", adminRoutes);
