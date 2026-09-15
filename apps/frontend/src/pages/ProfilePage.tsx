@@ -287,7 +287,7 @@ export function ProfilePage() {
 
   // Status messages
   const [successMsg, setSuccessMsg] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
@@ -599,7 +599,7 @@ export function ProfilePage() {
             </div>
             <button
               type="button"
-              onClick={() => setSuccessMsg(null)}
+              onClick={() => setSuccessMsg("")}
               className="text-emerald-400/60 hover:text-emerald-300 p-0.5 rounded cursor-pointer"
             >
               <X size={13} />

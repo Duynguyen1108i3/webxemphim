@@ -7,7 +7,7 @@ import { ApiError } from "./error.js";
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string; email: string; role: Role };
+      user?: { id: string; email: string; role: Role; username?: string };
     }
   }
 }
@@ -24,7 +24,7 @@ export function signRefreshToken(session: { id: string; userId: string; token: s
 }
 
 export function verifyRefreshToken(token: string) {
-  return jwt.verify(token, env.JWT_REFRESH_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER }) as { id: string; userId: string; token: string };
+  return jwt.verify(token, env.JWT_REFRESH_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER } as any) as unknown as { id: string; userId: string; token: string };
 }
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
@@ -38,7 +38,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
     throw new ApiError(401, "Authentication required", "UNAUTHENTICATED");
   }
   try {
-    req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER }) as Express.Request["user"];
+    req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER } as any) as unknown as Express.Request["user"];
     next();
   } catch {
     throw new ApiError(401, "Invalid or expired access token", "INVALID_TOKEN");
@@ -54,7 +54,7 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
   const token = bearer || req.cookies?.accessToken;
   if (token) {
     try {
-      req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER }) as Express.Request["user"];
+      req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER } as any) as unknown as Express.Request["user"];
     } catch {
       // Ignore invalid token in optionalAuth
     }
