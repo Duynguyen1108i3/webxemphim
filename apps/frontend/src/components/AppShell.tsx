@@ -11,6 +11,7 @@ import { HoverPreview } from "./MovieRow";
 import { InteractiveNavScrubber } from "./InteractiveNavScrubber";
 import { movieApi, type NormalizedMovie } from "../lib/movieApi";
 import { ShellNavbar, ShellMobileDrawer, ShellSearchOverlay } from "./shell";
+import { AmbientBackground } from "./AmbientBackground";
 import type { MovieCardDto } from "@streamforge/shared-types";
 
 const iosSpringTransition = {
@@ -38,7 +39,7 @@ export function AppShell() {
   });
   const [ambientOpacity, setAmbientOpacity] = useState(() => {
     const val = localStorage.getItem("system-ambient-opacity");
-    return val ? parseFloat(val) : 0.25;
+    return val ? parseFloat(val) : 0.65;
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -469,7 +470,10 @@ export function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-white">
+    <div className="relative isolate min-h-screen bg-transparent text-white">
+      {/* Ambient Liquid Glass Background Glow */}
+      <AmbientBackground opacity={ambientOpacity} />
+
       {location.pathname === "/profile" ? (
         <header className="fixed inset-x-0 top-0 z-50 flex h-[68px] items-center px-4 sm:px-8 md:px-14 lg:px-16 bg-gradient-to-b from-black/60 to-transparent">
           <span className="brand-logo text-xs font-black tracking-tight text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)] sm:text-sm md:text-base select-none">RytoxGroup</span>
@@ -528,14 +532,9 @@ export function AppShell() {
           onHoverEnd={scheduleHoverClose}
         />
       ) : (
-        <motion.div
-          key={location.pathname}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={iosSpringTransition}
-        >
+        <div key={location.pathname} className="min-h-full">
           <Outlet />
-        </motion.div>
+        </div>
       )}
       
       {/* Mobile Floating Bottom Dock with Drag & Scrub gesture */}
@@ -555,6 +554,10 @@ export function AppShell() {
         logout={logout}
         watchHistory={watchHistory}
         onGenreClick={handleGenreClick}
+        glassness={glassness}
+        onGlassnessChange={handleGlassnessChange}
+        ambientOpacity={ambientOpacity}
+        onAmbientOpacityChange={handleAmbientOpacityChange}
       />
 
       <AnimatePresence mode="wait">
@@ -567,7 +570,7 @@ export function AppShell() {
         {authModalOpen && <AuthPromptModal />}
       </AnimatePresence>
       <AnimatePresence>
-        {hovered && (
+        {hovered && !activePlayback && !activeMovieDetail && (
           <HoverPreview
             key={hovered.movie.id}
             movie={hovered.movie}

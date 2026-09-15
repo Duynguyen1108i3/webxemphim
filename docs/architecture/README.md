@@ -1,6 +1,6 @@
-# StreamForge Architecture
+# RytoxGroup Architecture
 
-StreamForge is a SaaS-grade streaming platform split into frontend, admin, backend, shared packages, Prisma data access, Docker infrastructure, Nginx delivery, Redis caching, PostgreSQL persistence and Prometheus/Grafana monitoring.
+RytoxGroup is a SaaS-grade streaming platform split into frontend, admin, backend, shared packages, Prisma data access, Docker infrastructure, Nginx delivery, Redis caching, PostgreSQL persistence and Prometheus/Grafana monitoring.
 
 ```mermaid
 flowchart LR

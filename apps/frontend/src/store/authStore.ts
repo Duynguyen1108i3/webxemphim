@@ -141,9 +141,14 @@ export const useAuthStore = create<AuthState>((set) => {
         const mergedProfiles = (user.profiles && user.profiles.length > 0)
           ? user.profiles
           : (state.user?.profiles || []);
-        const effectiveAvatar = user.avatarUrl !== undefined
-          ? (user.avatarUrl || null)
-          : (state.avatarUrl || null);
+        
+        // Priority for avatar:
+        // 1. Explicit avatar from user object (if non-empty string)
+        // 2. Stored profile:avatar in localStorage
+        // 3. Current state.avatarUrl
+        const effectiveAvatar = (user.avatarUrl && typeof user.avatarUrl === "string" && user.avatarUrl.trim() !== "")
+          ? user.avatarUrl
+          : (getStoredItem("profile:avatar") || state.avatarUrl || null);
         
         const updatedUser: AuthUser = {
           ...user,
@@ -200,21 +205,14 @@ export const useAuthStore = create<AuthState>((set) => {
           throw new Error("Reject legacy offline user");
         }
         const profileId = getStoredItem("auth:profileId") || cachedUser.username;
-        // Show cached user immediately while we verify with backend
-        set({ user: cachedUser, profileId, initialized: true });
+        const initialAvatar = cachedUser.avatarUrl || getStoredItem("profile:avatar") || null;
+        set({ user: cachedUser, profileId, avatarUrl: initialAvatar, initialized: true });
         usePlaybackStore.getState().loadUserData();
 
         // Background verify: try to refresh from backend
         try {
           const user = await authApi.getCurrentUser();
-          setStoredItem("auth:user", JSON.stringify(user));
-          if (user.avatarUrl) {
-            setStoredItem("profile:avatar", user.avatarUrl);
-            set({ user, avatarUrl: user.avatarUrl });
-          } else {
-            set({ user });
-          }
-          usePlaybackStore.getState().loadUserData();
+          useAuthStore.getState().setUser(user);
         } catch (error) {
           // If token verification fails (e.g. 401 Unauthorized), clean up session
           if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
@@ -223,7 +221,6 @@ export const useAuthStore = create<AuthState>((set) => {
         }
         return;
       } catch {
-        // Invalid cached data, fall through to normal flow
         removeStoredItem("auth:user");
       }
     }
@@ -232,13 +229,8 @@ export const useAuthStore = create<AuthState>((set) => {
     try {
       const user = await authApi.getCurrentUser();
       const profileId = getStoredItem("auth:profileId") || user.username;
-      setStoredItem("auth:user", JSON.stringify(user));
-      if (user.avatarUrl) {
-        setStoredItem("profile:avatar", user.avatarUrl);
-        set({ user, profileId, avatarUrl: user.avatarUrl, initialized: true });
-      } else {
-        set({ user, profileId, initialized: true });
-      }
+      set({ profileId, initialized: true });
+      useAuthStore.getState().setUser(user);
     } catch {
       resetLocalAuth(set);
       set({ initialized: true });
@@ -260,11 +252,14 @@ export const useAuthStore = create<AuthState>((set) => {
 export const authApi = {
   async login(email: string, password: string): Promise<AuthUser> {
     const token = await ensureCsrfToken(true);
-    await apiRequest<{ user: AuthUser }>("/auth/login", {
+    const loginRes = await apiRequest<{ user: AuthUser }>("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
       body: JSON.stringify({ email, password })
     });
+    if (loginRes?.user) {
+      useAuthStore.getState().setUser(loginRes.user);
+    }
     const user = await this.getCurrentUser();
     useAuthStore.getState().setUser(user);
     return user;
@@ -321,7 +316,7 @@ export const authApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
       body: JSON.stringify({ avatarUrl })
-    }, false);
+    });
     useAuthStore.getState().setUser(data.user);
     return data.user;
   },
@@ -331,7 +326,7 @@ export const authApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": token },
       body: JSON.stringify({ username })
-    }, false);
+    });
     useAuthStore.getState().setUser(data.user);
     return data.user;
   },

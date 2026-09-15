@@ -36,7 +36,9 @@ export function AddonsPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [installed, setInstalled] = useState<string[]>([]);
   const [selectedAddon, setSelectedAddon] = useState<Addon | null>(null);
-  const [tmdbKeyInput, setTmdbKeyInput] = useState(localStorage.getItem("streamforge:settings:tmdb_key") || "");
+  const [tmdbKeyInput, setTmdbKeyInput] = useState(
+    localStorage.getItem("rytoxgroup:settings:tmdb_key") || localStorage.getItem("streamforge:settings:tmdb_key") || ""
+  );
   const [installAllProgress, setInstallAllProgress] = useState<{ running: boolean; current: number; total: number }>({ running: false, current: 0, total: 0 });
   const [toasts, setToasts] = useState<{ id: number; message: string; type: "success" | "info" | "error" }[]>([]);
 
@@ -51,15 +53,16 @@ export function AddonsPage() {
     setAddons(addonsData as Addon[]);
     
     try {
-      const favs = localStorage.getItem("streamforge:addons:favorites");
+      const favs = localStorage.getItem("rytoxgroup:addons:favorites") || localStorage.getItem("streamforge:addons:favorites");
       if (favs) setFavorites(JSON.parse(favs));
       
-      const inst = localStorage.getItem("streamforge:addons:installed");
+      const inst = localStorage.getItem("rytoxgroup:addons:installed") || localStorage.getItem("streamforge:addons:installed");
       if (inst) {
         setInstalled(JSON.parse(inst));
       } else {
         const defaults = addonsData.map(a => a.id);
         setInstalled(defaults);
+        localStorage.setItem("rytoxgroup:addons:installed", JSON.stringify(defaults));
         localStorage.setItem("streamforge:addons:installed", JSON.stringify(defaults));
       }
     } catch (e) {
@@ -74,6 +77,7 @@ export function AddonsPage() {
       ? favorites.filter(favId => favId !== id)
       : [...favorites, id];
     setFavorites(updated);
+    localStorage.setItem("rytoxgroup:addons:favorites", JSON.stringify(updated));
     localStorage.setItem("streamforge:addons:favorites", JSON.stringify(updated));
   };
 
@@ -91,6 +95,7 @@ export function AddonsPage() {
     }
     
     setInstalled(updated);
+    localStorage.setItem("rytoxgroup:addons:installed", JSON.stringify(updated));
     localStorage.setItem("streamforge:addons:installed", JSON.stringify(updated));
   };
 
@@ -106,6 +111,7 @@ export function AddonsPage() {
     for (let i = 0; i < notInstalled.length; i++) {
       newIds.push(notInstalled[i].id);
       setInstalled([...newIds]);
+      localStorage.setItem("rytoxgroup:addons:installed", JSON.stringify([...newIds]));
       localStorage.setItem("streamforge:addons:installed", JSON.stringify([...newIds]));
       setInstallAllProgress({ running: true, current: i + 1, total: notInstalled.length });
       // Stagger for visual effect
@@ -118,6 +124,7 @@ export function AddonsPage() {
 
   const uninstallAll = useCallback(() => {
     setInstalled([]);
+    localStorage.setItem("rytoxgroup:addons:installed", JSON.stringify([]));
     localStorage.setItem("streamforge:addons:installed", JSON.stringify([]));
     showToast("Đã gỡ cài đặt tất cả addon.", "info");
   }, [showToast]);
@@ -346,8 +353,10 @@ export function AddonsPage() {
                 placeholder="Nhập API Key..."
                 value={tmdbKeyInput}
                 onChange={(e) => {
+                  const val = e.target.value.trim();
                   setTmdbKeyInput(e.target.value);
-                  localStorage.setItem("streamforge:settings:tmdb_key", e.target.value.trim());
+                  localStorage.setItem("rytoxgroup:settings:tmdb_key", val);
+                  localStorage.setItem("streamforge:settings:tmdb_key", val);
                 }}
                 className="w-full bg-zinc-950/70 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-red-600 focus:border-transparent transition-all"
               />

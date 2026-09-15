@@ -11,6 +11,7 @@ export function CinematicPlayerOverlay() {
   const [openingFinished, setOpeningFinished] = useState(false);
   const [playbackStarted, setPlaybackStarted] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
 
   // Fetch playback details
   const { data: source, isLoading: apiLoading, error } = useQuery({
@@ -60,19 +61,28 @@ export function CinematicPlayerOverlay() {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] flex flex-col justify-center bg-black overflow-hidden select-none"
+      className={`fixed inset-0 z-[200] flex flex-col justify-center bg-black overflow-hidden select-none ${
+        !controlsVisible && playbackStarted ? "cursor-none" : ""
+      }`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
     >
+      {/* Top Scrim Gradient Overlay for Contrast on Bright/White Video Scenes */}
+      <div className={`absolute top-0 inset-x-0 h-32 sm:h-40 bg-gradient-to-b from-black/85 via-black/45 to-transparent z-[115] pointer-events-none transition-opacity duration-300 ${
+        controlsVisible ? "opacity-100" : "opacity-0"
+      }`} />
+
       {/* Back Button */}
-      <div className="absolute left-6 top-6 z-[120]">
+      <div className={`absolute left-3 top-3 sm:left-6 sm:top-6 z-[120] transition-all duration-300 ${
+        controlsVisible ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-2"
+      }`}>
         <button
           onClick={handleClose}
-          className="glass-capsule gap-2 px-5 h-11 text-sm font-bold text-white transition hover:scale-105 active:scale-95 shadow-[0_8px_32px_rgba(0,0,0,0.5)] cursor-pointer"
+          className="player-capsule gap-1.5 sm:gap-2 px-3.5 sm:px-5 h-9 sm:h-11 text-xs sm:text-sm font-bold text-white cursor-pointer"
         >
-          <ArrowLeft size={18} /> Exit
+          <ArrowLeft size={16} className="sm:w-[18px] sm:h-[18px]" /> Exit
         </button>
       </div>
 
@@ -161,6 +171,7 @@ export function CinematicPlayerOverlay() {
                 }}
                 onNextEpisode={nextEpisode ? () => handleNextEpisode(nextEpisode.id) : undefined}
                 hasNextEpisode={Boolean(nextEpisode)}
+                onControlsVisibilityChange={setControlsVisible}
               />
             </motion.div>
           );

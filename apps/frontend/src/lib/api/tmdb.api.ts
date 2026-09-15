@@ -4,7 +4,7 @@ import { createFallbackImage, slugify } from "./imageProxy";
 import { MOVIE_API_CACHE_TTL_MS, MOVIE_API_TIMEOUT_MS } from "../movieApiConfig";
 
 export const getTmdbApiKey = () => {
-  return localStorage.getItem("streamforge:settings:tmdb_key") || import.meta.env.VITE_TMDB_API_KEY || "";
+  return localStorage.getItem("rytoxgroup:settings:tmdb_key") || localStorage.getItem("streamforge:settings:tmdb_key") || import.meta.env.VITE_TMDB_API_KEY || "";
 };
 
 export const TMDB_BASE_URL = "https://api.themoviedb.org/3";

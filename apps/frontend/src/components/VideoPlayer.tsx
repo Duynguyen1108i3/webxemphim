@@ -1,5 +1,5 @@
 import Hls from "hls.js";
-import { Check, ChevronUp, Download, Gauge, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForward, Subtitles, Volume2, VolumeX, X } from "lucide-react";
+import { Check, ChevronUp, Download, Gauge, Maximize, Minimize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, SkipForward, Subtitles, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { PlaybackSourceDto } from "@streamforge/shared-types";
 import { useAuthStore } from "../store/auth";
@@ -25,17 +25,21 @@ export function VideoPlayer({
   onProgress,
   onPlayStarted,
   onNextEpisode,
-  hasNextEpisode = false
+  hasNextEpisode = false,
+  onControlsVisibilityChange
 }: {
   source?: PlaybackSourceDto & { title?: string; currentEpisodeId?: string; episodesList?: any[] } | null;
   onProgress?: (seconds: number, duration: number, episodeId?: string, episodeTitle?: string) => void;
   onPlayStarted?: () => void;
   onNextEpisode?: () => void;
   hasNextEpisode?: boolean;
+  onControlsVisibilityChange?: (visible: boolean) => void;
 }) {
   const [activeUrl, setActiveUrl] = useState(source?.hlsUrl || "");
   const isEmbed = activeUrl ? isEmbedUrl(activeUrl) : false;
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     if (source?.hlsUrl) {
@@ -43,21 +47,117 @@ export function VideoPlayer({
     }
   }, [source?.hlsUrl]);
 
-  const handleFullscreenForContainer = () => {
-    const container = containerRef.current;
-    if (!container) return;
-    try {
-      if (container.requestFullscreen) {
-        void container.requestFullscreen();
-      } else if ((container as any).webkitRequestFullscreen) {
-        (container as any).webkitRequestFullscreen();
-      } else if ((container as any).msRequestFullscreen) {
-        (container as any).msRequestFullscreen();
-      }
-    } catch (e) {
-      console.error("Fullscreen container error:", e);
+  // Track fullscreen state across Desktop, Android, and iOS Safari
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const fs = Boolean(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(fs);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
+    const video = videoRef.current;
+    const handleVideoBeginFs = () => setIsFullscreen(true);
+    const handleVideoEndFs = () => setIsFullscreen(false);
+
+    if (video) {
+      video.addEventListener("webkitbeginfullscreen", handleVideoBeginFs);
+      video.addEventListener("webkitendfullscreen", handleVideoEndFs);
     }
-  };
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
+      if (video) {
+        video.removeEventListener("webkitbeginfullscreen", handleVideoBeginFs);
+        video.removeEventListener("webkitendfullscreen", handleVideoEndFs);
+      }
+    };
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    const isDocFs = Boolean(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement
+    );
+
+    // 1. Exit fullscreen if already active
+    if (isDocFs) {
+      try {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        } else if ((document as any).mozCancelFullScreen) {
+          (document as any).mozCancelFullScreen();
+        } else if ((document as any).msExitFullscreen) {
+          (document as any).msExitFullscreen();
+        }
+      } catch (e) {
+        console.error("Exit fullscreen error:", e);
+      }
+      return;
+    }
+
+    const video = videoRef.current;
+    const container = containerRef.current;
+
+    // 2. iOS Safari on iPhone: DOM requestFullscreen is not supported on elements, only video.webkitEnterFullscreen()
+    const isIPhone = typeof navigator !== "undefined" && /iPhone|iPod/i.test(navigator.userAgent);
+    if (isIPhone && video && typeof (video as any).webkitEnterFullscreen === "function") {
+      try {
+        (video as any).webkitEnterFullscreen();
+      } catch (e) {
+        console.error("iOS webkitEnterFullscreen error:", e);
+      }
+      return;
+    }
+
+    // 3. Android, iPad, and Desktop browsers:
+    // Request fullscreen on container (maintains custom UI & liquid glass controls)
+    const target = container || video;
+    if (target) {
+      try {
+        if (target.requestFullscreen) {
+          await target.requestFullscreen({ navigationUI: "hide" } as any);
+        } else if ((target as any).webkitRequestFullscreen) {
+          (target as any).webkitRequestFullscreen();
+        } else if ((target as any).mozRequestFullScreen) {
+          (target as any).mozRequestFullScreen();
+        } else if ((target as any).msRequestFullscreen) {
+          (target as any).msRequestFullscreen();
+        } else if (video && (video as any).webkitEnterFullscreen) {
+          (video as any).webkitEnterFullscreen();
+        }
+
+        // Try locking orientation to landscape for the best cinema experience on mobile
+        if (window.screen?.orientation && typeof (window.screen.orientation as any).lock === "function") {
+          (window.screen.orientation as any).lock("landscape").catch(() => {});
+        }
+      } catch (e) {
+        console.warn("Container fullscreen failed, attempting video element fallback:", e);
+        if (video && typeof (video as any).webkitEnterFullscreen === "function") {
+          try {
+            (video as any).webkitEnterFullscreen();
+          } catch (videoErr) {
+            console.error("Video fallback fullscreen error:", videoErr);
+          }
+        }
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (isEmbed) {
@@ -73,7 +173,7 @@ export function VideoPlayer({
 
   // early return for iframe embeds moved below all hooks to satisfy react rules
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // videoRef declared at top of component
   // Parent callbacks are recreated as overlay state changes. Keep the media
   // lifecycle independent from those renders: changing a callback must never
   // destroy and recreate the active stream.
@@ -344,6 +444,85 @@ export function VideoPlayer({
     setHoverTime(null);
   };
 
+  // ── Auto-hide Controls & Cinema Inactivity System ──
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Notify parent component (CinematicPlayerOverlay / WatchPage)
+  useEffect(() => {
+    onControlsVisibilityChange?.(showControls);
+  }, [showControls, onControlsVisibilityChange]);
+
+  const clearControlsTimer = useCallback(() => {
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+      controlsTimeoutRef.current = null;
+    }
+  }, []);
+
+  const showControlsAndResetTimer = useCallback((customDelay = 3000) => {
+    setShowControls(true);
+    clearControlsTimer();
+
+    // Auto-hide only when video is actively playing and no modals/scrubbing block it
+    if (playing && !isScrubbing && !showSpeedMenu && !showSubtitleMenu) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, customDelay);
+    }
+  }, [playing, isScrubbing, showSpeedMenu, showSubtitleMenu, clearControlsTimer]);
+
+  // Sync controls visibility whenever playing, scrubbing, or popup menus change
+  useEffect(() => {
+    if (!playing || isScrubbing || showSpeedMenu || showSubtitleMenu) {
+      clearControlsTimer();
+      setShowControls(true);
+    } else {
+      showControlsAndResetTimer();
+    }
+  }, [playing, isScrubbing, showSpeedMenu, showSubtitleMenu, clearControlsTimer, showControlsAndResetTimer]);
+
+  // Initial auto-hide timer for embeds
+  useEffect(() => {
+    if (isEmbed) {
+      showControlsAndResetTimer(4000);
+    }
+  }, [isEmbed, showControlsAndResetTimer]);
+
+  useEffect(() => {
+    return () => clearControlsTimer();
+  }, [clearControlsTimer]);
+
+  const handleUserActivity = useCallback(() => {
+    showControlsAndResetTimer();
+  }, [showControlsAndResetTimer]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (playing && !isScrubbing && !showSpeedMenu && !showSubtitleMenu) {
+      clearControlsTimer();
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 800);
+    }
+  }, [playing, isScrubbing, showSpeedMenu, showSubtitleMenu, clearControlsTimer]);
+
+  const handleSurfaceClick = (e: React.MouseEvent) => {
+    // If controls are hidden, first click/tap wakes them up without interrupting playback
+    if (!showControls) {
+      showControlsAndResetTimer();
+      return;
+    }
+    // If controls were already visible, clicking the video background toggles play/pause
+    toggle();
+    showControlsAndResetTimer();
+  };
+
+  const handleSurfaceDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFullscreen();
+    showControlsAndResetTimer();
+  };
+
   // Resume playback position from watch history on mount
   // Watch history resume position is now deferred and managed safely inside the media ready handlers below to prevent resets
 
@@ -375,21 +554,7 @@ export function VideoPlayer({
   }, [onNextEpisode]);
 
   const handleFullscreen = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    try {
-      if (video.requestFullscreen) {
-        void video.requestFullscreen();
-      } else if ((video as any).webkitEnterFullscreen) {
-        (video as any).webkitEnterFullscreen();
-      } else if ((video as any).webkitRequestFullscreen) {
-        (video as any).webkitRequestFullscreen();
-      } else if ((video as any).msRequestFullscreen) {
-        (video as any).msRequestFullscreen();
-      }
-    } catch (e) {
-      console.error("Fullscreen error:", e);
-    }
+    void toggleFullscreen();
   };
 
   // Unlock the video element synchronously on mount inside the user's click tick
@@ -402,8 +567,8 @@ export function VideoPlayer({
         .then(() => {
           video.pause();
         })
-        .catch((err) => {
-          console.log("Sync video element unlock attempt:", err);
+        .catch(() => {
+          // Autoplay or sync play restricted by browser policy, ignore safely
         });
     }
   }, []);
@@ -569,16 +734,54 @@ export function VideoPlayer({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      // Don't intercept when user is typing in form inputs
+      if (["input", "textarea"].includes((event.target as HTMLElement)?.tagName?.toLowerCase())) {
+        return;
+      }
+
       const video = videoRef.current;
       if (!video) return;
-      if (event.key === " ") void toggle();
-      if (event.key === "ArrowRight") video.currentTime += 10;
-      if (event.key === "ArrowLeft") video.currentTime -= 10;
-      if (event.key.toLowerCase() === "f") void video.requestFullscreen();
+
+      if (event.key === " " || event.code === "Space") {
+        event.preventDefault();
+        void toggle();
+        showControlsAndResetTimer();
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        video.currentTime = Math.min(video.duration || 0, video.currentTime + 10);
+        showControlsAndResetTimer();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        video.currentTime = Math.max(0, video.currentTime - 10);
+        showControlsAndResetTimer();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        const newVol = Math.min(1, (video.volume || 0) + 0.1);
+        video.volume = newVol;
+        video.muted = false;
+        setVolume(newVol);
+        setMuted(false);
+        showControlsAndResetTimer();
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        const newVol = Math.max(0, (video.volume || 0) - 0.1);
+        video.volume = newVol;
+        setVolume(newVol);
+        if (newVol === 0) setMuted(true);
+        showControlsAndResetTimer();
+      } else if (event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        toggleFullscreen();
+        showControlsAndResetTimer();
+      } else if (event.key.toLowerCase() === "m") {
+        event.preventDefault();
+        toggleMute();
+        showControlsAndResetTimer();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [toggleFullscreen, showControlsAndResetTimer]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -605,7 +808,7 @@ export function VideoPlayer({
       }
     };
 
-    const onMetadata = () => {
+    const onMetadata = () => {
       setDuration(video.duration || 0);
     };
 
@@ -631,6 +834,7 @@ export function VideoPlayer({
     video.addEventListener("play", onPlay);
     video.addEventListener("playing", onPlaying);
     video.addEventListener("pause", onPause);
+    video.addEventListener("ended", onPause);
     video.addEventListener("volumechange", onVolume);
 
     // Initial load sync
@@ -643,6 +847,7 @@ export function VideoPlayer({
       video.removeEventListener("play", onPlay);
       video.removeEventListener("playing", onPlaying);
       video.removeEventListener("pause", onPause);
+      video.removeEventListener("ended", onPause);
       video.removeEventListener("volumechange", onVolume);
     };
   }, []);
@@ -793,10 +998,20 @@ export function VideoPlayer({
     };
 
     return (
-      <div ref={containerRef} className="relative h-full w-full bg-black flex flex-col items-center justify-center">
+      <div 
+        ref={containerRef} 
+        className={`relative h-full w-full bg-black flex flex-col items-center justify-center ${
+          !showControls ? "cursor-none" : ""
+        }`}
+        onMouseMove={handleUserActivity}
+        onTouchStart={handleUserActivity}
+        onMouseLeave={handleMouseLeave}
+      >
         
-        {/* ── Compact Top Bar: auto-hides after 4s, shows on hover ── */}
-        <div className="absolute top-0 left-0 right-0 z-[130] flex items-center justify-between px-3 py-2 bg-gradient-to-b from-black/70 to-transparent pointer-events-auto select-none opacity-100 hover:opacity-100 transition-opacity duration-300">
+        {/* ── Compact Top Bar: auto-hides after 4s, shows on activity ── */}
+        <div className={`absolute top-0 left-0 right-0 z-[130] flex items-center justify-between px-3 py-2.5 bg-gradient-to-b from-black/85 via-black/45 to-transparent pointer-events-auto select-none transition-all duration-300 ${
+          showControls ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-2"
+        }`}>
           {/* Server info */}
           <div className="flex items-center gap-2">
             <span className={`text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded uppercase ${
@@ -809,8 +1024,21 @@ export function VideoPlayer({
             <span className="text-[11px] font-bold text-white/70 truncate max-w-[120px] sm:max-w-none">{currentServer.name}</span>
           </div>
 
-          {/* Clean Top Right */}
-          <div className="flex items-center gap-2" />
+          {/* Top Right Fullscreen Button */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                toggleFullscreen();
+                showControlsAndResetTimer();
+              }}
+              className="player-capsule flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold cursor-pointer"
+              aria-label={isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
+              title={isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
+            >
+              {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+              <span className="hidden sm:inline">{isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}</span>
+            </button>
+          </div>
         </div>
 
         {/* ── Direct Video Embed Player ── */}
@@ -823,15 +1051,6 @@ export function VideoPlayer({
           title={source.title || "Movie Player"}
           onLoad={() => onPlayStarted?.()}
         />
-        
-        {/* Floating Fullscreen Button (Mobile) */}
-        <button
-          onClick={handleFullscreenForContainer}
-          className="absolute top-2 right-2 z-40 md:hidden flex items-center justify-center h-9 w-9 rounded-full bg-black/50 text-white border border-white/15 backdrop-blur-sm hover:scale-105 active:scale-95 transition cursor-pointer"
-          aria-label="Fullscreen"
-        >
-          <Maximize size={16} />
-        </button>
         {/* YouTube fallback */}
         {(activeUrl.includes("youtube.com") || activeUrl.includes("youtu.be")) && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-1.5 bg-black/80 px-4 py-3 rounded-lg border border-white/10 text-center max-w-[90vw] backdrop-blur-sm shadow-xl">
@@ -851,11 +1070,47 @@ export function VideoPlayer({
   }
 
   return (
-    <div className="group relative grid min-h-screen place-items-center overflow-hidden bg-black select-none">
+    <div 
+      ref={containerRef} 
+      className={`group relative grid min-h-screen place-items-center overflow-hidden bg-black select-none ${
+        !showControls && playing ? "cursor-none" : ""
+      }`}
+      onMouseMove={handleUserActivity}
+      onTouchStart={handleUserActivity}
+      onMouseLeave={handleMouseLeave}
+    >
       <video ref={videoRef} className="h-full max-h-screen w-full object-contain" autoPlay playsInline preload="auto" poster="" crossOrigin="anonymous">
         {source?.subtitles?.map((sub) => <track key={sub.url} kind="subtitles" srcLang={sub.language} label={sub.label} src={sub.url} />)}
       </video>
-      <button onClick={toggle} className="absolute inset-0" aria-label={playing ? "Pause video" : "Play video"} />
+      <button 
+        onClick={handleSurfaceClick} 
+        onDoubleClick={handleSurfaceDoubleClick}
+        className="absolute inset-0 z-0 cursor-default" 
+        aria-label={playing ? "Pause video" : "Play video"} 
+      />
+
+      {/* Top Scrim Gradient Overlay for Contrast on Bright/White Video Scenes */}
+      <div className={`absolute top-0 inset-x-0 h-32 sm:h-40 bg-gradient-to-b from-black/85 via-black/45 to-transparent z-20 pointer-events-none transition-opacity duration-300 ${
+        showControls ? "opacity-100" : "opacity-0"
+      }`} />
+
+      {/* Top Floating Fullscreen Button (Quick Mobile & Desktop Access) */}
+      <div className={`absolute top-3 right-3 sm:top-5 sm:right-5 z-40 flex items-center gap-2 transition-all duration-300 ${
+        showControls ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-2"
+      }`}>
+        <button
+          onClick={() => {
+            toggleFullscreen();
+            showControlsAndResetTimer();
+          }}
+          className="player-capsule flex items-center gap-1.5 px-3.5 py-1.5 text-white text-xs font-semibold cursor-pointer"
+          aria-label={isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
+          title={isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
+        >
+          {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
+          <span className="hidden sm:inline">{isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}</span>
+        </button>
+      </div>
 
       {/* Play Button Overlay (For Autoplay Block Bypass on mobile) */}
       {!playing && (
@@ -864,6 +1119,7 @@ export function VideoPlayer({
             onClick={(e) => {
               e.stopPropagation();
               toggle();
+              showControlsAndResetTimer();
             }}
             className="glass-player-center-play pointer-events-auto focus:outline-none cursor-pointer"
             aria-label="Play video"
@@ -874,7 +1130,9 @@ export function VideoPlayer({
       )}
 
       {/* Controls Container Overlay */}
-      <div className="absolute inset-x-0 bottom-0 z-30 space-y-3 bg-gradient-to-t from-black/95 via-black/75 to-transparent p-4 sm:p-6 opacity-100 transition-opacity duration-300 md:opacity-0 md:group-hover:opacity-100">
+      <div className={`absolute inset-x-0 bottom-0 z-30 space-y-2.5 sm:space-y-3 bg-gradient-to-t from-black/95 via-black/75 to-transparent p-3 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] transition-all duration-300 ${
+        showControls ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none translate-y-4"
+      }`}>
         <div className="max-w-7xl mx-auto w-full space-y-3">
           
           {/* Clickable & Draggable Seekbar Wrapper */}
@@ -928,8 +1186,8 @@ export function VideoPlayer({
           </div>
 
           {/* Control Button bar - Floating Liquid Glass Island */}
-          <div className="p-2 sm:p-2.5 rounded-3xl liquid-glass shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-2xl flex flex-wrap items-center justify-between gap-y-3 gap-x-2 w-full select-none border border-white/15">
-            <div className="flex flex-wrap items-center gap-1.5 md:gap-2.5">
+          <div className="p-2 sm:p-2.5 rounded-3xl liquid-glass shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-2xl flex flex-nowrap items-center justify-between gap-x-2 w-full select-none border border-white/15">
+            <div className="flex flex-nowrap items-center gap-1.5 md:gap-2.5 shrink min-w-0">
               {/* Play/Pause */}
               <button 
                 onClick={toggle} 
@@ -968,7 +1226,7 @@ export function VideoPlayer({
               {/* Skip Intro */}
               {source && typeof source.introEndSeconds === "number" && source.introEndSeconds > 0 && (
                 <button 
-                  className="h-9 px-3.5 rounded-full glass-capsule text-xs font-bold text-white/90 hover:text-white flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer" 
+                  className="player-capsule h-9 px-3.5 text-xs font-bold text-white flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer" 
                   onClick={() => { if (videoRef.current) videoRef.current.currentTime = source.introEndSeconds!; }}
                 >
                   <SkipForward size={13} /> Skip Intro
@@ -976,10 +1234,10 @@ export function VideoPlayer({
               )}
 
               {/* Volume bar */}
-              <div className="flex items-center gap-1.5 md:gap-2 px-2.5 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md ml-1">
+              <div className="flex items-center gap-1.5 md:gap-2 px-2.5 py-1.5 rounded-full bg-black/45 border border-white/20 backdrop-blur-md ml-0.5 sm:ml-1">
                 <button 
                   onClick={toggleMute} 
-                  className="h-7 w-7 rounded-full flex items-center justify-center text-white/90 hover:text-white active:scale-90 transition cursor-pointer" 
+                  className="h-7 w-7 rounded-full flex items-center justify-center text-white hover:text-white active:scale-90 transition cursor-pointer" 
                   aria-label={muted ? "Unmute" : "Mute"}
                 >
                   {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
@@ -991,13 +1249,13 @@ export function VideoPlayer({
                   step="0.05"
                   value={muted ? 0 : volume}
                   onChange={handleVolumeChange}
-                  className="h-1.5 w-14 sm:w-20 cursor-pointer rounded-lg bg-white/25 accent-white appearance-none"
+                  className="hidden sm:block h-1.5 w-14 sm:w-20 cursor-pointer rounded-lg bg-white/30 accent-white appearance-none"
                   aria-label="Volume level"
                 />
               </div>
 
               {/* Time display */}
-              <div className="px-3 py-1.5 rounded-full bg-white/10 border border-white/15 backdrop-blur-md text-xs font-mono font-semibold text-white/90 whitespace-nowrap shadow-sm ml-1">
+              <div className="px-2.5 sm:px-3 py-1.5 rounded-full bg-black/45 border border-white/20 backdrop-blur-md text-[11px] sm:text-xs font-mono font-semibold text-white whitespace-nowrap shadow-sm ml-0.5 sm:ml-1 text-shadow">
                 {formatTime(currentTime)} <span className="text-white/40">/</span> {formatTime(duration)}
               </div>
             </div>
@@ -1008,18 +1266,18 @@ export function VideoPlayer({
                 <button
                   type="button"
                   onClick={() => setShowSubtitleMenu(!showSubtitleMenu)}
-                  className={`flex items-center gap-1.5 h-10 px-3.5 rounded-full glass-capsule text-xs sm:text-sm font-bold transition active:scale-95 cursor-pointer shadow-md ${
-                    selectedSubtitle !== "off" ? "text-white bg-white/30 border border-white/40" : "text-white"
+                  className={`player-capsule flex items-center gap-1.5 h-10 px-3.5 text-xs sm:text-sm font-bold transition active:scale-95 cursor-pointer ${
+                    selectedSubtitle !== "off" ? "!bg-white/25 !border-white/50" : ""
                   }`}
                   aria-label="Subtitles and captions"
                 >
-                  <Subtitles size={16} className="text-white/90" />
+                  <Subtitles size={16} className="text-white" />
                   <span className="hidden sm:inline">CC</span>
-                  <ChevronUp size={13} className={`text-white/70 transition-transform duration-200 ${showSubtitleMenu ? "rotate-180" : ""}`} />
+                  <ChevronUp size={13} className={`text-white/80 transition-transform duration-200 ${showSubtitleMenu ? "rotate-180" : ""}`} />
                 </button>
 
                 {showSubtitleMenu && (
-                  <div className="absolute bottom-12 right-0 z-[150] flex flex-col w-44 rounded-2xl liquid-glass border border-white/20 backdrop-blur-2xl p-1.5 shadow-[0_12px_48px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
+                  <div className="!absolute bottom-full mb-3 right-0 z-[150] flex flex-col w-44 rounded-2xl liquid-glass border border-white/20 backdrop-blur-2xl p-1.5 shadow-[0_12px_48px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
                     <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/50 border-b border-white/10 mb-1">
                       Phụ đề / Lồng tiếng
                     </div>
@@ -1058,16 +1316,16 @@ export function VideoPlayer({
                 <button
                   type="button"
                   onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                  className="flex items-center gap-1.5 h-10 px-3.5 rounded-full glass-capsule text-xs sm:text-sm font-bold text-white transition active:scale-95 cursor-pointer shadow-md"
+                  className="player-capsule flex items-center gap-1.5 h-10 px-3.5 text-xs sm:text-sm font-bold text-white transition active:scale-95 cursor-pointer"
                   aria-label="Playback speed"
                 >
-                  <Gauge size={15} className="text-white/90" />
+                  <Gauge size={15} className="text-white" />
                   <span>{speed}x</span>
-                  <ChevronUp size={13} className={`text-white/70 transition-transform duration-200 ${showSpeedMenu ? "rotate-180" : ""}`} />
+                  <ChevronUp size={13} className={`text-white/80 transition-transform duration-200 ${showSpeedMenu ? "rotate-180" : ""}`} />
                 </button>
 
                 {showSpeedMenu && (
-                  <div className="absolute bottom-12 right-0 z-[150] flex flex-col w-32 rounded-2xl liquid-glass border border-white/20 backdrop-blur-2xl p-1.5 shadow-[0_12px_48px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
+                  <div className="!absolute bottom-full mb-3 right-0 z-[150] flex flex-col w-32 rounded-2xl liquid-glass border border-white/20 backdrop-blur-2xl p-1.5 shadow-[0_12px_48px_rgba(0,0,0,0.8)] animate-in fade-in slide-in-from-bottom-2 duration-150 select-none">
                     <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white/50 border-b border-white/10 mb-1">
                       Tốc độ
                     </div>
@@ -1091,20 +1349,22 @@ export function VideoPlayer({
                 )}
               </div>
               
-              {/* Picture-in-Picture */}
+              {/* Picture-in-Picture - Desktop only */}
               <button 
                 onClick={() => videoRef.current?.requestPictureInPicture()} 
-                className="glass-player-btn cursor-pointer" aria-label="Picture in picture"
+                className="hidden sm:inline-flex glass-player-btn cursor-pointer" aria-label="Picture in picture"
               >
                 <PictureInPicture2 size={16} />
               </button>
               
               {/* Fullscreen */}
               <button 
-                onClick={handleFullscreen} 
-                className="glass-player-btn cursor-pointer" aria-label="Fullscreen"
+                onClick={toggleFullscreen} 
+                className="glass-player-btn cursor-pointer bg-white/20 hover:bg-white/30 text-white" 
+                aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
               >
-                <Maximize size={20} />
+                {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
               </button>
             </div>
           </div>

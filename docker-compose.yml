@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: streamforge
-      POSTGRES_PASSWORD: streamforge
-      POSTGRES_DB: streamforge
+      POSTGRES_USER: rytoxgroup
+      POSTGRES_PASSWORD: rytoxgroup
+      POSTGRES_DB: rytoxgroup
     ports:
       - "5432:5432"
     volumes:
@@ -22,7 +22,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.backend
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://streamforge:streamforge@postgres:5432/streamforge?schema=public
+      DATABASE_URL: postgresql://rytoxgroup:rytoxgroup@postgres:5432/rytoxgroup?schema=public
       REDIS_URL: redis://redis:6379
       CORS_ORIGINS: http://localhost:5173,http://localhost:5174,http://localhost:8080
     depends_on:

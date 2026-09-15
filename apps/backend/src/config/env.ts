@@ -20,7 +20,7 @@ const schema = z.object({
   JWT_REFRESH_SECRET: z.string().min(24),
   COOKIE_SECRET: z.string().min(12),
   AWS_REGION: z.string().default("us-east-1"),
-  AWS_S3_BUCKET: z.string().default("streamforge-media"),
+  AWS_S3_BUCKET: z.string().default("rytoxgroup-media"),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
@@ -29,6 +29,16 @@ const schema = z.object({
 
 export const env = schema.parse(process.env);
 
-export const allowedOrigins = (env.CORS_ORIGINS?.split(",") ?? [env.FRONTEND_URL, env.ADMIN_URL])
+export const allowedOrigins = [
+  ...new Set([
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3000",
+    "https://rytoxgroup.netlify.app",
+    env.FRONTEND_URL.replace(/\/$/, ""),
+    env.ADMIN_URL.replace(/\/$/, ""),
+    ...(env.CORS_ORIGINS?.split(",") ?? [])
+  ])
+]
   .map((origin) => origin.trim().replace(/\/$/, ""))
   .filter(Boolean);

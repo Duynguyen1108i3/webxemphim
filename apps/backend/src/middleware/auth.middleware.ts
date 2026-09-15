@@ -12,16 +12,19 @@ declare global {
   }
 }
 
+const JWT_AUDIENCE = ["rytoxgroup", "streamforge"];
+const JWT_ISSUER = ["rytoxgroup-api", "streamforge-api"];
+
 export function signAccessToken(user: { id: string; email: string; role: Role }) {
-  return jwt.sign(user, env.JWT_ACCESS_SECRET, { expiresIn: "15m", audience: "streamforge", issuer: "streamforge-api" });
+  return jwt.sign(user, env.JWT_ACCESS_SECRET, { expiresIn: "15m", audience: "rytoxgroup", issuer: "rytoxgroup-api" });
 }
 
 export function signRefreshToken(session: { id: string; userId: string; token: string }) {
-  return jwt.sign(session, env.JWT_REFRESH_SECRET, { expiresIn: "30d", audience: "streamforge", issuer: "streamforge-api" });
+  return jwt.sign(session, env.JWT_REFRESH_SECRET, { expiresIn: "30d", audience: "rytoxgroup", issuer: "rytoxgroup-api" });
 }
 
 export function verifyRefreshToken(token: string) {
-  return jwt.verify(token, env.JWT_REFRESH_SECRET, { audience: "streamforge", issuer: "streamforge-api" }) as { id: string; userId: string; token: string };
+  return jwt.verify(token, env.JWT_REFRESH_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER }) as { id: string; userId: string; token: string };
 }
 
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
@@ -35,7 +38,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
     throw new ApiError(401, "Authentication required", "UNAUTHENTICATED");
   }
   try {
-    req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: "streamforge", issuer: "streamforge-api" }) as Express.Request["user"];
+    req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER }) as Express.Request["user"];
     next();
   } catch {
     throw new ApiError(401, "Invalid or expired access token", "INVALID_TOKEN");
@@ -51,7 +54,7 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
   const token = bearer || req.cookies?.accessToken;
   if (token) {
     try {
-      req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: "streamforge", issuer: "streamforge-api" }) as Express.Request["user"];
+      req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER }) as Express.Request["user"];
     } catch {
       // Ignore invalid token in optionalAuth
     }

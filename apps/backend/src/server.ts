@@ -3,4 +3,4 @@ import { env } from "./config/env.js";
 import { logger } from "./lib/logger.js";
 
 const app = createApp();
-app.listen(env.PORT, () => logger.info(`StreamForge API listening on :${env.PORT}`));
+app.listen(env.PORT, () => logger.info(`RytoxGroup API listening on :${env.PORT}`));

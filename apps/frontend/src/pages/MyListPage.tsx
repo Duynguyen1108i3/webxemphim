@@ -13,6 +13,16 @@ export function MyListPage() {
   const isMyListLoading = usePlaybackStore((state) => state.isMyListLoading);
   const loadUserData = usePlaybackStore((state) => state.loadUserData);
   const { openDetailModal } = usePlaybackStore();
+  const activePlayback = usePlaybackStore((state) => state.activePlayback);
+  const activeMovieDetail = usePlaybackStore((state) => state.activeMovieDetail);
+
+  useEffect(() => {
+    if (activeMovieDetail || activePlayback) {
+      setHovered(null);
+      clearOpenTimer();
+      clearCloseTimer();
+    }
+  }, [activeMovieDetail, activePlayback]);
 
   useEffect(() => {
     loadUserData();
@@ -150,7 +160,7 @@ export function MyListPage() {
       )}
 
       <AnimatePresence>
-        {hovered && (
+        {hovered && !activePlayback && !activeMovieDetail && (
           <HoverPreview
             key={hovered.movie.id}
             movie={hovered.movie}

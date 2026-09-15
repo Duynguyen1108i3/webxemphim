@@ -90,7 +90,7 @@ export function normalizeAniMapperMovie(item: any, isDetail = false): Normalized
 
 export async function getAnimeRows(page = 1): Promise<MovieRowsResponse> {
   try {
-    const cacheKey = `streamforge:anime-rows:p${page}`;
+    const cacheKey = `rytoxgroup:anime-rows:p${page}`;
     const cached = readCache<MovieRowsResponse>(cacheKey, MOVIE_API_CACHE_TTL_MS);
     if (cached) return cached;
 

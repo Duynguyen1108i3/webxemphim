@@ -330,12 +330,16 @@ export const HoverPreview = React.memo(function HoverPreview({
   const top = Math.max(72, rect.top - 48);
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { myList, toggleMyList, openDetailModal, removeFromWatchHistory, openAuthModal } = usePlaybackStore();
+  const { myList, toggleMyList, openDetailModal, removeFromWatchHistory, openAuthModal, activePlayback } = usePlaybackStore();
   const inMyList = myList.some((item) => item.id === movie.id);
+
+  if (activePlayback) {
+    return null;
+  }
 
   return createPortal(
     <div
-      className="fixed left-0 top-0 z-[100] will-change-transform"
+      className="fixed left-0 top-0 z-[80] will-change-transform"
       style={{ width, transform: `translate3d(${left}px, ${top}px, 0)` }}
       onClick={(e) => e.stopPropagation()}
       onMouseEnter={onMouseEnter}
@@ -389,6 +393,7 @@ export const HoverPreview = React.memo(function HoverPreview({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    onMouseLeave();
                     usePlaybackStore.getState().openPlayback(movie as NormalizedMovie, `card-${movie.id}`);
                   }}
                   className="nf-icon grid h-10 w-10 place-items-center rounded-full bg-white text-black transition hover:bg-white/80 focus:outline-none"

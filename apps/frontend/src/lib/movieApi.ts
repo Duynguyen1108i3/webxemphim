@@ -584,7 +584,7 @@ export const movieApi = {
 
     const subtitlesList: any[] = [];
     try {
-      const installedStr = localStorage.getItem("streamforge:addons:installed");
+      const installedStr = localStorage.getItem("rytoxgroup:addons:installed") || localStorage.getItem("streamforge:addons:installed");
       const installedAddonsList = installedStr ? JSON.parse(installedStr) : addonsData.map(a => a.id);
       const subtitleAddons = (addonsData as any[]).filter(addon => 
         installedAddonsList.includes(addon.id) && addon.category === "Subtitle"

@@ -175,22 +175,6 @@ export function ShellNavbar({
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs text-white/60">
-                      <span>Glass Transparency</span>
-                      <span className="font-bold text-white">{Math.round(glassness * 100)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0.1"
-                      max="1"
-                      step="0.05"
-                      value={glassness}
-                      onChange={(e) => onGlassnessChange(parseFloat(e.target.value))}
-                      className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
-                    />
-                  </div>
-                  
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-white/60">
                       <span>Ambient Background</span>
                       <span className="font-bold text-white">{Math.round(ambientOpacity * 100)}%</span>
                     </div>
@@ -201,6 +185,22 @@ export function ShellNavbar({
                       step="0.05"
                       value={ambientOpacity}
                       onChange={(e) => onAmbientOpacityChange(parseFloat(e.target.value))}
+                      className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-white/60">
+                      <span>Glass Transparency</span>
+                      <span className="font-bold text-white">{Math.round(glassness * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1"
+                      step="0.05"
+                      value={glassness}
+                      onChange={(e) => onGlassnessChange(parseFloat(e.target.value))}
                       className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
                     />
                   </div>

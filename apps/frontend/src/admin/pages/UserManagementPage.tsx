@@ -109,8 +109,8 @@ export function UserManagementPage() {
         </div>
 
         {/* Search */}
-        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2.5 w-full sm:w-auto">
-          <div className="relative w-full sm:w-80">
+        <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-80">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
             <input
               type="text"
@@ -132,18 +132,18 @@ export function UserManagementPage() {
           </div>
           <button
             type="submit"
-            className="h-10 px-5 inline-flex items-center justify-center gap-1.5 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl cursor-pointer shrink-0"
+            className="h-10 px-3.5 sm:px-5 inline-flex items-center justify-center gap-1.5 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl cursor-pointer shrink-0"
           >
             <Search size={13} />
-            <span>Tìm Kiếm</span>
+            <span className="hidden sm:inline">Tìm Kiếm</span>
           </button>
         </form>
       </div>
 
       {/* Users Table with Liquid Glass Panel */}
-      <div className="liquid-glass-panel rounded-2xl p-6 shadow-2xl space-y-4">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+      <div className="liquid-glass-panel rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 overflow-hidden">
+        <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <table className="w-full text-left text-xs min-w-[620px]">
             <thead>
               <tr className="border-b border-white/10 text-white/40 uppercase tracking-wider text-[10px]">
                 <th className="py-3 px-4">Tài Khoản</th>
@@ -166,7 +166,21 @@ export function UserManagementPage() {
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-white/40">Không tìm thấy tài khoản nào.</td>
+                  <td colSpan={6} className="py-12 text-center text-white/40">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Search size={24} className="text-white/20" />
+                      <p>Không tìm thấy tài khoản nào.</p>
+                      {search && (
+                        <button
+                          type="button"
+                          onClick={() => { setSearch(""); fetchUsers(""); }}
+                          className="mt-1 text-xs text-blue-400 hover:underline cursor-pointer"
+                        >
+                          Xóa bộ lọc tìm kiếm
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ) : (
                 users.map((user, idx) => {

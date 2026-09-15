@@ -308,22 +308,26 @@ function profileId(userId: string, name: string) {
 }
 
 export async function login(input: { email: string; password: string; userAgent?: string; ipAddress?: string }) {
+  const emailKey = input.email.toLowerCase();
   let user: any;
   try {
-    user = await prisma.user.findUnique({ where: { email: input.email.toLowerCase() } });
+    user = await prisma.user.findUnique({ where: { email: emailKey } });
   } catch (err) {
     console.warn("[Dev Fallback] Database offline, looking up user in local memory fallback:", (err as Error).message);
-    user = devUsersMap.get(input.email.toLowerCase());
+    user = devUsersMap.get(emailKey);
   }
 
-  if (!user && devUsersMap.has(input.email.toLowerCase())) {
-    user = devUsersMap.get(input.email.toLowerCase());
+  if (!user && devUsersMap.has(emailKey)) {
+    user = devUsersMap.get(emailKey);
   }
 
   if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) throw new ApiError(401, "Email hoặc mật khẩu không chính xác.", "INVALID_CREDENTIALS");
   if (user.bannedAt) throw new ApiError(403, "Account is banned", "ACCOUNT_BANNED");
   if (user.suspendedUntil && user.suspendedUntil > new Date()) throw new ApiError(403, "Account is temporarily suspended", "ACCOUNT_SUSPENDED");
-  return createSession(user.id, user.email, user.username, user.role, input.userAgent, input.ipAddress, user.avatarUrl);
+  
+  const devUser = devUsersMap.get(emailKey) || (user?.id ? devUsersMap.get(user.id) : undefined);
+  const effectiveAvatar = user?.avatarUrl || devUser?.avatarUrl || null;
+  return createSession(user.id, user.email, user.username, user.role, input.userAgent, input.ipAddress, effectiveAvatar);
 }
 
 async function createSession(userId: string, email: string, username: string, role: "USER" | "MODERATOR" | "ADMIN" | "SUPER_ADMIN", userAgent?: string, ipAddress?: string, avatarUrl?: string | null) {
@@ -402,11 +406,13 @@ export async function refreshSession(refreshToken: string) {
     session.refreshTokenHash = await bcrypt.hash(nextRawRefresh, 12);
   }
 
-  const u = session.user || { id: payload.userId, email: "", username: "user", role: "USER" as const, avatarUrl: null };
+  const devUser = devUsersMap.get(payload.userId) || (session.user?.email ? devUsersMap.get(session.user.email.toLowerCase()) : undefined);
+  const effectiveAvatar = session.user?.avatarUrl || devUser?.avatarUrl || null;
+  const u = session.user || devUser || { id: payload.userId, email: "", username: "user", role: "USER" as const, avatarUrl: null };
   return {
     accessToken: signAccessToken({ id: u.id, email: u.email, role: u.role }),
     refreshToken: signRefreshToken({ id: session.id, userId: u.id, token: nextRawRefresh }),
-    user: { id: u.id, email: u.email, username: u.username, role: u.role, avatarUrl: u.avatarUrl ?? null }
+    user: { id: u.id, email: u.email, username: u.username, role: u.role, avatarUrl: effectiveAvatar }
   };
 }
 

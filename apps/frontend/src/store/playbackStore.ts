@@ -154,7 +154,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
       let activeCustomUrlFromSession: string | null = null;
 
       try {
-        const activeSessionStr = sessionStorage.getItem("streamforge:activePlayback");
+        const activeSessionStr = sessionStorage.getItem("rytoxgroup:activePlayback") || sessionStorage.getItem("streamforge:activePlayback");
         if (activeSessionStr) {
           const activeData = JSON.parse(activeSessionStr);
           if (activeData?.movie) {
@@ -374,12 +374,14 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
     }
 
     try {
-      sessionStorage.setItem("streamforge:activePlayback", JSON.stringify({
+      const activePayload = JSON.stringify({
         movie,
         episodeId,
         elementId,
         customUrl: customUrl || null
-      }));
+      });
+      sessionStorage.setItem("rytoxgroup:activePlayback", activePayload);
+      sessionStorage.setItem("streamforge:activePlayback", activePayload);
     } catch {}
 
     // Set active playback state
@@ -409,6 +411,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
 
   closePlayback: () => {
     try {
+      sessionStorage.removeItem("rytoxgroup:activePlayback");
       sessionStorage.removeItem("streamforge:activePlayback");
     } catch {}
 

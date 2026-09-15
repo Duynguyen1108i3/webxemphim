@@ -1,4 +1,4 @@
-import { X, User, LogIn, UserPlus, ShieldCheck } from "lucide-react";
+import { X, User, LogIn, UserPlus, ShieldCheck, Sliders } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePlaybackStore } from "../../store/playbackStore";
@@ -12,6 +12,10 @@ interface ShellMobileDrawerProps {
   logout: () => void;
   watchHistory: any[];
   onGenreClick: (slug: string) => void;
+  glassness?: number;
+  onGlassnessChange?: (value: number) => void;
+  ambientOpacity?: number;
+  onAmbientOpacityChange?: (value: number) => void;
 }
 
 export function ShellMobileDrawer({
@@ -21,7 +25,11 @@ export function ShellMobileDrawer({
   avatarUrl,
   logout,
   watchHistory,
-  onGenreClick
+  onGenreClick,
+  glassness = 0.85,
+  onGlassnessChange,
+  ambientOpacity = 0.65,
+  onAmbientOpacityChange,
 }: ShellMobileDrawerProps) {
   const navigate = useNavigate();
 
@@ -147,6 +155,51 @@ export function ShellMobileDrawer({
               
               {/* Separator line */}
               <hr className="border-white/10 my-1" />
+
+              {/* Liquid Glass & Ambient Controls for Mobile */}
+              {onAmbientOpacityChange && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Sliders size={14} className="text-white/60" />
+                    <p className="text-xs uppercase tracking-wider text-white/40 font-semibold">Tùy chỉnh Giao diện</p>
+                  </div>
+                  <div className="space-y-3.5 bg-white/5 p-3 rounded-xl border border-white/10">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs text-white/70">
+                        <span>Độ mờ nền Ambient</span>
+                        <span className="font-bold text-white">{Math.round(ambientOpacity * 100)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={ambientOpacity}
+                        onChange={(e) => onAmbientOpacityChange(parseFloat(e.target.value))}
+                        className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
+                      />
+                    </div>
+                    {onGlassnessChange && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs text-white/70">
+                          <span>Độ trong suốt Liquid Glass</span>
+                          <span className="font-bold text-white">{Math.round(glassness * 100)}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0.1"
+                          max="1"
+                          step="0.05"
+                          value={glassness}
+                          onChange={(e) => onGlassnessChange(parseFloat(e.target.value))}
+                          className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <hr className="border-white/10 my-1" />
+                </>
+              )}
               
               {/* Featured Genres List */}
               <p className="text-xs uppercase tracking-wider text-white/40 font-semibold mb-1">Featured Genres</p>

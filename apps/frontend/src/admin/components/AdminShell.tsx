@@ -54,20 +54,20 @@ export function AdminShell() {
         }`}
       >
         {/* Left: Brand Logo + Interactive Scrubber Nav Bar */}
-        <div className="flex items-center gap-2 sm:gap-4 lg:gap-5 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-4 lg:gap-5 min-w-0">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="nf-icon rounded-full hover:bg-white/10 md:hidden p-2 text-white/80 transition shrink-0"
+            className="nf-icon rounded-full hover:bg-white/10 md:hidden p-1.5 sm:p-2 text-white/80 transition shrink-0"
             aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
-          <Link to="/admin" className="flex items-center gap-2 group shrink-0">
+          <Link to="/admin" className="flex items-center gap-1.5 sm:gap-2 group shrink-0">
             <span className="brand-logo text-base sm:text-lg lg:text-xl font-black tracking-tight text-white drop-shadow-[0_2px_12px_rgba(255,255,255,0.3)]">
               RytoxGroup
             </span>
-            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/20">
+            <span className="hidden sm:inline-flex text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/20">
               ADMIN
             </span>
           </Link>
@@ -77,11 +77,11 @@ export function AdminShell() {
         </div>
 
         {/* Right: Status Dot + Back to Client + Admin Profile Pill */}
-        <div className="flex items-center gap-2 sm:gap-2.5 text-sm font-semibold text-white shrink-0">
-          {/* Live Green Status Dot */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 text-sm font-semibold text-white shrink-0">
+          {/* Live Green Status Dot - Hidden on small mobile to avoid header collision */}
           <div
             title="Máy chủ đang hoạt động bình thường"
-            className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shrink-0 cursor-help"
+            className="hidden sm:flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shrink-0 cursor-help"
           >
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -92,11 +92,11 @@ export function AdminShell() {
           {/* Quick link to main client */}
           <Link
             to="/"
-            className="glass-capsule flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white/90 hover:text-white shrink-0 h-9"
+            className="glass-capsule flex items-center justify-center w-8 h-8 sm:w-auto sm:h-9 px-0 sm:px-3 sm:py-1.5 rounded-full text-xs font-semibold text-white/90 hover:text-white shrink-0"
             title="Quay về trang xem phim"
           >
-            <Home size={13} className="text-white/70" />
-            <span className="hidden sm:inline">Trang Xem Phim</span>
+            <Home size={14} className="text-white/70" />
+            <span className="hidden sm:inline ml-1">Trang Xem Phim</span>
           </Link>
 
           {/* Admin Profile Pill */}
@@ -106,18 +106,18 @@ export function AdminShell() {
                 e.stopPropagation();
                 setProfileOpen((prev) => !prev);
               }}
-              className={`glass-capsule pl-1.5 pr-2.5 sm:pr-3 rounded-full flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 h-9 ${profileOpen ? "active" : ""}`}
+              className={`glass-capsule p-1 sm:pl-1.5 sm:pr-2.5 rounded-full flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 h-8 sm:h-9 ${profileOpen ? "active" : ""}`}
               aria-label="Admin Profile Menu"
             >
               <img
                 src={effectiveAvatar}
                 alt="Admin Avatar"
-                className="h-7 w-7 rounded-full object-cover border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300 shrink-0"
+                className="h-6 w-6 sm:h-7 sm:w-7 rounded-full object-cover border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300 shrink-0"
               />
-              <span className="text-xs font-semibold text-white whitespace-nowrap">
+              <span className="hidden sm:inline text-xs font-semibold text-white whitespace-nowrap">
                 {user?.username || "Admin"}
               </span>
-              <span className={`border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 shrink-0 ${profileOpen ? "rotate-180" : ""}`} />
+              <span className={`hidden sm:inline-block border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 shrink-0 ${profileOpen ? "rotate-180" : ""}`} />
             </button>
 
             {profileOpen && (

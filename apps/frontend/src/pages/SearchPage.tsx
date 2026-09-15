@@ -349,7 +349,7 @@ export function SearchPage() {
       )}
 
       <AnimatePresence>
-        {hovered && (
+        {hovered && !activePlayback && !activeMovieDetail && (
           <HoverPreview
             key={hovered.movie.id}
             movie={hovered.movie}

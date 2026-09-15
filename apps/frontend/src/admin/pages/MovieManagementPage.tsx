@@ -224,10 +224,10 @@ export function MovieManagementPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 bg-white/5 p-1 rounded-full border border-white/10 backdrop-blur-md">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-white/5 p-1 rounded-2xl sm:rounded-full border border-white/10 backdrop-blur-md">
           <button
             onClick={() => setActiveTab("list")}
-            className={`h-9 px-4 inline-flex items-center justify-center rounded-full text-xs font-bold transition cursor-pointer ${
+            className={`h-9 px-3 sm:px-4 inline-flex items-center justify-center rounded-full text-xs font-bold transition cursor-pointer ${
               activeTab === "list"
                 ? "bg-white text-black shadow-xl"
                 : "text-white/70 hover:text-white hover:bg-white/10"
@@ -238,7 +238,7 @@ export function MovieManagementPage() {
           <button
             onClick={handleSyncPhimApi}
             disabled={isSyncing}
-            className="h-9 inline-flex items-center justify-center gap-1.5 px-4 rounded-full text-xs font-bold transition cursor-pointer bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-lg disabled:opacity-50"
+            className="h-9 inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 rounded-full text-xs font-bold transition cursor-pointer bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-lg disabled:opacity-50"
             title="Tự động đồng bộ các bộ phim mới nhất từ nguồn PhimAPI về hệ thống"
           >
             {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
@@ -246,7 +246,7 @@ export function MovieManagementPage() {
           </button>
           <button
             onClick={() => setActiveTab("create")}
-            className={`h-9 inline-flex items-center justify-center gap-1.5 px-4 rounded-full text-xs font-bold transition cursor-pointer ${
+            className={`h-9 inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 rounded-full text-xs font-bold transition cursor-pointer ${
               activeTab === "create"
                 ? "bg-white text-black shadow-xl"
                 : "text-white/70 hover:text-white hover:bg-white/10"
@@ -261,7 +261,7 @@ export function MovieManagementPage() {
       {activeTab === "list" && (
         <div className="space-y-4">
           {/* Search Bar */}
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2.5 max-w-md">
+          <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 w-full sm:max-w-md">
             <div className="relative flex-1">
               <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
               <input
@@ -283,17 +283,17 @@ export function MovieManagementPage() {
             </div>
             <button
               type="submit"
-              className="h-10 px-5 inline-flex items-center justify-center gap-1.5 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl cursor-pointer shrink-0"
+              className="h-10 px-3.5 sm:px-5 inline-flex items-center justify-center gap-1.5 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl cursor-pointer shrink-0"
             >
               <Search size={13} />
-              <span>Tìm Kiếm</span>
+              <span className="hidden sm:inline">Tìm Kiếm</span>
             </button>
           </form>
 
           {/* Table Container with Liquid Glass Panel */}
           <div className="liquid-glass-panel rounded-2xl overflow-hidden shadow-2xl">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-white/80">
+              <table className="w-full text-left text-sm text-white/80 min-w-[640px]">
                 <thead className="border-b border-white/10 bg-white/5 text-xs uppercase font-bold text-white/50">
                   <tr>
                     <th className="py-3 px-4">Poster</th>

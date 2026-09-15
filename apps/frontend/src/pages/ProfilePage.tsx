@@ -3,22 +3,21 @@ import { ArrowLeft, Check, Camera, LogOut, Save, User, Mail, Lock, KeyRound, Sen
 import { motion } from "framer-motion";
 import { useAuthStore, authApi } from "../store/auth";
 import { useNavigate } from "react-router-dom";
-import { LiquidGlassBackground } from "../components/LiquidGlassBackground";
 
 const PROFILE_TABS = [
-  { id: "general", label: "Ảnh đại diện", icon: User },
-  { id: "username", label: "Tên hiển thị", icon: Sparkles },
-  { id: "email", label: "Địa chỉ Email", icon: Mail },
-  { id: "password", label: "Mật khẩu", icon: Lock },
-  { id: "billing", label: "Gói cước VIP", icon: CreditCard },
+  { id: "general", label: "Ảnh đại diện", shortLabel: "Avatar", icon: User },
+  { id: "username", label: "Tên hiển thị", shortLabel: "Tên", icon: Sparkles },
+  { id: "email", label: "Email", shortLabel: "Email", icon: Mail },
+  { id: "password", label: "Mật khẩu", shortLabel: "Mật khẩu", icon: Lock },
+  { id: "billing", label: "Gói VIP", shortLabel: "Gói VIP", icon: CreditCard },
 ] as const;
 
 const presetAvatars = [
-  { name: "Gato Coder Fisheye", value: "https://i.pinimg.com/736x/d9/29/00/d9290081650be42d78fda3208fc97b8f.jpg" },
-  { name: "Mèo Coder Bàn Mini", value: "https://i.pinimg.com/736x/77/fd/20/77fd20eb5fdbad732959cf9fd6656bec.jpg" },
-  { name: "Mèo Ngủ Cạnh Mac", value: "https://i.pinimg.com/736x/27/2c/bc/272cbc5a4f0b054c1825a7df3e8d281c.jpg" },
-  { name: "Mèo Gõ Phím Siêu Tốc", value: "https://i.pinimg.com/736x/dd/a3/91/dda391ff72469d4c4c603c0c033966e8.jpg" },
-  { name: "Mèo Kính Trắng Chill", value: "https://i.pinimg.com/736x/60/ef/ff/60effff1052085826c1eda5c1db835e6.jpg" },
+  { name: "Gato Coder Fisheye", value: "/avatars/cat-1.jpg" },
+  { name: "Mèo Nơ Hồng Cười", value: "/avatars/cat-2.jpg" },
+  { name: "Mèo Nơ Quạu Cute", value: "/avatars/cat-3.jpg" },
+  { name: "Mèo Đội Cá Bông", value: "/avatars/cat-4.jpg" },
+  { name: "Mèo Đội Mèo Bông", value: "/avatars/cat-5.jpg" },
 ];
 
 export function ProfilePage() {
@@ -137,27 +136,32 @@ export function ProfilePage() {
   }, [user, navigate]);
 
   // Avatar state
+  const isPresetAvatar = (url?: string | null) => Boolean(url && (url.startsWith("/avatars/") || url.includes("d9290081650be42d78fda3208fc97b8f")));
+
   const [inputAvatar, setInputAvatar] = useState(avatarUrl || "");
-  const [customUrlInput, setCustomUrlInput] = useState(() => (avatarUrl && avatarUrl.startsWith("http")) ? avatarUrl : "");
+  const [customUrlInput, setCustomUrlInput] = useState(() => (avatarUrl && avatarUrl.startsWith("http") && !isPresetAvatar(avatarUrl)) ? avatarUrl : "");
   const [isSavingAvatar, setIsSavingAvatar] = useState(false);
   const [uploadedPhotos, setUploadedPhotos] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("streamforge:profile:uploaded_photos");
+      const saved = localStorage.getItem("rytoxgroup:profile:uploaded_photos") || localStorage.getItem("streamforge:profile:uploaded_photos");
       const initialList: string[] = saved ? JSON.parse(saved) : [];
-      if (avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:") || avatarUrl.includes("/")) && !initialList.includes(avatarUrl)) {
-        initialList.unshift(avatarUrl);
+      const filtered = initialList.filter(url => !isPresetAvatar(url));
+      if (avatarUrl && !isPresetAvatar(avatarUrl) && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:")) && !filtered.includes(avatarUrl)) {
+        filtered.unshift(avatarUrl);
       }
-      return initialList;
+      return filtered;
     } catch {
-      return avatarUrl && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:") || avatarUrl.includes("/")) ? [avatarUrl] : [];
+      return (avatarUrl && !isPresetAvatar(avatarUrl) && (avatarUrl.startsWith("http") || avatarUrl.startsWith("data:"))) ? [avatarUrl] : [];
     }
   });
 
   useEffect(() => {
     if (avatarUrl) {
       setInputAvatar(avatarUrl);
-      if (avatarUrl.startsWith("http")) {
+      if (avatarUrl.startsWith("http") && !isPresetAvatar(avatarUrl)) {
         setCustomUrlInput(avatarUrl);
+      } else {
+        setCustomUrlInput("");
       }
     }
   }, [avatarUrl]);
@@ -227,10 +231,12 @@ export function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addUploadedPhoto = (newPhotoUrl: string) => {
+    if (isPresetAvatar(newPhotoUrl)) return;
     setUploadedPhotos(prev => {
-      const filtered = prev.filter(url => url !== newPhotoUrl);
+      const filtered = prev.filter(url => url !== newPhotoUrl && !isPresetAvatar(url));
       const updated = [newPhotoUrl, ...filtered].slice(0, 6);
       try {
+        localStorage.setItem("rytoxgroup:profile:uploaded_photos", JSON.stringify(updated));
         localStorage.setItem("streamforge:profile:uploaded_photos", JSON.stringify(updated));
       } catch (err) {
         console.warn("Could not save avatar history to localStorage:", err);
@@ -243,6 +249,7 @@ export function ProfilePage() {
     setUploadedPhotos(prev => {
       const updated = prev.filter(url => url !== photoUrl);
       try {
+        localStorage.setItem("rytoxgroup:profile:uploaded_photos", JSON.stringify(updated));
         localStorage.setItem("streamforge:profile:uploaded_photos", JSON.stringify(updated));
       } catch (err) {
         console.warn("Could not update localStorage:", err);
@@ -346,21 +353,27 @@ export function ProfilePage() {
 
   const handleSelectAndSaveAvatar = async (val: string) => {
     if (!val) return;
+    setErrorMsg(null);
     setIsSavingAvatar(true);
     setInputAvatar(val);
-    if (val.startsWith("http")) {
+    if (val.startsWith("http") && !isPresetAvatar(val)) {
       setCustomUrlInput(val);
+    } else {
+      setCustomUrlInput("");
     }
     setAvatarUrl(val);
     if (user) {
       setUser({ ...user, avatarUrl: val });
     }
     try {
-      await authApi.updateAvatar(val);
+      const updatedUser = await authApi.updateAvatar(val);
+      if (updatedUser?.avatarUrl) {
+        setAvatarUrl(updatedUser.avatarUrl);
+      }
       showSuccess("Đã đổi và lưu ảnh đại diện thành công!");
     } catch (err: any) {
-      console.warn("Avatar update notice:", err);
-      showSuccess("Đã cập nhật ảnh đại diện thành công!");
+      console.error("Avatar update error:", err);
+      showError(err?.message || "Không thể lưu ảnh đại diện lên máy chủ. Vui lòng thử lại!");
     } finally {
       setIsSavingAvatar(false);
     }
@@ -395,9 +408,9 @@ export function ProfilePage() {
   };
 
   const handleSaveAvatar = async () => {
-    const targetVal = customUrlInput.trim() || inputAvatar.trim();
+    const targetVal = inputAvatar.trim() || customUrlInput.trim();
     if (!targetVal) return showError("Vui lòng chọn hoặc nhập liên kết ảnh đại diện!");
-    if (targetVal.startsWith("http") || targetVal.startsWith("data:") || targetVal.includes("/")) {
+    if (!isPresetAvatar(targetVal) && (targetVal.startsWith("http") || targetVal.startsWith("data:"))) {
       addUploadedPhoto(targetVal);
     }
     await handleSelectAndSaveAvatar(targetVal);
@@ -528,7 +541,6 @@ export function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-transparent px-4 pt-24 pb-16 sm:px-6 md:px-8 flex items-center justify-center relative">
-      <LiquidGlassBackground />
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -537,7 +549,7 @@ export function ProfilePage() {
         className="hidden" 
       />
 
-      <div className="w-full max-w-xl liquid-glass rounded-3xl p-5 sm:p-7 shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/15 relative overflow-hidden backdrop-blur-2xl">
+      <div className="w-full max-w-xl sm:max-w-2xl liquid-glass rounded-3xl p-5 sm:p-7 shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/15 relative overflow-hidden backdrop-blur-2xl">
         
         {/* Header Navigation Row */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
@@ -581,20 +593,38 @@ export function ProfilePage() {
 
         {/* Alert Feedback Messages */}
         {successMsg && (
-          <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
-            <Check size={14} /> {successMsg}
+          <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center justify-between gap-2 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <Check size={14} /> {successMsg}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSuccessMsg(null)}
+              className="text-emerald-400/60 hover:text-emerald-300 p-0.5 rounded cursor-pointer"
+            >
+              <X size={13} />
+            </button>
           </div>
         )}
         {errorMsg && (
-          <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
-            <ShieldCheck size={14} /> {errorMsg}
+          <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center justify-between gap-2 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={14} /> {errorMsg}
+            </div>
+            <button
+              type="button"
+              onClick={() => setErrorMsg(null)}
+              className="text-rose-400/60 hover:text-rose-300 p-0.5 rounded cursor-pointer"
+            >
+              <X size={13} />
+            </button>
           </div>
         )}
 
         {/* Profile Navigation Tabs styled identically to Home Menu Bar with drag & hold scrubber */}
         <nav
           aria-label="Profile Tabs"
-          className={`relative flex items-center justify-between gap-1 p-1.5 rounded-full backdrop-blur-md shadow-inner mb-6 select-none touch-none transition-all duration-300 ${
+          className={`relative flex items-center justify-between gap-0.5 sm:gap-1 p-1 sm:p-1.5 rounded-full backdrop-blur-md shadow-inner mb-6 select-none touch-none transition-all duration-300 overflow-hidden ${
             isScrubbing
               ? "bg-white/10 border border-white/35 shadow-[0_0_24px_rgba(255,255,255,0.22)] ring-1 ring-white/20"
               : "bg-white/5 border border-white/10"
@@ -611,7 +641,7 @@ export function ProfilePage() {
                 }}
                 onPointerDown={(e) => startScrubbing(index, e)}
                 type="button"
-                className={`relative flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-full transition-all duration-200 z-10 cursor-pointer select-none text-white/60 hover:text-white active:scale-95 text-xs ${
+                className={`relative flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-1.5 py-2 sm:py-2.5 px-1 sm:px-2 rounded-full transition-all duration-200 z-10 cursor-pointer select-none text-white/60 hover:text-white active:scale-95 text-[11px] sm:text-xs ${
                   isTarget ? "text-white" : ""
                 } ${isScrubbing && !isTarget ? "opacity-50" : "opacity-100"}`}
               >
@@ -624,7 +654,7 @@ export function ProfilePage() {
                 )}
                 <Icon
                   size={14}
-                  className={`transition-transform duration-200 ${
+                  className={`shrink-0 transition-transform duration-200 ${
                     isTarget ? "scale-110 text-white" : "text-white/60"
                   }`}
                 />
@@ -633,7 +663,8 @@ export function ProfilePage() {
                     isTarget ? "font-bold text-white scale-105" : "font-medium"
                   }`}
                 >
-                  {tab.label}
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.shortLabel}</span>
                 </span>
               </button>
             );
@@ -645,11 +676,11 @@ export function ProfilePage() {
           <div className="space-y-4 animate-fadeIn">
             <div className="space-y-2">
               <label className="text-[11px] font-bold text-white/50 uppercase tracking-wider block">
-                Bộ sưu tập ảnh mèo cute (Pinterest)
+                Bộ sưu tập ảnh mèo cute
               </label>
               <div className="grid grid-cols-5 gap-2.5">
                 {presetAvatars.map((item, index) => {
-                  const isSelected = inputAvatar === item.value;
+                  const isSelected = inputAvatar === item.value || (item.value === "/avatars/cat-1.jpg" && (inputAvatar?.includes("d9290081650be42d78fda3208fc97b8f") || inputAvatar?.includes("cat-1.jpg")));
                   return (
                     <button
                       key={item.value}

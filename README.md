@@ -1,6 +1,6 @@
-# StreamForge
+# RytoxGroup
 
-StreamForge là monorepo nền tảng xem phim, gồm viewer React, trang quản trị React, Express API và các shared packages.
+RytoxGroup là monorepo nền tảng xem phim trực tuyến thế hệ mới, gồm viewer React, trang quản trị React, Express API và các shared packages.
 
 ## Cấu trúc
 

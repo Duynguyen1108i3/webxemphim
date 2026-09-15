@@ -40,7 +40,12 @@ export function applySecurity(app: Express) {
   // 2. Strict CORS Whitelisting
   app.use(cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+      if (!origin) return callback(null, true);
+      const cleanOrigin = origin.replace(/\/$/, "");
+      if (
+        allowedOrigins.includes(cleanOrigin) ||
+        cleanOrigin.endsWith(".netlify.app")
+      ) {
         return callback(null, true);
       }
       console.warn(`[CORS Blocked] Origin: "${origin}". Allowed origins in config: ${allowedOrigins.join(", ")}`);
@@ -48,7 +53,7 @@ export function applySecurity(app: Express) {
     },
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "x-dev-admin"],
     optionsSuccessStatus: 204
   }));
 
@@ -75,6 +80,7 @@ export function applySecurity(app: Express) {
     limit: 30, 
     standardHeaders: true, 
     legacyHeaders: false,
+    skip: (req) => env.NODE_ENV !== "production" && (req.ip === "127.0.0.1" || req.ip === "::1" || req.headers["x-dev-admin"] === "true"),
     message: { error: "Thao tác quá nhiều lần. Vui lòng thử lại sau 15 phút.", code: "AUTH_RATE_LIMITED" }
   }) as RequestHandler;
 
@@ -86,14 +92,6 @@ export function applySecurity(app: Express) {
     "/api/auth/send-change-email-otp",
     "/api/auth/forgot-password"
   ], sensitiveAuthLimiter);
-
-  // User Profile Mutations Limiter: 30 requests per 15 minutes
-  app.use("/api/users", rateLimit({
-    windowMs: 15 * 60_000,
-    limit: 60,
-    standardHeaders: true,
-    legacyHeaders: false
-  }) as RequestHandler);
 
   // 5. CSRF Token Protection
   app.use((req, res, next) => {

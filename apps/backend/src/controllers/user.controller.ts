@@ -30,6 +30,7 @@ export async function validateProfileOwnership(req: Request, _res: Response, nex
 export async function getCurrentUser(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = req.user!.id;
+    const emailKey = req.user!.email?.toLowerCase();
     let user: any;
     try {
       user = await prisma.user.findUnique({
@@ -37,12 +38,15 @@ export async function getCurrentUser(req: Request, res: Response, next: NextFunc
         select: { id: true, email: true, username: true, role: true, avatarUrl: true, subscriptions: { orderBy: { currentPeriodEnd: "desc" }, take: 1 } }
       });
     } catch {
-      user = devUsersMap.get(userId) || { id: userId, email: req.user!.email, username: req.user!.email.split("@")[0], role: req.user!.role };
+      user = devUsersMap.get(userId) || (emailKey ? devUsersMap.get(emailKey) : undefined) || { id: userId, email: req.user!.email, username: req.user!.email.split("@")[0], role: req.user!.role };
     }
 
     if (!user) {
-      user = devUsersMap.get(userId) || { id: userId, email: req.user!.email, username: req.user!.email.split("@")[0], role: req.user!.role };
+      user = devUsersMap.get(userId) || (emailKey ? devUsersMap.get(emailKey) : undefined) || { id: userId, email: req.user!.email, username: req.user!.email.split("@")[0], role: req.user!.role };
     }
+
+    const devUser = devUsersMap.get(userId) || (emailKey ? devUsersMap.get(emailKey) : undefined);
+    const effectiveAvatar = user.avatarUrl || devUser?.avatarUrl || null;
 
     let profiles: any[] = [];
     try {
@@ -72,7 +76,7 @@ export async function getCurrentUser(req: Request, res: Response, next: NextFunc
       email: user.email,
       username: user.username,
       role: user.role,
-      avatarUrl: user.avatarUrl,
+      avatarUrl: effectiveAvatar,
       subscriptions: user.subscriptions || []
     };
     res.json({ user: { ...safeUser, profiles } });
@@ -85,6 +89,7 @@ export async function updateAvatar(req: Request, res: Response, next: NextFuncti
   try {
     const { avatarUrl } = updateAvatarSchema.parse(req.body);
     const userId = req.user!.id;
+    const emailKey = req.user!.email?.toLowerCase();
 
     let user: any;
     try {
@@ -102,27 +107,26 @@ export async function updateAvatar(req: Request, res: Response, next: NextFuncti
       } catch {}
     } catch (dbErr) {
       console.warn("[Dev Fallback] Database offline, saving avatar in dev fallback store:", (dbErr as Error).message);
-      const devUser = devUsersMap.get(userId);
-      if (devUser) {
-        devUser.avatarUrl = avatarUrl;
-        devUsersMap.set(userId, devUser);
-        if (devUser.email) devUsersMap.set(devUser.email.toLowerCase(), devUser);
-        user = { id: devUser.id, email: devUser.email, username: devUser.username, role: devUser.role, avatarUrl };
-      } else {
-        user = { id: userId, email: req.user!.email, username: req.user!.email.split("@")[0], role: req.user!.role, avatarUrl };
-        devUsersMap.set(userId, user);
-        devUsersMap.set(user.email.toLowerCase(), user);
-      }
-      saveDevStore();
     }
 
-    // Always keep dev store cache synced
-    const devUser = devUsersMap.get(userId);
-    if (devUser) {
-      devUser.avatarUrl = avatarUrl;
-      devUsersMap.set(userId, devUser);
-      if (devUser.email) devUsersMap.set(devUser.email.toLowerCase(), devUser);
-      saveDevStore();
+    // Always keep dev store cache synced for both userId and emailKey
+    const existingDev = devUsersMap.get(userId) || (emailKey ? devUsersMap.get(emailKey) : undefined);
+    const updatedUserObj = {
+      ...(existingDev || {}),
+      id: userId,
+      email: emailKey || existingDev?.email,
+      username: user?.username || existingDev?.username || req.user?.username || emailKey?.split("@")[0] || "User",
+      role: user?.role || existingDev?.role || req.user?.role || "USER",
+      avatarUrl
+    };
+    devUsersMap.set(userId, updatedUserObj);
+    if (emailKey) devUsersMap.set(emailKey, updatedUserObj);
+    saveDevStore();
+
+    if (!user) {
+      user = updatedUserObj;
+    } else {
+      user.avatarUrl = avatarUrl;
     }
 
     let profiles: any[] = [];
@@ -137,7 +141,7 @@ export async function updateAvatar(req: Request, res: Response, next: NextFuncti
       ];
     }
 
-    res.json({ user: { ...user, profiles } });
+    res.json({ user: { ...user, avatarUrl, profiles } });
   } catch (error) {
     next(error);
   }

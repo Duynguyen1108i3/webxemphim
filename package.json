@@ -1,5 +1,5 @@
 {
-  "name": "streamforge",
+  "name": "rytoxgroup",
   "private": true,
   "version": "1.0.0",
   "description": "Enterprise streaming platform monorepo with React, Express, Prisma, PostgreSQL, Redis, Docker and monitoring.",

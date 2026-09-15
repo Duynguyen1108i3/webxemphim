@@ -53,11 +53,11 @@ export function AdminShell() {
             {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
 
-          <NavLink to="/" className="flex items-center gap-2 group shrink-0">
+          <NavLink to="/" className="flex items-center gap-1.5 sm:gap-2 group shrink-0">
             <span className="brand-logo text-base sm:text-lg lg:text-xl font-black tracking-tight text-white drop-shadow-[0_2px_12px_rgba(255,255,255,0.3)]">
               RytoxGroup
             </span>
-            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/20">
+            <span className="hidden sm:inline-flex text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/20">
               STUDIO
             </span>
           </NavLink>
@@ -67,11 +67,11 @@ export function AdminShell() {
         </div>
 
         {/* Right: Green Status Dot Only + Quick Link + Admin Profile Pill */}
-        <div className="flex items-center gap-2 sm:gap-2.5 text-sm font-semibold text-white shrink-0">
-          {/* Live Green Status Dot Only (No text, pulsing radar ring) */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 text-sm font-semibold text-white shrink-0">
+          {/* Live Green Status Dot Only (No text, pulsing radar ring) - Hidden on mobile */}
           <div
             title="Hệ thống 100% SLA - Máy chủ đang hoạt động bình thường"
-            className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shrink-0 cursor-help"
+            className="hidden sm:flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shrink-0 cursor-help"
           >
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -84,11 +84,11 @@ export function AdminShell() {
             href="http://localhost:5173"
             target="_blank"
             rel="noopener noreferrer"
-            className="glass-capsule flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white/90 hover:text-white shrink-0 h-9"
+            className="glass-capsule flex items-center justify-center w-8 h-8 sm:w-auto sm:h-9 px-0 sm:px-3 sm:py-1.5 rounded-full text-xs font-semibold text-white/90 hover:text-white shrink-0"
             title="Mở giao diện Web Khách"
           >
-            <span className="hidden sm:inline">Web Khách</span>
-            <ExternalLink size={13} className="text-white/60" />
+            <ExternalLink size={14} className="text-white/70" />
+            <span className="hidden sm:inline ml-1">Web Khách</span>
           </a>
 
           {/* Admin Profile Cat Avatar Pill - Never clipped */}
@@ -98,16 +98,16 @@ export function AdminShell() {
                 e.stopPropagation();
                 setProfileOpen((prev) => !prev);
               }}
-              className={`glass-capsule pl-1.5 pr-2.5 sm:pr-3 rounded-full flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 h-9 ${profileOpen ? "active" : ""}`}
+              className={`glass-capsule p-1 sm:pl-1.5 sm:pr-2.5 rounded-full flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 h-8 sm:h-9 ${profileOpen ? "active" : ""}`}
               aria-label="Admin Profile Menu"
             >
               <img
                 src="https://i.pinimg.com/736x/d9/29/00/d9290081650be42d78fda3208fc97b8f.jpg"
                 alt="Admin Cat"
-                className="h-7 w-7 rounded-full object-cover border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300 shrink-0"
+                className="h-6 w-6 sm:h-7 sm:w-7 rounded-full object-cover border border-white/40 shadow-lg ring-2 ring-white/10 hover:scale-105 transition duration-300 shrink-0"
               />
-              <span className="text-xs font-semibold text-white whitespace-nowrap">Duy Nguyen</span>
-              <span className={`border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 shrink-0 ${profileOpen ? "rotate-180" : ""}`} />
+              <span className="hidden sm:inline text-xs font-semibold text-white whitespace-nowrap">Duy Nguyen</span>
+              <span className={`hidden sm:inline-block border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 shrink-0 ${profileOpen ? "rotate-180" : ""}`} />
             </button>
 
             {profileOpen && (

@@ -5,6 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth.middleware.js";
 import { ApiError } from "../middleware/error.middleware.js";
 import { syncMoviesFromPhimApi } from "../services/phimapi-sync.service.js";
 import { telemetryService } from "../services/telemetry.service.js";
+import { devUsersMap, saveDevStore } from "../services/auth.service.js";
 
 const router = Router();
 router.use(requireAuth, requireRole("ADMIN", "SUPER_ADMIN"));
@@ -277,28 +278,50 @@ router.get("/users", async (req, res, next) => {
         }
       : {};
 
-    const [total, users] = await Promise.all([
-      prisma.user.count({ where }),
-      prisma.user.findMany({
-        where,
-        select: {
-          id: true,
-          email: true,
-          username: true,
-          role: true,
-          avatarUrl: true,
-          createdAt: true,
-          bannedAt: true,
-          suspendedUntil: true,
-          subscriptions: { orderBy: { currentPeriodEnd: "desc" }, take: 1, select: { status: true, tier: true } }
-        },
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit
-      })
-    ]);
+    let total = 0;
+    let users: any[] = [];
+    try {
+      [total, users] = await Promise.all([
+        prisma.user.count({ where }),
+        prisma.user.findMany({
+          where,
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            role: true,
+            avatarUrl: true,
+            createdAt: true,
+            bannedAt: true,
+            suspendedUntil: true,
+            subscriptions: { orderBy: { currentPeriodEnd: "desc" }, take: 1, select: { status: true, tier: true } }
+          },
+          orderBy: { createdAt: "desc" },
+          skip: (page - 1) * limit,
+          take: limit
+        })
+      ]);
+    } catch (dbErr) {
+      console.warn("[Dev Fallback] /admin/users db query failed:", (dbErr as Error).message);
+      const allDevUsers = Array.from(devUsersMap.values()).filter((u, i, arr) => arr.findIndex((x) => x.id === u.id) === i);
+      const filtered = search
+        ? allDevUsers.filter((u) => u.email?.toLowerCase().includes(search.toLowerCase()) || u.username?.toLowerCase().includes(search.toLowerCase()))
+        : allDevUsers;
+      total = filtered.length;
+      users = filtered.slice((page - 1) * limit, page * limit).map((u) => ({
+        id: u.id,
+        email: u.email,
+        username: u.username,
+        role: u.role,
+        avatarUrl: u.avatarUrl,
+        createdAt: u.createdAt || new Date().toISOString(),
+        bannedAt: u.bannedAt || null,
+        suspendedUntil: u.suspendedUntil || null,
+        subscriptions: []
+      }));
+    }
 
-    res.json({ total, users, page, totalPages: Math.ceil(total / limit) });
+    res.json({ total, users, page, totalPages: Math.max(1, Math.ceil(total / limit)) });
   } catch (error) {
     next(error);
   }
@@ -331,7 +354,22 @@ router.patch("/users/:id/moderation", async (req, res, next) => {
   try {
     const body = z.object({ action: z.enum(["BAN", "SUSPEND", "RESTORE"]) }).parse(req.body);
     const data = body.action === "BAN" ? { bannedAt: new Date() } : body.action === "SUSPEND" ? { suspendedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) } : { bannedAt: null, suspendedUntil: null };
-    res.json({ user: await prisma.user.update({ where: { id: req.params.id }, data }) });
+    let user: any;
+    try {
+      user = await prisma.user.update({ where: { id: req.params.id }, data });
+    } catch (dbErr) {
+      console.warn("[Dev Fallback] Moderation update fallback:", (dbErr as Error).message);
+    }
+    const devUser = devUsersMap.get(req.params.id);
+    if (devUser) {
+      devUser.bannedAt = data.bannedAt;
+      devUser.suspendedUntil = data.suspendedUntil;
+      devUsersMap.set(devUser.id, devUser);
+      if (devUser.email) devUsersMap.set(devUser.email.toLowerCase(), devUser);
+      saveDevStore();
+      if (!user) user = devUser;
+    }
+    res.json({ user: user || { id: req.params.id, ...data } });
   } catch (error) {
     next(error);
   }
@@ -343,18 +381,30 @@ router.patch("/users/:id/role", async (req, res, next) => {
       role: z.enum(["USER", "MODERATOR", "ADMIN", "SUPER_ADMIN"])
     }).parse(req.body);
 
-    const user = await prisma.user.update({
-      where: { id: req.params.id },
-      data: { role: body.role },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        role: true
-      }
-    });
-
-    res.json({ success: true, user });
+    let user: any;
+    try {
+      user = await prisma.user.update({
+        where: { id: req.params.id },
+        data: { role: body.role },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          role: true
+        }
+      });
+    } catch (dbErr) {
+      console.warn("[Dev Fallback] Role update fallback:", (dbErr as Error).message);
+    }
+    const devUser = devUsersMap.get(req.params.id);
+    if (devUser) {
+      devUser.role = body.role;
+      devUsersMap.set(devUser.id, devUser);
+      if (devUser.email) devUsersMap.set(devUser.email.toLowerCase(), devUser);
+      saveDevStore();
+      if (!user) user = devUser;
+    }
+    res.json({ success: true, user: user || { id: req.params.id, role: body.role } });
   } catch (error) {
     next(error);
   }

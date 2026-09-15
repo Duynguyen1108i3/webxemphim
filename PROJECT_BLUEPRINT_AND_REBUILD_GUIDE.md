@@ -1,4 +1,4 @@
-# StreamForge (RytoxGroup) — Master Project Blueprint & Zero-to-One Rebuild Guide
+# RytoxGroup — Master Project Blueprint & Zero-to-One Rebuild Guide
 
 > **Phiên bản:** 2.0.0 (Enterprise Architecture Edition)  
 > **Phương pháp tiếp cận:** System Audit + Reverse Engineering + Zero-to-One Rebuild Roadmap  
@@ -209,7 +209,7 @@ Khi phim chạy nguồn embed hoặc stream quốc tế chưa có phụ đề ti
 
 ## 2.3. Hệ thống Giao diện Pure Liquid Glass (Design System)
 
-Giao diện của StreamForge được thiết kế theo phong cách **Liquid Glass (Kính lỏng Apple WWDC25)**, không sử dụng màu đỏ Netflix truyền thống mà dùng ánh sáng kính mờ, độ khúc xạ, và các hạt sáng specular phản chiếu.
+Giao diện của RytoxGroup được thiết kế theo phong cách **Liquid Glass (Kính lỏng Apple WWDC25)**, không sử dụng màu đỏ Netflix truyền thống mà dùng ánh sáng kính mờ, độ khúc xạ, và các hạt sáng specular phản chiếu.
 
 ### Hệ thống CSS Variables Tính Toán Động
 Tại `:root` trong `styles.css`:
