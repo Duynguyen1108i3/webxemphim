@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { BookmarkPlus, LogIn, UserPlus, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePlaybackStore } from "../store/playbackStore";
+import { LiquidGlassButton } from "./liquid-glass";
 
 export function AuthPromptModal() {
   const { closeAuthModal } = usePlaybackStore();
@@ -20,13 +21,14 @@ export function AuthPromptModal() {
         className="relative w-full max-w-sm liquid-glass rounded-3xl p-6 sm:p-7 shadow-[0_24px_80px_rgba(0,0,0,0.8)] border border-white/20 text-center"
       >
         {/* Close Button */}
-        <button
+        <LiquidGlassButton
+          shape="circle"
           onClick={closeAuthModal}
-          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition cursor-pointer focus:outline-none border border-white/15"
+          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full text-white/70 hover:text-white transition cursor-pointer focus:outline-none p-0"
           aria-label="Đóng"
         >
           <X size={16} />
-        </button>
+        </LiquidGlassButton>
 
         {/* Icon Circle */}
         <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-white/10 border border-white/20 shadow-inner">

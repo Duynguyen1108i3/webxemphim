@@ -80,7 +80,8 @@ export function CinematicPlayerOverlay() {
       }`}>
         <button
           onClick={handleClose}
-          className="player-capsule gap-1.5 sm:gap-2 px-3.5 sm:px-5 h-9 sm:h-11 text-xs sm:text-sm font-bold text-white cursor-pointer"
+          className="player-capsule gap-1.5 sm:gap-2 px-3.5 sm:px-5 h-9 sm:h-11 text-xs sm:text-sm font-bold text-white cursor-pointer shadow-2xl"
+          aria-label="Exit player"
         >
           <ArrowLeft size={16} className="sm:w-[18px] sm:h-[18px]" /> Exit
         </button>

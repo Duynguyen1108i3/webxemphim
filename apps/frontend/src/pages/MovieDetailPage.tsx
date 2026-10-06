@@ -8,6 +8,7 @@ import { movieApi, type NormalizedMovie } from "../lib/movieApi";
 import { decodeHtml } from "../lib/htmlUtils";
 import { apiRequest } from "../lib/http";
 import { useAuthStore } from "../store/authStore";
+import { LiquidGlassButton } from "../components/liquid-glass";
 
 const tabs = ["Overview", "Episodes", "Cast", "Reviews", "Similar Titles"] as const;
 
@@ -225,9 +226,15 @@ export function MovieDetailPage() {
             <Link to={`/watch/${movie.id}`} className="inline-flex h-12 items-center justify-center gap-2 rounded bg-white px-7 text-lg font-bold text-black transition hover:bg-white/85 focus:outline-none focus:ring-2 focus:ring-white/70 shadow-lg">
               <Play size={22} fill="currentColor" /> Play
             </Link>
-            <Button variant="ghost" className="h-12 rounded-full px-4"><Plus size={18} /> My List</Button>
-            <Button variant="ghost" className="h-12 w-12 rounded-full p-0" aria-label="Like"><ThumbsUp size={18} /></Button>
-            <Button variant="ghost" className="h-12 w-12 rounded-full p-0" aria-label="Mute preview"><Volume2 size={18} /></Button>
+            <LiquidGlassButton shape="pill" className="h-12 px-5 text-sm font-bold text-white shadow-xl cursor-pointer">
+              <Plus size={18} /> My List
+            </LiquidGlassButton>
+            <LiquidGlassButton shape="circle" className="h-12 w-12 text-white shadow-xl cursor-pointer p-0" aria-label="Like">
+              <ThumbsUp size={18} />
+            </LiquidGlassButton>
+            <LiquidGlassButton shape="circle" className="h-12 w-12 text-white shadow-xl cursor-pointer p-0" aria-label="Mute preview">
+              <Volume2 size={18} />
+            </LiquidGlassButton>
           </div>
         </div>
       </section>
@@ -276,16 +283,27 @@ export function MovieDetailPage() {
                   {seasons.map((s, idx) => {
                     const sNum = (s as any).number ?? (idx + 1);
                     const isSelected = activeSeason ? ((activeSeason as any).number ?? 1) === sNum : idx === 0;
+                    if (isSelected) {
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => setActiveSeasonNumber(sNum)}
+                          className="px-4 py-1.5 rounded-full text-xs font-bold transition cursor-pointer bg-white text-black shadow-md"
+                        >
+                          {s.title || `Mùa ${sNum}`}
+                        </button>
+                      );
+                    }
                     return (
-                      <button
+                      <LiquidGlassButton
                         key={s.id}
+                        shape="pill"
+                        disableWebGL={true}
                         onClick={() => setActiveSeasonNumber(sNum)}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
-                          isSelected ? "bg-white text-black shadow-md" : "bg-white/10 text-white/70 hover:bg-white/20"
-                        }`}
+                        className="px-4 py-1.5 rounded-full text-xs font-bold transition cursor-pointer text-white/70 hover:text-white"
                       >
                         {s.title || `Mùa ${sNum}`}
-                      </button>
+                      </LiquidGlassButton>
                     );
                   })}
                 </div>

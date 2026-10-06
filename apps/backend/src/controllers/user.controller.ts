@@ -50,18 +50,24 @@ export async function getCurrentUser(req: Request, res: Response, next: NextFunc
 
     let profiles: any[] = [];
     try {
-      const profileDefinitions = [
-        { name: user.username, type: "ADULT" as const },
-        { name: "Kids", type: "KIDS" as const },
-        { name: "Guest", type: "ADULT" as const },
-        { name: "Private", type: "ADULT" as const }
-      ];
-      await Promise.all(profileDefinitions.map((profile) => prisma.profile.upsert({
-        where: { id: `${userId}-${profile.name.toLowerCase()}` },
-        create: { id: `${userId}-${profile.name.toLowerCase()}`, userId, ...profile },
-        update: {}
-      })));
       profiles = await prisma.profile.findMany({ where: { userId }, orderBy: { createdAt: "asc" } });
+      if (profiles.length < 4) {
+        const profileDefinitions = [
+          { name: user.username, type: "ADULT" as const },
+          { name: "Kids", type: "KIDS" as const },
+          { name: "Guest", type: "ADULT" as const },
+          { name: "Private", type: "ADULT" as const }
+        ];
+        await prisma.profile.createMany({
+          data: profileDefinitions.map((profile) => ({
+            id: `${userId}-${profile.name.toLowerCase()}`,
+            userId,
+            ...profile
+          })),
+          skipDuplicates: true
+        });
+        profiles = await prisma.profile.findMany({ where: { userId }, orderBy: { createdAt: "asc" } });
+      }
     } catch {
       profiles = [
         { id: `${userId}-${(user.username || "user").toLowerCase()}`, name: user.username || "user", type: "ADULT" },

@@ -10,6 +10,7 @@ import { usePlaybackStore } from "../store/playbackStore";
 import { useAuthStore } from "../store/auth";
 import { useNavigate } from "react-router-dom";
 import { ParallaxTilt } from "./ParallaxTilt";
+import { LiquidGlassButton } from "./liquid-glass";
 
 function createFallbackImage(title: string) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#1f1f1f"/><stop offset=".55" stop-color="#111"/><stop offset="1" stop-color="#2a0d10"/></linearGradient></defs><rect width="1280" height="720" fill="url(#g)"/><rect width="1280" height="720" fill="#000" opacity=".22"/></svg>`;
@@ -93,11 +94,15 @@ export const MovieRow = React.memo(function MovieRow({ title, items, ranked = fa
 
   const openHoverTimer = useRef<number | null>(null);
   const closeHoverTimer = useRef<number | null>(null);
+  const lastScrollTimeRef = useRef<number>(0);
 
   const clearOpenTimer = () => { if (openHoverTimer.current != null) { window.clearTimeout(openHoverTimer.current); openHoverTimer.current = null; } };
   const clearCloseTimer = () => { if (closeHoverTimer.current != null) { window.clearTimeout(closeHoverTimer.current); closeHoverTimer.current = null; } };
 
   function scheduleHoverClose() {
+    if (Date.now() - lastScrollTimeRef.current < 220) {
+      return;
+    }
     clearCloseTimer();
     clearOpenTimer();
     closeHoverTimer.current = window.setTimeout(() => setHovered(null), 180);
@@ -112,24 +117,21 @@ export const MovieRow = React.memo(function MovieRow({ title, items, ranked = fa
     }
   }, [activeMovieDetail, activePlayback]);
 
-  // When user scrolls, immediately close any hover preview to avoid layout thrashing
+  // While scrolling, cancel pending hover-open timers if no popup is open yet.
   useEffect(() => {
     const handleScroll = () => {
+      lastScrollTimeRef.current = Date.now();
       clearOpenTimer();
-      clearCloseTimer();
-      if (hovered) {
-        setHovered(null);
-      }
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hovered]);
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, []);
 
   return (
     <>
       <section
         id={title ? `row-${slugify(title)}` : undefined}
-        className={`relative z-20 space-y-2 ${compact ? "px-0" : "px-4 sm:px-8 md:px-14 lg:px-16"}`}
+        className={`movie-row-section relative z-20 space-y-2 ${compact ? "px-0" : "px-4 sm:px-8 md:px-14 lg:px-16"}`}
       >
         <h2 className="text-lg font-bold text-white md:text-xl">{title}</h2>
         
@@ -137,13 +139,15 @@ export const MovieRow = React.memo(function MovieRow({ title, items, ranked = fa
         <div className="group/row relative">
           {/* Scroll Left Button */}
           {canScrollLeft && (
-            <button
+            <LiquidGlassButton
+              shape="circle"
+              disableWebGL={true}
               onClick={() => scroll("left")}
-              className="absolute left-0 top-0 bottom-4 z-30 hidden md:grid w-12 place-items-center text-white opacity-0 group-hover/row:opacity-100 transition duration-300 focus:outline-none cursor-pointer"
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-30 hidden md:grid w-10 h-10 place-items-center text-white shadow-2xl opacity-0 group-hover/row:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95 focus:outline-none cursor-pointer p-0"
               aria-label="Scroll left"
             >
-              <ChevronLeft size={32} className="transition-transform hover:scale-125" />
-            </button>
+              <ChevronLeft size={24} />
+            </LiquidGlassButton>
           )}
 
           {/* Scrollable Items Wrapper */}
@@ -184,13 +188,15 @@ export const MovieRow = React.memo(function MovieRow({ title, items, ranked = fa
 
           {/* Scroll Right Button */}
           {canScrollRight && (
-            <button
+            <LiquidGlassButton
+              shape="circle"
+              disableWebGL={true}
               onClick={() => scroll("right")}
-              className="absolute right-0 top-0 bottom-4 z-30 hidden md:grid w-12 place-items-center text-white opacity-0 group-hover/row:opacity-100 transition duration-300 focus:outline-none cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-30 hidden md:grid w-10 h-10 place-items-center text-white shadow-2xl opacity-0 group-hover/row:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95 focus:outline-none cursor-pointer p-0"
               aria-label="Scroll right"
             >
-              <ChevronRight size={32} className="transition-transform hover:scale-125" />
-            </button>
+              <ChevronRight size={24} />
+            </LiquidGlassButton>
           )}
         </div>
       </section>
@@ -200,6 +206,7 @@ export const MovieRow = React.memo(function MovieRow({ title, items, ranked = fa
             key={hovered.movie.id}
             movie={hovered.movie}
             rect={hovered.rect}
+            anchor={hovered.anchor}
             isContinueWatching={isContinueWatching}
             onOpen={() => {
               if (isContinueWatching) {
@@ -208,11 +215,20 @@ export const MovieRow = React.memo(function MovieRow({ title, items, ranked = fa
                 openDetailModal(hovered.movie as NormalizedMovie, `card-${hovered.movie.id}`);
               }
             }}
+            onClose={() => {
+              clearOpenTimer();
+              clearCloseTimer();
+              setHovered(null);
+            }}
             onMouseEnter={() => {
               clearOpenTimer();
               clearCloseTimer();
             }}
-            onMouseLeave={scheduleHoverClose}
+            onMouseLeave={() => {
+              clearCloseTimer();
+              clearOpenTimer();
+              closeHoverTimer.current = window.setTimeout(() => setHovered(null), 180);
+            }}
           />
         )}
       </AnimatePresence>
@@ -242,15 +258,26 @@ export const MovieTile = React.memo(function MovieTile({
 }) {
   const removeFromWatchHistory = usePlaybackStore((state) => state.removeFromWatchHistory);
 
+  const isTouchOnly = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia &&
+    window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+
   return (
     <article
       className={
         className ||
         "group relative z-10 w-[148px] shrink-0 rounded-[16px] transition-transform duration-200 ease-out hover:-translate-y-1.5 hover:scale-[1.025] active:scale-[0.96] sm:w-[180px] md:w-[214px] lg:w-[238px]"
       }
-      onMouseEnter={(event) => onHover(event.currentTarget)}
+      onMouseEnter={(event) => {
+        if (isTouchOnly()) return;
+        onHover(event.currentTarget);
+      }}
       onMouseLeave={onHoverEnd}
-      onFocus={(event) => onHover(event.currentTarget)}
+      onFocus={(event) => {
+        if (isTouchOnly()) return;
+        onHover(event.currentTarget);
+      }}
       onBlur={onHoverEnd}
     >
       <button onClick={onOpen} className="movie-card relative block w-full overflow-hidden text-left focus:outline-none focus:ring-2 focus:ring-white/70 bg-gradient-to-br from-[#1d1f2c] to-[#0c0e15]" aria-label={`Open ${movie.title}`}>
@@ -313,44 +340,173 @@ export const MovieTile = React.memo(function MovieTile({
 export const HoverPreview = React.memo(function HoverPreview({
   movie,
   rect,
+  anchor,
   isContinueWatching = false,
   onOpen,
+  onClose,
   onMouseEnter,
   onMouseLeave
 }: {
   movie: MovieCardDto;
   rect: DOMRect;
+  anchor?: HTMLElement | null;
   isContinueWatching?: boolean;
   onOpen: () => void;
+  onClose?: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
 }) {
-  const width = Math.min(430, Math.max(rect.width + 180, rect.width * 1.82));
-  const left = Math.min(window.innerWidth - width - 16, Math.max(16, rect.left + rect.width / 2 - width / 2));
-  const top = Math.max(72, rect.top - 48);
-  const navigate = useNavigate();
+  const portalRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const lastScrollTimeRef = useRef<number>(0);
+  const onMouseLeaveRef = useRef(onMouseLeave);
+  onMouseLeaveRef.current = onMouseLeave;
+  const onCloseRef = useRef(onClose || onMouseLeave);
+  onCloseRef.current = onClose || onMouseLeave;
+
   const { user } = useAuthStore();
-  const { myList, toggleMyList, openDetailModal, removeFromWatchHistory, openAuthModal, activePlayback } = usePlaybackStore();
+  const { myList, toggleMyList, removeFromWatchHistory, openAuthModal, activePlayback, activeMovieDetail } = usePlaybackStore();
   const inMyList = myList.some((item) => item.id === movie.id);
+
+  const isInsideModal = Boolean(activeMovieDetail) || (typeof document !== "undefined" && document.body.style.position === "fixed");
+  const initialRect = anchor && anchor.isConnected ? anchor.getBoundingClientRect() : rect;
+  const offsetYRef = useRef(isInsideModal ? -48 : Math.max(-48, 72 - initialRect.top));
+
+  const computeCoords = (r: DOMRect, useDocumentCoords: boolean) => {
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1024;
+    const sideMargin = vw < 640 ? 12 : 16;
+    const maxW = Math.min(430, vw - sideMargin * 2);
+    const w = Math.min(maxW, Math.max(r.width + (vw < 640 ? 110 : 180), r.width * 1.82));
+    const vpLeft = Math.min(vw - w - sideMargin, Math.max(sideMargin, r.left + r.width / 2 - w / 2));
+    const vpTop = Math.max(72, r.top + offsetYRef.current);
+    if (useDocumentCoords) {
+      return {
+        width: w,
+        left: vpLeft + window.scrollX,
+        top: r.top + window.scrollY + offsetYRef.current
+      };
+    }
+    return { width: w, left: vpLeft, top: vpTop };
+  };
+
+  const { width, left, top } = computeCoords(initialRect, !isInsideModal);
+
+  useEffect(() => {
+    if (!anchor) return;
+
+    const syncPosition = () => {
+      rafRef.current = null;
+      if (!anchor.isConnected || !portalRef.current) {
+        onCloseRef.current();
+        return;
+      }
+      const r = anchor.getBoundingClientRect();
+      const useFixed = Boolean(usePlaybackStore.getState().activeMovieDetail) || document.body.style.position === "fixed";
+      const coords = computeCoords(r, !useFixed);
+      portalRef.current.style.position = useFixed ? "fixed" : "absolute";
+      portalRef.current.style.width = `${coords.width}px`;
+      portalRef.current.style.transform = `translate3d(${coords.left}px, ${coords.top}px, 0)`;
+
+      const bottomCut = window.innerWidth < 768 && !useFixed ? 72 : 16;
+      const isOutOfView =
+        r.top < 56 ||
+        r.bottom < 96 ||
+        r.top > window.innerHeight - bottomCut ||
+        r.right < 0 ||
+        r.left > window.innerWidth;
+
+      if (isOutOfView) {
+        onCloseRef.current();
+      }
+    };
+
+    const handleScrollOrResize = () => {
+      lastScrollTimeRef.current = Date.now();
+      if (rafRef.current == null) {
+        rafRef.current = window.requestAnimationFrame(syncPosition);
+      }
+    };
+
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      if (Date.now() - lastScrollTimeRef.current < 180) return;
+      const portalEl = portalRef.current;
+      if (!portalEl || !anchor.isConnected) return;
+
+      const pRect = portalEl.getBoundingClientRect();
+      const aRect = anchor.getBoundingClientRect();
+      const pad = 12;
+
+      const inPortal =
+        e.clientX >= pRect.left - pad &&
+        e.clientX <= pRect.right + pad &&
+        e.clientY >= pRect.top - pad &&
+        e.clientY <= pRect.bottom + pad;
+      const inAnchor =
+        e.clientX >= aRect.left - pad &&
+        e.clientX <= aRect.right + pad &&
+        e.clientY >= aRect.top - pad &&
+        e.clientY <= aRect.bottom + pad;
+
+      if (!inPortal && !inAnchor) {
+        onMouseLeaveRef.current();
+      }
+    };
+
+    const handleWindowTouchStart = (e: TouchEvent) => {
+      const portalEl = portalRef.current;
+      const target = e.target as Node | null;
+      if (!portalEl || !target) return;
+      if (!portalEl.contains(target) && (!anchor.isConnected || !anchor.contains(target))) {
+        onCloseRef.current();
+      }
+    };
+
+    syncPosition();
+    window.addEventListener("scroll", handleScrollOrResize, { capture: true, passive: true });
+    window.addEventListener("resize", handleScrollOrResize, { passive: true });
+    window.addEventListener("mousemove", handleWindowMouseMove, { passive: true });
+    window.addEventListener("touchstart", handleWindowTouchStart, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, { capture: true });
+      window.removeEventListener("resize", handleScrollOrResize);
+      window.removeEventListener("mousemove", handleWindowMouseMove);
+      window.removeEventListener("touchstart", handleWindowTouchStart);
+      if (rafRef.current != null) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [anchor]);
 
   if (activePlayback) {
     return null;
   }
 
+  const portalTarget =
+    (typeof document !== "undefined" && document.getElementById("app-shell-root")) ||
+    document.body;
+
   return createPortal(
     <div
-      className="fixed left-0 top-0 z-[80] will-change-transform"
+      ref={portalRef}
+      className={`${isInsideModal ? "fixed z-[95]" : "absolute z-40"} left-0 top-0 will-change-transform`}
       style={{ width, transform: `translate3d(${left}px, ${top}px, 0)` }}
       onClick={(e) => e.stopPropagation()}
       onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+      onMouseLeave={() => {
+        if (Date.now() - lastScrollTimeRef.current < 220) {
+          return;
+        }
+        onMouseLeave();
+      }}
     >
       <ParallaxTilt maxTilt={8}>
         <motion.article
-          initial={{ opacity: 0, scale: 0.9, y: 18 }}
+          initial={{ opacity: 0, scale: 0.92, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 8 }}
-          transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.8 }}
+          exit={{ opacity: 0, scale: 0.96, y: 6, transition: { duration: 0.14, ease: "easeOut" } }}
+          transition={{ type: "spring", stiffness: 260, damping: 24, mass: 0.7 }}
           className="liquid-glass overflow-hidden rounded-2xl text-white shadow-[0_22px_64px_rgba(0,0,0,.78)] will-change-transform"
           style={{ transformOrigin: "center top", transformStyle: "preserve-3d" }}
         >
@@ -414,8 +570,9 @@ export const HoverPreview = React.memo(function HoverPreview({
                   <Play size={18} fill="currentColor" />
                 </button>
               )}
-              <Button
-                variant="ghost"
+              <LiquidGlassButton
+                shape="circle"
+                disableWebGL={true}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!user) {
@@ -424,16 +581,31 @@ export const HoverPreview = React.memo(function HoverPreview({
                   }
                   toggleMyList(movie as NormalizedMovie);
                 }}
-                className="nf-icon glass-button grid h-10 w-10 place-items-center rounded-full p-0"
+                className="nf-icon grid h-10 w-10 place-items-center rounded-full p-0 cursor-pointer shadow-lg"
                 aria-label="Add to list"
               >
                 {inMyList ? <Check size={18} className="text-[#46d369]" /> : <Plus size={18} />}
-              </Button>
-              <Button variant="ghost" className="nf-icon glass-button h-10 w-10 rounded-full p-0" aria-label="Like"><ThumbsUp size={17} /></Button>
-              <button onClick={(e) => {
-                e.stopPropagation();
-                onOpen();
-              }} className="nf-icon glass-button ml-auto grid h-10 w-10 place-items-center rounded-full text-white" aria-label="Episodes and info"><ChevronDown size={20} /></button>
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                shape="circle"
+                disableWebGL={true}
+                className="nf-icon h-10 w-10 rounded-full p-0 cursor-pointer shadow-lg"
+                aria-label="Like"
+              >
+                <ThumbsUp size={17} />
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                shape="circle"
+                disableWebGL={true}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen();
+                }}
+                className="nf-icon ml-auto grid h-10 w-10 place-items-center rounded-full text-white cursor-pointer p-0 shadow-lg"
+                aria-label="Episodes and info"
+              >
+                <ChevronDown size={20} />
+              </LiquidGlassButton>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-sm text-white/75">
               <span className="font-bold text-[#46d369]">★ {Number(movie.averageRating) > 0 ? Number(movie.averageRating).toFixed(1) : "8.0"} IMDb</span>
@@ -446,7 +618,7 @@ export const HoverPreview = React.memo(function HoverPreview({
         </motion.article>
       </ParallaxTilt>
     </div>,
-    document.body
+    portalTarget
   );
 });
 

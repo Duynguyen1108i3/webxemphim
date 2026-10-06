@@ -199,11 +199,15 @@ export function VideoPlayer({
     "vw_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now().toString(36)
   );
   const activePlayback = usePlaybackStore((state) => state.activePlayback);
+  const activePlaybackRef = useRef(activePlayback);
+  activePlaybackRef.current = activePlayback;
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
 
   const sendHeartbeat = useCallback((stopped = false) => {
     const video = videoRef.current;
     const currentSource = latestSourceRef.current;
-    const movie = activePlayback;
+    const movie = activePlaybackRef.current;
 
     const movieId = movie?.id || currentSource?.movieId || (currentSource as any)?.id || "movie";
     const movieTitle = movie?.title || currentSource?.title || "Phim";
@@ -215,7 +219,7 @@ export function VideoPlayer({
 
     const curTime = video ? Math.floor(video.currentTime || 0) : 0;
     const dur = video && video.duration && !isNaN(video.duration) ? Math.floor(video.duration) : 100;
-    const isPaused = video ? video.paused : !playing;
+    const isPaused = video ? video.paused : !playingRef.current;
 
     const payload = JSON.stringify({
       sessionId: playbackSessionId.current,
@@ -253,7 +257,7 @@ export function VideoPlayer({
       credentials: "include",
       body: payload
     }).catch(() => {});
-  }, [activePlayback, playing]);
+  }, []);
 
   // Periodic heartbeat timer while player is mounted
   useEffect(() => {
@@ -261,7 +265,7 @@ export function VideoPlayer({
 
     const interval = setInterval(() => {
       sendHeartbeat(false);
-    }, 5000);
+    }, 20000); // 20s interval for viewer telemetry to eliminate network flooding and CPU wakeups
 
     const handleBeforeUnload = () => {
       sendHeartbeat(true);
@@ -444,13 +448,32 @@ export function VideoPlayer({
     setHoverTime(null);
   };
 
-  // ── Auto-hide Controls & Cinema Inactivity System ──
   const [showControls, setShowControls] = useState(true);
+  const showControlsRef = useRef(showControls);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Notify parent component (CinematicPlayerOverlay / WatchPage)
   useEffect(() => {
+    showControlsRef.current = showControls;
     onControlsVisibilityChange?.(showControls);
+
+    // Instantly synchronize playback progress and time when controls become visible
+    if (showControls && videoRef.current) {
+      const v = videoRef.current;
+      setProgress(v.duration ? (v.currentTime / v.duration) * 100 : 0);
+      setCurrentTime(v.currentTime);
+      setDuration(v.duration || 0);
+      if (v.buffered.length > 0) {
+        let bEnd = 0;
+        for (let i = 0; i < v.buffered.length; i++) {
+          if (v.buffered.start(i) <= v.currentTime && v.buffered.end(i) >= v.currentTime) {
+            bEnd = v.buffered.end(i);
+            break;
+          }
+        }
+        setBufferedProgress(v.duration ? (bEnd / v.duration) * 100 : 0);
+      }
+    }
   }, [showControls, onControlsVisibilityChange]);
 
   const clearControlsTimer = useCallback(() => {
@@ -636,23 +659,23 @@ export function VideoPlayer({
     };
     video.addEventListener("error", handleVideoError);
 
+    const isMobileDevice = typeof navigator !== "undefined" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isHls && Hls.isSupported()) {
       hls = new Hls({ 
         enableWorker: true, 
-        // Movie streams are VOD, not live broadcasts. Low-latency mode can
-        // aggressively evict/replace media buffers and presents as a brief
-        // black frame on Chromium while seeking or recovering a segment.
         lowLatencyMode: false,
-        backBufferLength: 600,
-        maxBufferLength: 600,
-        maxMaxBufferLength: 1200,
-        maxBufferHole: 0.1,
-        highBufferWatchdogPeriod: 1,
-        nudgeMaxRetry: 10,
+        capLevelToPlayerSize: true, // Auto-scale quality level to player render dimensions to eliminate CPU decoding spikes
+        backBufferLength: isMobileDevice ? 20 : 45, // Evict watched chunks quickly from RAM (instead of 600s bloat)
+        maxBufferLength: isMobileDevice ? 25 : 45,  // Buffer ahead 25-45s (stops continuous network downloading)
+        maxMaxBufferLength: isMobileDevice ? 50 : 90,
+        maxBufferSize: (isMobileDevice ? 25 : 50) * 1000 * 1000, // Strict buffer memory cap (25MB-50MB)
+        maxBufferHole: 0.5,
+        highBufferWatchdogPeriod: 3, // Check buffer every 3s instead of 1s to allow CPU cores to sleep
+        nudgeMaxRetry: 5,
         stretchShortVideoTrack: true,
         maxAudioFramesDrift: 1,
         fragLoadingTimeOut: 20000,
-        fragLoadingMaxRetry: 6
+        fragLoadingMaxRetry: 4
       });
       hlsRef.current = hls;
       hls.loadSource(activeUrl);
@@ -728,7 +751,7 @@ export function VideoPlayer({
         onProgressRef.current?.(Math.floor(video.currentTime), Math.floor(video.duration), currentSource.currentEpisodeId, currentSource.title);
       }
     };
-    const interval = window.setInterval(handler, 3_000);
+    const interval = window.setInterval(handler, 10_000); // Save watch history every 10s instead of 3s to minimize disk I/O and CPU
     return () => window.clearInterval(interval);
   }, []);
 
@@ -787,24 +810,38 @@ export function VideoPlayer({
     const video = videoRef.current;
     if (!video) return;
     
+    let lastRenderSecond = -1;
     const update = () => {
-      setProgress(video.duration ? (video.currentTime / video.duration) * 100 : 0);
-      setCurrentTime(video.currentTime);
+      const cur = video.currentTime;
+      if (cur > 0.1) {
+        onPlayStartedRef.current?.();
+      }
+
+      // If controls are hidden or user is scrubbing, skip state updates to save CPU & avoid re-render storms
+      if (!showControlsRef.current) {
+        return;
+      }
+
+      // Throttle UI update to at most 2 times per second (500ms) to eliminate CPU thrashing while keeping seekbar silky smooth
+      const curHalfSec = Math.floor(cur * 2);
+      if (curHalfSec === lastRenderSecond) {
+        return;
+      }
+      lastRenderSecond = curHalfSec;
+
+      setProgress(video.duration ? (cur / video.duration) * 100 : 0);
+      setCurrentTime(cur);
       setDuration(video.duration || 0);
 
       if (video.buffered.length > 0) {
         let bufferedEnd = 0;
         for (let i = 0; i < video.buffered.length; i++) {
-          if (video.buffered.start(i) <= video.currentTime && video.buffered.end(i) >= video.currentTime) {
+          if (video.buffered.start(i) <= cur && video.buffered.end(i) >= cur) {
             bufferedEnd = video.buffered.end(i);
             break;
           }
         }
         setBufferedProgress(video.duration ? (bufferedEnd / video.duration) * 100 : 0);
-      }
-
-      if (video.currentTime > 0.1) {
-        onPlayStartedRef.current?.();
       }
     };
 

@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePlaybackStore } from "../../store/playbackStore";
 import { InteractiveNavScrubber } from "../InteractiveNavScrubber";
+import { LiquidGlassControlsPanel, LiquidGlassButton } from "../liquid-glass";
 import type { NormalizedMovie } from "../../lib/movieApi";
 import type { AuthUser } from "../../store/authStore";
 
@@ -154,13 +155,14 @@ export function ShellNavbar({
 
         {/* Liquid Glass Settings Slider Button */}
         <div ref={settingsRef} className="relative hidden md:block">
-          <button
+          <LiquidGlassButton
+            shape="circle"
             onClick={toggleSettings}
-            className={`glass-capsule glass-capsule--icon ${settingsOpen ? "active" : ""}`}
+            className={`glass-capsule glass-capsule--icon text-white ${settingsOpen ? "active" : ""}`}
             aria-label="Liquid Glass Settings"
           >
             <Sliders size={22} />
-          </button>
+          </LiquidGlassButton>
           
           <AnimatePresence>
             {settingsOpen && (
@@ -169,14 +171,15 @@ export function ShellNavbar({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: 8 }}
                 transition={{ type: "spring", stiffness: 350, damping: 26, mass: 0.85 }}
-                className="absolute right-0 top-full mt-2 w-64 rounded-2xl liquid-glass p-4 shadow-2xl z-50"
+                className="absolute right-0 top-full mt-2 w-72 rounded-2xl liquid-glass p-4 shadow-2xl z-50 space-y-4"
               >
-                <h4 className="text-sm font-bold text-white mb-3">Liquid Glass Controls</h4>
-                <div className="space-y-4">
+                <LiquidGlassControlsPanel />
+
+                <div className="border-t border-white/10 pt-3 space-y-3 text-xs">
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-white/60">
-                      <span>Ambient Background</span>
-                      <span className="font-bold text-white">{Math.round(ambientOpacity * 100)}%</span>
+                    <div className="flex items-center justify-between text-xs text-white/70">
+                      <span>Ambient Glow Layer</span>
+                      <span className="font-bold text-white font-mono">{Math.round(ambientOpacity * 100)}%</span>
                     </div>
                     <input
                       type="range"
@@ -185,23 +188,7 @@ export function ShellNavbar({
                       step="0.05"
                       value={ambientOpacity}
                       onChange={(e) => onAmbientOpacityChange(parseFloat(e.target.value))}
-                      className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs text-white/60">
-                      <span>Glass Transparency</span>
-                      <span className="font-bold text-white">{Math.round(glassness * 100)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0.1"
-                      max="1"
-                      step="0.05"
-                      value={glassness}
-                      onChange={(e) => onGlassnessChange(parseFloat(e.target.value))}
-                      className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
+                      className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
                     />
                   </div>
                 </div>
@@ -212,16 +199,17 @@ export function ShellNavbar({
 
         {/* Live Updates Notification Bell Icon */}
         <div ref={notificationRef} className="relative hidden md:block">
-          <button
+          <LiquidGlassButton
+            shape="circle"
             onClick={toggleNotification}
-            className={`glass-capsule glass-capsule--icon ${notificationOpen ? "active" : ""}`}
+            className={`glass-capsule glass-capsule--icon text-white relative ${notificationOpen ? "active" : ""}`}
             aria-label="Notifications"
           >
             <Bell size={22} />
             {hasNotification && (
               <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-red-500 border border-white shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse" />
             )}
-          </button>
+          </LiquidGlassButton>
           
           <AnimatePresence>
             {notificationOpen && (
@@ -312,12 +300,13 @@ export function ShellNavbar({
 
         {/* Account / Profile Dropdown */}
         <div ref={profileRef} className="relative">
-          <button
+          <LiquidGlassButton
+            shape="pill"
             onClick={(e) => {
               e.stopPropagation();
               setIsProfileOpen((prev) => !prev);
             }}
-            className={`glass-capsule pl-2 pr-3 rounded-full flex items-center gap-2 ${isProfileOpen ? "active" : ""}`}
+            className={`glass-capsule pl-2 pr-3 rounded-full flex items-center gap-2 text-white ${isProfileOpen ? "active" : ""}`}
             aria-label="Account Menu"
           >
             {user ? (
@@ -336,7 +325,7 @@ export function ShellNavbar({
               </span>
             )}
             <span className={`border-l-4 border-r-4 border-t-4 border-transparent border-t-white transition duration-300 ${isProfileOpen ? "rotate-180" : ""}`} />
-          </button>
+          </LiquidGlassButton>
 
           <AnimatePresence>
             {isProfileOpen && (

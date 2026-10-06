@@ -384,22 +384,15 @@ export function AppShell() {
   }, [activeMovieDetail, activePlayback]);
 
   useEffect(() => {
-    if (!hovered) return;
-
     const handleScroll = () => {
       clearOpenTimer();
-      clearCloseTimer();
-      setHovered(null);
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll, { passive: true });
-
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
     return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
+      window.removeEventListener("scroll", handleScroll, true);
     };
-  }, [hovered]);
+  }, []);
 
   const handleOpen = (movie: MovieCardDto) => {
     setHovered(null);
@@ -470,9 +463,9 @@ export function AppShell() {
   }
 
   return (
-    <div className="relative isolate min-h-screen bg-transparent text-white">
-      {/* Ambient Liquid Glass Background Glow */}
-      <AmbientBackground opacity={ambientOpacity} />
+    <div id="app-shell-root" className="relative isolate min-h-screen bg-transparent text-white">
+      {/* Ambient Liquid Glass Background Glow - pause and unmount completely during video playback to eliminate GPU/battery drain */}
+      {!activePlayback && <AmbientBackground opacity={ambientOpacity} />}
 
       {location.pathname === "/profile" ? (
         <header className="fixed inset-x-0 top-0 z-50 flex h-[68px] items-center px-4 sm:px-8 md:px-14 lg:px-16 bg-gradient-to-b from-black/60 to-transparent">
@@ -574,8 +567,14 @@ export function AppShell() {
           <HoverPreview
             key={hovered.movie.id}
             movie={hovered.movie}
+            anchor={hovered.anchor}
             rect={hovered.rect}
             onOpen={() => handleOpen(hovered.movie)}
+            onClose={() => {
+              clearOpenTimer();
+              clearCloseTimer();
+              setHovered(null);
+            }}
             onMouseEnter={() => {
               clearOpenTimer();
               clearCloseTimer();

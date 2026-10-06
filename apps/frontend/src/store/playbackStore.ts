@@ -222,12 +222,18 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
         activeCustomUrl: activeCustomUrlFromSession
       }));
 
-      // Flush sync queue first before querying the latest list
+      // Flush sync queue first before querying the latest list (deduplicated per profile)
+      if ((window as any).__myListInFlightProfile === dbProfileId) {
+        return;
+      }
+      (window as any).__myListInFlightProfile = dbProfileId;
+
       flushSyncQueue(dbProfileId)
         .then(() => {
           return authApi.request<{ favorites: NormalizedMovie[] }>(`/users/profiles/${dbProfileId}/my-list`);
         })
         .then((data) => {
+          (window as any).__myListInFlightProfile = null;
           if (data?.favorites) {
             const mapped = mapFavorites(data.favorites);
             set({
@@ -241,6 +247,7 @@ export const usePlaybackStore = create<PlaybackState>((set) => ({
           }
         })
         .catch(() => {
+          (window as any).__myListInFlightProfile = null;
           const fallbackStoredList = localStorage.getItem(mylistKey) || localStorage.getItem(fallbackMylistKey);
           const parsed = fallbackStoredList ? JSON.parse(fallbackStoredList) : [];
           set({

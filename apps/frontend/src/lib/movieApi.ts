@@ -19,6 +19,9 @@ import {
 
 export type { NormalizedMovie, MovieRowsResponse, MovieDetailResponse };
 
+const detailCache = new Map<string, { data: MovieDetailResponse; expiresAt: number }>();
+const detailInFlight = new Map<string, Promise<MovieDetailResponse>>();
+
 export const movieApi = {
   async getNewMovies(page = 1) {
     if (getTmdbApiKey()) {
@@ -214,6 +217,29 @@ export const movieApi = {
   },
 
   async getMovieDetail(slug: string): Promise<MovieDetailResponse> {
+    const cached = detailCache.get(slug);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.data;
+    }
+    const inflight = detailInFlight.get(slug);
+    if (inflight) {
+      return inflight;
+    }
+    const promise = this._fetchMovieDetail(slug)
+      .then((res) => {
+        detailCache.set(slug, { data: res, expiresAt: Date.now() + 5 * 60 * 1000 });
+        detailInFlight.delete(slug);
+        return res;
+      })
+      .catch((err) => {
+        detailInFlight.delete(slug);
+        throw err;
+      });
+    detailInFlight.set(slug, promise);
+    return promise;
+  },
+
+  async _fetchMovieDetail(slug: string): Promise<MovieDetailResponse> {
     if (getTmdbApiKey()) {
       let rawMovie: any = null;
       let mediaType: "movie" | "tv" = "movie";
@@ -590,14 +616,15 @@ export const movieApi = {
         installedAddonsList.includes(addon.id) && addon.category === "Subtitle"
       );
 
-      const queryId = mediaType === "movie" ? imdbId : `${imdbId}:${selectedSeason}:${selectedEpisode}`;
+      const isValidImdbId = /^tt\d+$/i.test(imdbId);
+      const queryId = isValidImdbId ? (mediaType === "movie" ? imdbId : `${imdbId}:${selectedSeason}:${selectedEpisode}`) : "";
       if (queryId) {
         const subPromises = subtitleAddons.map(async (addon) => {
           const rootUrl = addon.manifestUrl.replace("/manifest.json", "");
           const subEndpoint = `${rootUrl}/subtitles/${mediaType}/${encodeURIComponent(queryId)}.json`;
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const timeoutId = setTimeout(() => controller.abort(), 1500);
             const res = await fetch(subEndpoint, { signal: controller.signal });
             clearTimeout(timeoutId);
             if (res.ok) {

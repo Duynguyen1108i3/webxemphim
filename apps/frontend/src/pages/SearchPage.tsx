@@ -6,6 +6,7 @@ import { movieApi, type NormalizedMovie } from "../lib/movieApi";
 import { usePlaybackStore } from "../store/playbackStore";
 import { MovieTile, HoverPreview } from "../components/MovieRow";
 import type { MovieCardDto } from "@streamforge/shared-types";
+import { LiquidGlassButton } from "../components/liquid-glass";
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -149,49 +150,12 @@ export function SearchPage() {
   const activeLanguageName = languagesList.find((l) => l.slug === lang)?.name;
 
   useEffect(() => {
-    if (!hovered) return;
-
-    const updatePosition = () => {
-      hoverFrame.current = null;
-      const rect = hovered.anchor.getBoundingClientRect();
-      const isOutOfView = rect.bottom < 72 || rect.top > window.innerHeight - 24 || rect.right < 0 || rect.left > window.innerWidth;
-
-      if (isOutOfView) {
-        setHovered(null);
-        return;
-      }
-
-      setHovered((current) => {
-        if (!current || current.anchor !== hovered.anchor) return current;
-        if (
-          Math.abs(current.rect.top - rect.top) < 0.5 &&
-          Math.abs(current.rect.left - rect.left) < 0.5 &&
-          Math.abs(current.rect.width - rect.width) < 0.5
-        ) {
-          return current;
-        }
-        return { ...current, rect };
-      });
+    const handleScroll = () => {
+      clearOpenTimer();
     };
-
-    const requestPosition = () => {
-      if (hoverFrame.current != null) return;
-      hoverFrame.current = window.requestAnimationFrame(updatePosition);
-    };
-
-    window.addEventListener("scroll", requestPosition, { passive: true });
-    window.addEventListener("resize", requestPosition);
-    requestPosition();
-
-    return () => {
-      window.removeEventListener("scroll", requestPosition);
-      window.removeEventListener("resize", requestPosition);
-      if (hoverFrame.current != null) {
-        window.cancelAnimationFrame(hoverFrame.current);
-        hoverFrame.current = null;
-      }
-    };
-  }, [hovered?.anchor]);
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, []);
 
   const handleOpen = (movie: MovieCardDto) => {
     setHovered(null);
@@ -253,36 +217,58 @@ export function SearchPage() {
             className="overflow-hidden w-full"
           >
             <div className="flex flex-wrap items-center gap-1.5 py-1 pr-4">
-              <button
-                onClick={() => {
-                  setSearchParams({});
-                  setIsOpen(false);
-                }}
-                className={`px-4 py-2 h-9 rounded-full text-xs font-semibold border transition shrink-0 cursor-pointer ${
-                  !lang
-                    ? "bg-white/25 border-white/40 text-white shadow-[0_2px_12px_rgba(255,255,255,0.15)] backdrop-blur-md"
-                    : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                Tất cả ngôn ngữ / vùng
-              </button>
+              {!lang ? (
+                <button
+                  onClick={() => {
+                    setSearchParams({});
+                    setIsOpen(false);
+                  }}
+                  className="px-4 py-2 h-9 rounded-full text-xs font-semibold shrink-0 cursor-pointer bg-white/25 border border-white/40 text-white shadow-[0_2px_12px_rgba(255,255,255,0.15)] backdrop-blur-md"
+                >
+                  Tất cả ngôn ngữ / vùng
+                </button>
+              ) : (
+                <LiquidGlassButton
+                  shape="pill"
+                  disableWebGL={true}
+                  onClick={() => {
+                    setSearchParams({});
+                    setIsOpen(false);
+                  }}
+                  className="px-4 py-2 h-9 rounded-full text-xs font-semibold shrink-0 cursor-pointer text-white/70 hover:text-white"
+                >
+                  Tất cả ngôn ngữ / vùng
+                </LiquidGlassButton>
+              )}
               {languagesList.map((l) => {
                 const isSelected = lang === l.slug;
+                if (isSelected) {
+                  return (
+                    <button
+                      key={l.slug}
+                      onClick={() => {
+                        setSearchParams({ lang: l.slug });
+                        setIsOpen(false);
+                      }}
+                      className="px-4 py-2 h-9 rounded-full text-xs font-semibold shrink-0 cursor-pointer bg-white/25 border border-white/40 text-white shadow-[0_2px_12px_rgba(255,255,255,0.15)] backdrop-blur-md"
+                    >
+                      {l.name}
+                    </button>
+                  );
+                }
                 return (
-                  <button
+                  <LiquidGlassButton
                     key={l.slug}
+                    shape="pill"
+                    disableWebGL={true}
                     onClick={() => {
                       setSearchParams({ lang: l.slug });
                       setIsOpen(false);
                     }}
-                    className={`px-4 py-2 h-9 rounded-full text-xs font-semibold border transition shrink-0 cursor-pointer ${
-                      isSelected
-                        ? "bg-white/25 border-white/40 text-white shadow-[0_2px_12px_rgba(255,255,255,0.15)] backdrop-blur-md"
-                        : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
-                    }`}
+                    className="px-4 py-2 h-9 rounded-full text-xs font-semibold shrink-0 cursor-pointer text-white/70 hover:text-white"
                   >
                     {l.name}
-                  </button>
+                  </LiquidGlassButton>
                 );
               })}
             </div>
@@ -336,13 +322,14 @@ export function SearchPage() {
           </div>
           {!loading && hasMore && (
             <div className="flex justify-center mt-6 mb-4">
-              <button
+              <LiquidGlassButton
+                shape="pill"
                 onClick={handleLoadMore}
-                className="group relative inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm tracking-wide transition-all duration-300 border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.6)] hover:border-white/40 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
+                className="group relative inline-flex items-center gap-2.5 px-8 py-3.5 text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.6)] hover:scale-105 active:scale-95 cursor-pointer"
               >
                 <span>Xem thêm</span>
                 <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-white/70" />
-              </button>
+              </LiquidGlassButton>
             </div>
           )}
         </div>
@@ -353,8 +340,14 @@ export function SearchPage() {
           <HoverPreview
             key={hovered.movie.id}
             movie={hovered.movie}
+            anchor={hovered.anchor}
             rect={hovered.rect}
             onOpen={() => handleOpen(hovered.movie)}
+            onClose={() => {
+              clearOpenTimer();
+              clearCloseTimer();
+              setHovered(null);
+            }}
             onMouseEnter={() => {
               clearOpenTimer();
               clearCloseTimer();

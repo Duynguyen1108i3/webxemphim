@@ -11,6 +11,7 @@ import { formatRuntime, getEpisodes } from "@streamforge/utils";
 import { MovieTile, HoverPreview } from "./MovieRow";
 import { ParallaxTilt } from "./ParallaxTilt";
 import { decodeHtml } from "../lib/htmlUtils";
+import { LiquidGlassButton } from "./liquid-glass";
 
 export function CinematicDetailModal() {
   const navigate = useNavigate();
@@ -42,54 +43,12 @@ export function CinematicDetailModal() {
   }
 
   useEffect(() => {
-    if (!hovered) return;
-
-    const updatePosition = () => {
-      hoverFrame.current = null;
-      const rect = hovered.anchor.getBoundingClientRect();
-      const isOutOfView = rect.bottom < 72 || rect.top > window.innerHeight - 24 || rect.right < 0 || rect.left > window.innerWidth;
-
-      if (isOutOfView) {
-        setHovered(null);
-        return;
-      }
-
-      setHovered((current) => {
-        if (!current || current.anchor !== hovered.anchor) return current;
-        if (
-          Math.abs(current.rect.top - rect.top) < 0.5 &&
-          Math.abs(current.rect.left - rect.left) < 0.5 &&
-          Math.abs(current.rect.width - rect.width) < 0.5
-        ) {
-          return current;
-        }
-        return { ...current, rect };
-      });
+    const handleScroll = () => {
+      clearOpenTimer();
     };
-
-    const requestPosition = () => {
-      if (hoverFrame.current != null) return;
-      hoverFrame.current = window.requestAnimationFrame(updatePosition);
-    };
-
-    const container = modalContainerRef.current;
-    if (container) {
-      container.addEventListener("scroll", requestPosition, { passive: true });
-    }
-    window.addEventListener("resize", requestPosition);
-    requestPosition();
-
-    return () => {
-      if (container) {
-        container.removeEventListener("scroll", requestPosition);
-      }
-      window.removeEventListener("resize", requestPosition);
-      if (hoverFrame.current != null) {
-        window.cancelAnimationFrame(hoverFrame.current);
-        hoverFrame.current = null;
-      }
-    };
-  }, [hovered?.anchor]);
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, []);
 
   const movie = activeMovieDetail;
 
@@ -134,14 +93,6 @@ export function CinematicDetailModal() {
     staleTime: 5 * 60 * 1000,
     retry: false,
     queryFn: () => movieApi.getByGenre(activeGenreSlug!, 1)
-  });
-
-  const { data: playbackData } = useQuery({
-    queryKey: ["movie-playback-servers", movie?.slug || ""],
-    enabled: Boolean(movie?.slug),
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-    queryFn: () => movieApi.getPlayback(movie!.slug)
   });
 
   useEffect(() => {
@@ -261,14 +212,14 @@ export function CinematicDetailModal() {
         {/* Backdrop Visual (FLIP Transition Image & Autoplay Video) */}
         <div className="relative aspect-video w-full bg-[#08080a] overflow-hidden">
           {/* Floating Close Button (X) - Liquid Glass styled */}
-          <button
+          <LiquidGlassButton
+            shape="circle"
             onClick={closeDetailModal}
-            style={{ position: "absolute" }}
-            className="!absolute top-4 right-4 sm:top-5 sm:right-5 z-50 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-black/50 hover:bg-black/75 border border-white/20 backdrop-blur-xl text-white shadow-xl active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/70 cursor-pointer"
+            className="!absolute top-4 right-4 sm:top-5 sm:right-5 z-50 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center text-white shadow-xl active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-white/70 cursor-pointer p-0"
             aria-label="Đóng chi tiết"
           >
             <X size={18} className="sm:w-5 sm:h-5" />
-          </button>
+          </LiquidGlassButton>
           <AnimatePresence mode="wait">
             {showTrailer && displayMovie.trailerUrl ? (
               <motion.video
@@ -353,8 +304,8 @@ export function CinematicDetailModal() {
                     )}
                   </>
                 )}
-                <Button
-                  variant="ghost"
+                <LiquidGlassButton
+                  shape="circle"
                   onClick={() => {
                     if (!user) {
                       openAuthModal();
@@ -362,42 +313,42 @@ export function CinematicDetailModal() {
                     }
                     toggleMyList(displayMovie);
                   }}
-                  className="nf-icon glass-button h-11 w-11 rounded-full p-0 border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white active:scale-95"
+                  className="nf-icon h-11 w-11 rounded-full p-0 text-white active:scale-95 cursor-pointer shadow-xl"
                   aria-label="Thêm vào danh sách"
                 >
                   <motion.div animate={{ rotate: inMyList ? 360 : 0 }}>
                     {inMyList ? <Check size={18} className="text-amber-400 font-bold" /> : <Plus size={18} />}
                   </motion.div>
-                </Button>
+                </LiquidGlassButton>
                 {/* Like Button */}
-                <Button
-                  variant="ghost"
+                <LiquidGlassButton
+                  shape="circle"
                   onClick={handleLike}
-                  className="nf-icon glass-button h-11 w-11 rounded-full p-0 border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white active:scale-95"
+                  className="nf-icon h-11 w-11 rounded-full p-0 text-white active:scale-95 cursor-pointer shadow-xl"
                   aria-label="Thích phim này"
                 >
                   <ThumbsUp size={16} className={liked ? "fill-amber-400 text-amber-400" : ""} />
-                </Button>
+                </LiquidGlassButton>
                 {/* Dislike Button */}
-                <Button
-                  variant="ghost"
+                <LiquidGlassButton
+                  shape="circle"
                   onClick={handleDislike}
-                  className="nf-icon glass-button h-11 w-11 rounded-full p-0 border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white active:scale-95"
+                  className="nf-icon h-11 w-11 rounded-full p-0 text-white active:scale-95 cursor-pointer shadow-xl"
                   aria-label="Không thích"
                 >
                   <ThumbsDown size={16} className={disliked ? "fill-white/80 text-white/80" : ""} />
-                </Button>
+                </LiquidGlassButton>
               </div>
             </div>
             {displayMovie.trailerUrl && (
-              <Button
-                variant="ghost"
+              <LiquidGlassButton
+                shape="circle"
                 onClick={() => setIsMuted(!isMuted)}
-                className="nf-icon glass-button h-10 w-10 sm:h-11 sm:w-11 rounded-full p-0 border border-white/20 bg-black/40 hover:bg-black/60 backdrop-blur-xl text-white active:scale-95"
+                className="nf-icon h-10 w-10 sm:h-11 sm:w-11 rounded-full p-0 text-white active:scale-95 cursor-pointer shadow-xl"
                 aria-label={isMuted ? "Bật âm thanh" : "Tắt âm thanh"}
               >
                 {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-              </Button>
+              </LiquidGlassButton>
             )}
           </div>
         </div>
@@ -589,9 +540,10 @@ export function CinematicDetailModal() {
             </div>
             {allSimilarTitles.length > 6 && (
               <div className="flex justify-center mt-6">
-                <button
+                <LiquidGlassButton
+                  shape="pill"
                   onClick={() => setShowAllSimilar(!showAllSimilar)}
-                  className="group relative inline-flex items-center gap-2 px-7 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm tracking-wide transition-all duration-300 border border-white/20 shadow-lg hover:border-white/40 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-xl"
+                  className="group relative inline-flex items-center gap-2 px-7 py-3 text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-xl hover:scale-105 active:scale-95 cursor-pointer"
                 >
                   {showAllSimilar ? (
                     <>
@@ -604,7 +556,7 @@ export function CinematicDetailModal() {
                       <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-white/80" />
                     </>
                   )}
-                </button>
+                </LiquidGlassButton>
               </div>
             )}
           </section>
@@ -648,6 +600,7 @@ export function CinematicDetailModal() {
           <HoverPreview
             key={hovered.movie.id}
             movie={hovered.movie}
+            anchor={hovered.anchor}
             rect={hovered.rect}
             onOpen={() => {
               setHovered(null);
@@ -655,6 +608,11 @@ export function CinematicDetailModal() {
                 outerContainerRef.current.scrollTop = 0;
               }
               usePlaybackStore.getState().openDetailModal(hovered.movie, `card-${hovered.movie.id}`);
+            }}
+            onClose={() => {
+              clearOpenTimer();
+              clearCloseTimer();
+              setHovered(null);
             }}
             onMouseEnter={() => {
               clearOpenTimer();

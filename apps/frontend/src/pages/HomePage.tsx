@@ -10,6 +10,7 @@ import { movieApi, type MovieRowsResponse, type NormalizedMovie } from "../lib/m
 import { usePlaybackStore } from "../store/playbackStore";
 import { useAuthStore } from "../store/auth";
 import { decodeHtml } from "../lib/htmlUtils";
+import { LiquidGlassButton, snapshotManager } from "../components/liquid-glass";
 
 const HOME_CATEGORIES = [
   { id: "all", label: "Tất cả" },
@@ -24,8 +25,16 @@ const HOME_CATEGORIES = [
 
 export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "new-popular" }) {
   const navigate = useNavigate();
-  const { openDetailModal, openPlayback, openAuthModal } = usePlaybackStore();
+  const { openDetailModal, openPlayback, openAuthModal, activePlayback } = usePlaybackStore();
   const { user, profileId } = useAuthStore();
+  const [isTabActive, setIsTabActive] = useState(() => typeof document !== "undefined" ? !document.hidden : true);
+
+  useEffect(() => {
+    const handleVis = () => setIsTabActive(!document.hidden);
+    document.addEventListener("visibilitychange", handleVis);
+    return () => document.removeEventListener("visibilitychange", handleVis);
+  }, []);
+
   const currentProfileName = profileId || user?.username || "bạn";
   const { data, isLoading } = useQuery<MovieRowsResponse>({
     queryKey: ["home-rows", type || "all"],
@@ -148,30 +157,37 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
     setTouchStartX(null);
   };
 
-  // Prefetch detailed metadata (including full synopsis / content) for candidate hero movies
+  // Prefetch detailed metadata (including full synopsis / content) for active & next hero movies
   const [heroDetails, setHeroDetails] = useState<Record<string, NormalizedMovie>>({});
+  const currentHeroIndex = heroMovies.length > 0 ? (heroIndex % heroMovies.length) : 0;
 
   useEffect(() => {
     if (!heroMovies || heroMovies.length === 0) return;
-    heroMovies.forEach((m) => {
+    const candidates = [
+      heroMovies[currentHeroIndex],
+      heroMovies[(currentHeroIndex + 1) % heroMovies.length]
+    ].filter(Boolean);
+
+    candidates.forEach((m) => {
       const slug = m.slug || m.id;
       if (!slug || heroDetails[slug]) return;
       movieApi
         .getMovieDetail(slug)
         .then((res) => {
           if (res?.movie) {
-            setHeroDetails((prev) => ({
-              ...prev,
-              [slug]: res.movie,
-              [m.id]: res.movie,
-            }));
+            setHeroDetails((prev) => {
+              if (prev[slug]) return prev;
+              return {
+                ...prev,
+                [slug]: res.movie,
+                [m.id]: res.movie,
+              };
+            });
           }
         })
         .catch(() => {});
     });
-  }, [heroMovies]);
-
-  const currentHeroIndex = heroMovies.length > 0 ? (heroIndex % heroMovies.length) : 0;
+  }, [heroMovies, currentHeroIndex]);
   const rawHero = heroMovies[currentHeroIndex] || rows[0]?.items[0];
   const heroKey = rawHero?.slug || rawHero?.id || "";
   const hero = (heroKey && heroDetails[heroKey])
@@ -217,6 +233,13 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
     return "";
   }, [hero]);
 
+  // Synchronize active hero backdrop image with liquid glass WebGL refraction engine
+  useEffect(() => {
+    if (!activePlayback && isTabActive && (hero?.backdropUrl || hero?.posterUrl)) {
+      snapshotManager.setBackdropImage(hero.backdropUrl || hero.posterUrl);
+    }
+  }, [hero?.backdropUrl, hero?.posterUrl, activePlayback, isTabActive]);
+
   const filteredRows = useMemo(() => {
     if (selectedCategory === "all") return rows;
     return rows.filter((row) => {
@@ -248,18 +271,18 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
 
   return (
     <main className="bg-transparent pb-16">
-      <div className="px-3 sm:px-8 md:px-14 lg:px-16 pt-[72px] sm:pt-[76px] pb-3">
+      <div className="px-0 sm:px-4 md:px-8 lg:px-12 pt-0 pb-3">
         <section 
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="group/hero relative min-h-[68vh] sm:min-h-[84vh] h-[72vh] sm:h-[85vh] overflow-hidden rounded-2xl bg-[#141414] shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/10 select-none touch-pan-y"
+          className="group/hero relative min-h-[72vh] sm:min-h-[86vh] h-[75vh] sm:h-[88vh] overflow-hidden rounded-b-3xl sm:rounded-3xl bg-[#0c0d14] shadow-[0_25px_70px_rgba(0,0,0,0.9)] border-b sm:border border-white/10 select-none touch-pan-y"
         >
           {/* Animated Crossfading Hero Media */}
           <AnimatePresence mode="wait">
-            {hero?.trailerUrl ? (
+            {hero?.trailerUrl && !activePlayback && isTabActive ? (
               <motion.video 
                 key={`vid-${hero.id}`}
-                className="absolute inset-0 h-full w-full object-cover opacity-90 brightness-105" 
+                className="absolute inset-0 h-full w-full object-cover opacity-95 brightness-110 contrast-105" 
                 autoPlay 
                 muted={isHeroMuted} 
                 loop 
@@ -267,7 +290,7 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                 poster={hero.backdropUrl} 
                 src={hero.trailerUrl} 
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 0.9 }}
+                animate={{ opacity: 0.95 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.7, ease: "easeInOut" }}
               />
@@ -277,9 +300,9 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                   key={`img-${hero.id}`}
                   src={hero.backdropUrl || hero.posterUrl} 
                   alt="" 
-                  className="absolute inset-0 h-full w-full object-cover opacity-95 brightness-105 contrast-105" 
+                  className="absolute inset-0 h-full w-full object-cover opacity-100 brightness-110 contrast-105 saturate-110" 
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.95 }}
+                  animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.7, ease: "easeInOut" }}
                 />
@@ -287,15 +310,16 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
             )}
           </AnimatePresence>
           
-          {/* Elegant text readability gradients - crisp clear visual on right side */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/70 via-45% to-transparent z-[2] pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-black/30 z-[2] pointer-events-none" />
+          {/* Crisp, transparent text readability vignettes - preserves full vivid clarity of movie backdrop */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/25 via-40% to-transparent z-[2] pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0e0f14] via-[#0e0f14]/30 via-20% to-transparent z-[2] pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-transparent z-[2] pointer-events-none" />
           
           <AnimatePresence mode="wait">
             {hero && (
               <motion.div
                 key={`info-${hero.id}`}
-                className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-16 pb-12 pl-4 pr-4 sm:pt-20 sm:pb-16 sm:pl-12 md:pl-16"
+                className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-28 pb-12 pl-4 pr-4 sm:pt-32 sm:pb-16 sm:pl-10 md:pl-14"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -356,69 +380,68 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
                   className="mt-4 sm:mt-6 flex flex-wrap items-center gap-2.5 sm:gap-3"
                 >
                   {hero && (hero as any).animeUrl && (
-                    <a
-                      href="https://animevietsub.id/"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="nf-button inline-flex h-11 sm:h-12 items-center justify-center rounded-full glass-button px-4 sm:px-5 text-xs font-bold text-white transition focus:outline-none"
+                    <LiquidGlassButton
+                      shape="pill"
+                      onClick={() => window.open("https://animevietsub.id/", "_blank")}
+                      className="h-11 sm:h-12 px-4 sm:px-5 text-xs font-bold text-white shadow-xl cursor-pointer"
                     >
                       Nguồn AnimeVietsub
-                    </a>
+                    </LiquidGlassButton>
                   )}
                   {hero && (
                     <button
                       type="button"
                       onClick={() => openPlayback(hero as NormalizedMovie, "hero")}
-                      className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 text-xs sm:text-sm font-bold text-black transition hover:bg-white/90 active:bg-white/80 focus:outline-none shadow-xl active:scale-95 duration-150 cursor-pointer"
+                      className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-6 sm:px-8 text-xs sm:text-sm font-extrabold text-black transition hover:bg-white/95 active:bg-white/90 focus:outline-none shadow-[0_8px_30px_rgba(255,255,255,0.3)] active:scale-95 duration-150 cursor-pointer"
                     >
-                      <Play size={16} fill="currentColor" /> Xem ngay
+                      <Play size={17} fill="currentColor" /> Xem ngay
                     </button>
                   )}
                   {hero && (
-                    <button
-                      type="button"
+                    <LiquidGlassButton
+                      shape="pill"
                       onClick={() => openDetailModal(hero as NormalizedMovie, "hero")}
-                      className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full glass-button px-5 sm:px-7 text-xs sm:text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
+                      className="h-11 sm:h-12 px-5 sm:px-7 text-xs sm:text-sm font-bold text-white shadow-xl cursor-pointer"
                     >
                       <Info size={16} /> Chi tiết
-                    </button>
+                    </LiquidGlassButton>
                   )}
                   {hero && (
-                    <button
-                      type="button"
+                    <LiquidGlassButton
+                      shape="pill"
                       onClick={handleToggleMyList}
-                      className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full glass-button px-5 sm:px-7 text-xs sm:text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
+                      className="h-11 sm:h-12 px-5 sm:px-7 text-xs sm:text-sm font-bold text-white shadow-xl cursor-pointer"
                     >
                       {inMyList ? <Check size={16} className="text-[#46d369]" /> : <Plus size={16} />}
                       {inMyList ? "Đã lưu" : "Danh sách của tôi"}
-                    </button>
+                    </LiquidGlassButton>
                   )}
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Previous / Next Navigation Controls matching New & Popular page */}
+          {/* Previous / Next Navigation Controls with Liquid Glass Circle Buttons */}
           {heroMovies.length > 1 && (
             <div className="absolute inset-y-0 left-0 right-0 z-20 flex items-center justify-between px-3 sm:px-4 pointer-events-none">
-              <button
-                type="button"
+              <LiquidGlassButton
+                shape="circle"
                 onClick={() =>
                   setHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length)
                 }
-                className="pointer-events-auto p-2 sm:p-2.5 rounded-full bg-black/40 hover:bg-black/70 border border-white/20 text-white backdrop-blur-md transition hover:scale-110 active:scale-95 cursor-pointer shadow-xl flex items-center justify-center"
+                className="pointer-events-auto w-10 h-10 sm:w-11 sm:h-11 shadow-xl cursor-pointer flex items-center justify-center p-0"
                 aria-label="Previous movie"
               >
                 <ChevronLeft size={22} />
-              </button>
-              <button
-                type="button"
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                shape="circle"
                 onClick={() => setHeroIndex((prev) => (prev + 1) % heroMovies.length)}
-                className="pointer-events-auto p-2 sm:p-2.5 rounded-full bg-black/40 hover:bg-black/70 border border-white/20 text-white backdrop-blur-md transition hover:scale-110 active:scale-95 cursor-pointer shadow-xl flex items-center justify-center"
+                className="pointer-events-auto w-10 h-10 sm:w-11 sm:h-11 shadow-xl cursor-pointer flex items-center justify-center p-0"
                 aria-label="Next movie"
               >
                 <ChevronRight size={22} />
-              </button>
+              </LiquidGlassButton>
             </div>
           )}
 
@@ -460,13 +483,14 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
           
           {hero && (
             <div className="absolute bottom-3.5 sm:bottom-5 left-4 sm:left-12 z-20 hidden sm:flex items-center gap-3.5 select-none">
-              <button
+              <LiquidGlassButton
+                shape="circle"
                 onClick={() => setIsHeroMuted(!isHeroMuted)}
-                className="nf-icon glass-button grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full text-white cursor-pointer bg-black/40 hover:bg-black/70 border border-white/20 backdrop-blur-md"
+                className="nf-icon grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full text-white cursor-pointer shadow-lg p-0"
                 aria-label={isHeroMuted ? "Unmute preview" : "Mute preview"}
               >
                 {isHeroMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-              </button>
+              </LiquidGlassButton>
             </div>
           )}
         </section>
@@ -487,13 +511,14 @@ export function HomePage({ type }: { type?: "tv-shows" | "movies" | "anime" | "n
 
           {!isLoading && hasMoreRows && (
             <div className="flex justify-center pt-6 pb-2">
-              <button
+              <LiquidGlassButton
+                shape="pill"
                 onClick={handleLoadMore}
-                className="group relative inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm tracking-wide transition-all duration-300 border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.6)] hover:border-white/40 hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
+                className="group relative inline-flex items-center gap-2.5 px-8 py-3.5 text-white font-bold text-sm tracking-wide transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.6)] hover:scale-105 active:scale-95 cursor-pointer"
               >
                 <span>Xem thêm phim & thể loại</span>
                 <ChevronDown size={18} className="transition-transform duration-300 group-hover:translate-y-1 text-white/70" />
-              </button>
+              </LiquidGlassButton>
             </div>
           )}
         </div>

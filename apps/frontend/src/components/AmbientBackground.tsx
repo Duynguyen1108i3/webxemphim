@@ -1,10 +1,24 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 interface AmbientBackgroundProps {
   opacity?: number;
 }
 
 export function AmbientBackground({ opacity = 0.65 }: AmbientBackgroundProps) {
+  const [isVisible, setIsVisible] = useState(() => (typeof document !== "undefined" ? !document.hidden : true));
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsVisible(!document.hidden);
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
+  if (!isVisible) {
+    return <div aria-hidden="true" className="fixed inset-0 bg-[#07070a] -z-10 pointer-events-none" />;
+  }
+
   return (
     <div
       aria-hidden="true"
@@ -19,7 +33,7 @@ export function AmbientBackground({ opacity = 0.65 }: AmbientBackgroundProps) {
         style={{ opacity }}
       >
         {/* Layer 1: Monochromatic Liquid Glass Caustic Waves */}
-        <div className="absolute inset-0 opacity-35 mix-blend-screen pointer-events-none [transform:translate3d(0,0,0)]">
+        <div className="absolute inset-0 opacity-30 mix-blend-screen pointer-events-none [transform:translate3d(0,0,0)]">
           <svg
             className="w-full h-full animate-[liquid-caustic-drift_26s_ease-in-out_infinite_alternate]"
             viewBox="0 0 1440 900"
@@ -52,7 +66,7 @@ export function AmbientBackground({ opacity = 0.65 }: AmbientBackgroundProps) {
 
         {/* Layer 2: Primary Crystal Liquid Glass Aura (Top-Left / Center) */}
         <div
-          className="absolute top-[-10%] left-[-6%] w-[680px] h-[680px] sm:w-[840px] sm:h-[840px] rounded-full filter blur-[60px] sm:blur-[85px] opacity-80 ambient-glass-drift-1 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
+          className="absolute top-[-10%] left-[-6%] w-[680px] h-[680px] sm:w-[840px] sm:h-[840px] rounded-full filter blur-[28px] sm:blur-[38px] opacity-75 ambient-glass-drift-1 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
           style={{
             background:
               "radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.22) 0%, rgba(224, 242, 254, 0.08) 35%, rgba(255, 255, 255, 0.015) 65%, transparent 80%)"
@@ -61,7 +75,7 @@ export function AmbientBackground({ opacity = 0.65 }: AmbientBackgroundProps) {
 
         {/* Layer 3: Secondary Crystal Liquid Glass Aura (Bottom-Right / Center) */}
         <div
-          className="absolute bottom-[-12%] right-[-8%] w-[720px] h-[720px] sm:w-[880px] sm:h-[880px] rounded-full filter blur-[70px] sm:blur-[95px] opacity-75 ambient-glass-drift-2 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
+          className="absolute bottom-[-12%] right-[-8%] w-[720px] h-[720px] sm:w-[880px] sm:h-[880px] rounded-full filter blur-[32px] sm:blur-[42px] opacity-70 ambient-glass-drift-2 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
           style={{
             background:
               "radial-gradient(circle at 65% 65%, rgba(255, 255, 255, 0.20) 0%, rgba(219, 234, 254, 0.07) 40%, rgba(255, 255, 255, 0.01) 70%, transparent 85%)"
@@ -70,7 +84,7 @@ export function AmbientBackground({ opacity = 0.65 }: AmbientBackgroundProps) {
 
         {/* Layer 4: Center Diffuse Liquid Glass Specular Pulse */}
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] sm:w-[680px] sm:h-[680px] rounded-full filter blur-[50px] sm:blur-[70px] opacity-60 ambient-glass-drift-3 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] sm:w-[680px] sm:h-[680px] rounded-full filter blur-[24px] sm:blur-[32px] opacity-55 ambient-glass-drift-3 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
           style={{
             background:
               "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16) 0%, rgba(241, 245, 249, 0.04) 45%, transparent 75%)"
@@ -79,7 +93,7 @@ export function AmbientBackground({ opacity = 0.65 }: AmbientBackgroundProps) {
 
         {/* Layer 5: Dynamic Liquid Glass Specular Sheen Beam */}
         <div
-          className="absolute inset-0 opacity-20 pointer-events-none"
+          className="absolute inset-0 opacity-15 pointer-events-none"
           style={{
             background:
               "linear-gradient(135deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.02) 30%, transparent 65%)"

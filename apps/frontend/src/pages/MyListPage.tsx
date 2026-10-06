@@ -44,49 +44,12 @@ export function MyListPage() {
   }
 
   useEffect(() => {
-    if (!hovered) return;
-
-    const updatePosition = () => {
-      hoverFrame.current = null;
-      const rect = hovered.anchor.getBoundingClientRect();
-      const isOutOfView = rect.bottom < 72 || rect.top > window.innerHeight - 24 || rect.right < 0 || rect.left > window.innerWidth;
-
-      if (isOutOfView) {
-        setHovered(null);
-        return;
-      }
-
-      setHovered((current) => {
-        if (!current || current.anchor !== hovered.anchor) return current;
-        if (
-          Math.abs(current.rect.top - rect.top) < 0.5 &&
-          Math.abs(current.rect.left - rect.left) < 0.5 &&
-          Math.abs(current.rect.width - rect.width) < 0.5
-        ) {
-          return current;
-        }
-        return { ...current, rect };
-      });
+    const handleScroll = () => {
+      clearOpenTimer();
     };
-
-    const requestPosition = () => {
-      if (hoverFrame.current != null) return;
-      hoverFrame.current = window.requestAnimationFrame(updatePosition);
-    };
-
-    window.addEventListener("scroll", requestPosition, { passive: true });
-    window.addEventListener("resize", requestPosition);
-    requestPosition();
-
-    return () => {
-      window.removeEventListener("scroll", requestPosition);
-      window.removeEventListener("resize", requestPosition);
-      if (hoverFrame.current != null) {
-        window.cancelAnimationFrame(hoverFrame.current);
-        hoverFrame.current = null;
-      }
-    };
-  }, [hovered?.anchor]);
+    window.addEventListener("scroll", handleScroll, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", handleScroll, true);
+  }, []);
 
   const handleOpen = (movie: MovieCardDto) => {
     openDetailModal(movie as NormalizedMovie, `mylist-${movie.id}`);
@@ -164,8 +127,14 @@ export function MyListPage() {
           <HoverPreview
             key={hovered.movie.id}
             movie={hovered.movie}
+            anchor={hovered.anchor}
             rect={hovered.rect}
             onOpen={() => handleOpen(hovered.movie)}
+            onClose={() => {
+              clearOpenTimer();
+              clearCloseTimer();
+              setHovered(null);
+            }}
             onMouseEnter={() => {
               clearOpenTimer();
               clearCloseTimer();

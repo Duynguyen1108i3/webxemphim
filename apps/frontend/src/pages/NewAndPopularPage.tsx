@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronLeft, ChevronRight, Info, Plus } from "lucide-react";
 import { MovieRow } from "../components/MovieRow";
+import { LiquidGlassButton, snapshotManager } from "../components/liquid-glass";
 import { imdbApi, IMDB_GENRES, GENRE_LABELS_VI } from "../lib/imdbApi";
 import type { NormalizedMovie } from "../lib/movieApi";
 import { usePlaybackStore } from "../store/playbackStore";
@@ -96,16 +97,23 @@ export function NewAndPopularPage() {
     toggleMyList(hero);
   };
 
+  // Synchronize active hero backdrop image with liquid glass WebGL refraction engine
+  useEffect(() => {
+    if (hero?.backdropUrl || hero?.posterUrl) {
+      snapshotManager.setBackdropImage(hero.backdropUrl || hero.posterUrl);
+    }
+  }, [hero?.backdropUrl, hero?.posterUrl]);
+
   return (
     <main className="bg-transparent pb-16">
-      {/* Top Cinematic Hero Section (Identical layout to HomePage) */}
-      <div className="px-3 sm:px-8 md:px-14 lg:px-16 pt-[72px] sm:pt-[76px] pb-3">
+      {/* Top Cinematic Hero Section (Full-bleed crystal clarity matching HomePage) */}
+      <div className="px-0 sm:px-4 md:px-8 lg:px-12 pt-0 pb-3">
         <section
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="group/hero relative min-h-[68vh] sm:min-h-[84vh] h-[72vh] sm:h-[85vh] overflow-hidden rounded-2xl bg-[#141414] shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/10 select-none touch-pan-y"
+          className="group/hero relative min-h-[72vh] sm:min-h-[86vh] h-[75vh] sm:h-[88vh] overflow-hidden rounded-b-3xl sm:rounded-3xl bg-[#0c0d14] shadow-[0_25px_70px_rgba(0,0,0,0.9)] border-b sm:border border-white/10 select-none touch-pan-y"
         >
           {/* Animated Crossfading Hero Media */}
           <AnimatePresence mode="wait">
@@ -114,25 +122,26 @@ export function NewAndPopularPage() {
                 key={`img-${hero.id}`}
                 src={hero.backdropUrl || hero.posterUrl}
                 alt=""
-                className="absolute inset-0 h-full w-full object-cover opacity-95 brightness-105 contrast-105"
+                className="absolute inset-0 h-full w-full object-cover opacity-100 brightness-110 contrast-105 saturate-110"
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 0.95 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.7, ease: "easeInOut" }}
               />
             )}
           </AnimatePresence>
 
-          {/* Elegant readability gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/70 via-45% to-transparent z-[2] pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-transparent to-black/30 z-[2] pointer-events-none" />
+          {/* Crisp, transparent text readability vignettes - preserves full vivid clarity of movie backdrop */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/25 via-40% to-transparent z-[2] pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0e0f14] via-[#0e0f14]/30 via-20% to-transparent z-[2] pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-transparent z-[2] pointer-events-none" />
 
           {/* Hero Content */}
           <AnimatePresence mode="wait">
             {hero && (
               <motion.div
                 key={`info-${hero.id}`}
-                className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-16 pb-12 pl-4 pr-4 sm:pt-20 sm:pb-16 sm:pl-12 md:pl-16"
+                className="relative z-10 flex h-full max-w-2xl sm:max-w-3xl md:max-w-[70%] lg:max-w-[75%] flex-col justify-end pt-28 pb-12 pl-4 pr-4 sm:pt-32 sm:pb-16 sm:pl-10 md:pl-14"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -186,55 +195,63 @@ export function NewAndPopularPage() {
                 </p>
 
                 {/* Synchronized Action Buttons */}
-                <div className="mt-4 sm:mt-6 flex flex-wrap items-center gap-2.5 sm:gap-3">
+                <div 
+                  onMouseEnter={() => setIsPaused(true)}
+                  onMouseLeave={() => setIsPaused(false)}
+                  className="mt-4 sm:mt-6 flex flex-wrap items-center gap-2.5 sm:gap-3"
+                >
                   <button
                     type="button"
                     onClick={() => openDetailModal(hero, "hero")}
-                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-5 sm:px-7 text-xs sm:text-sm font-bold text-black transition hover:bg-white/90 active:bg-white/80 focus:outline-none shadow-xl active:scale-95 duration-150 cursor-pointer"
+                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full bg-white px-6 sm:px-8 text-xs sm:text-sm font-extrabold text-black transition hover:bg-white/95 active:bg-white/90 focus:outline-none shadow-[0_8px_30px_rgba(255,255,255,0.3)] active:scale-95 duration-150 cursor-pointer"
                   >
-                    <Info size={16} className="sm:w-[18px] sm:h-[18px]" /> Chi tiết IMDb
+                    <Info size={17} /> Chi tiết IMDb
                   </button>
 
-                  <button
-                    type="button"
+                  <LiquidGlassButton
+                    shape="pill"
                     onClick={handleToggleMyList}
-                    className="nf-button inline-flex h-11 sm:h-12 items-center justify-center gap-2 rounded-full glass-button px-5 sm:px-7 text-xs sm:text-sm font-bold text-white transition focus:outline-none active:scale-95 duration-300 cursor-pointer"
+                    className="h-11 sm:h-12 px-5 sm:px-7 text-xs sm:text-sm font-bold text-white shadow-xl cursor-pointer"
                   >
-                    {inMyList ? <Check size={16} className="text-[#46d369] sm:w-[18px] sm:h-[18px]" /> : <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />}
+                    {inMyList ? <Check size={16} className="text-[#46d369]" /> : <Plus size={16} />}
                     {inMyList ? "Đã lưu" : "Danh sách của tôi"}
-                  </button>
+                  </LiquidGlassButton>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Previous / Next Navigation Controls */}
+          {/* Previous / Next Navigation Controls with Liquid Glass Circle Buttons */}
           {heroMovies.length > 1 && (
-            <div className="absolute inset-y-0 left-0 right-0 z-20 flex items-center justify-between px-3 pointer-events-none opacity-0 group-hover/hero:opacity-100 transition-opacity duration-300">
-              <button
-                type="button"
+            <div className="absolute inset-y-0 left-0 right-0 z-20 flex items-center justify-between px-3 sm:px-4 pointer-events-none">
+              <LiquidGlassButton
+                shape="circle"
                 onClick={() =>
                   setHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length)
                 }
-                className="pointer-events-auto p-2.5 rounded-full bg-black/40 hover:bg-black/70 border border-white/20 text-white backdrop-blur-md transition hover:scale-110 active:scale-95 cursor-pointer shadow-xl"
+                className="pointer-events-auto w-10 h-10 sm:w-11 sm:h-11 shadow-xl cursor-pointer flex items-center justify-center p-0"
                 aria-label="Previous movie"
               >
-                <ChevronLeft size={24} />
-              </button>
-              <button
-                type="button"
+                <ChevronLeft size={22} />
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                shape="circle"
                 onClick={() => setHeroIndex((prev) => (prev + 1) % heroMovies.length)}
-                className="pointer-events-auto p-2.5 rounded-full bg-black/40 hover:bg-black/70 border border-white/20 text-white backdrop-blur-md transition hover:scale-110 active:scale-95 cursor-pointer shadow-xl"
+                className="pointer-events-auto w-10 h-10 sm:w-11 sm:h-11 shadow-xl cursor-pointer flex items-center justify-center p-0"
                 aria-label="Next movie"
               >
-                <ChevronRight size={24} />
-              </button>
+                <ChevronRight size={22} />
+              </LiquidGlassButton>
             </div>
           )}
 
           {/* Horizontal Rounded Indicator Pill Bars (— ━ —) */}
           {heroMovies.length > 1 && (
-            <div className="absolute bottom-3.5 right-4 sm:bottom-5 sm:right-12 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shadow-lg">
+            <div 
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+              className="absolute bottom-3.5 right-4 sm:bottom-5 sm:right-12 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full shadow-lg select-none"
+            >
               {heroMovies.map((m, idx) => (
                 <button
                   key={m.id}
@@ -269,19 +286,29 @@ export function NewAndPopularPage() {
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none max-w-full sm:max-w-2xl overscroll-x-contain touch-pan-x">
             {IMDB_GENRES.map((g) => {
               const isSelected = selectedGenre === g;
+              if (isSelected) {
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setSelectedGenre(g)}
+                    className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-black transition-all duration-200 select-none cursor-pointer bg-white text-black shadow-[0_2px_12px_rgba(255,255,255,0.3)] border border-white"
+                  >
+                    {GENRE_LABELS_VI[g] || g}
+                  </button>
+                );
+              }
               return (
-                <button
+                <LiquidGlassButton
                   key={g}
+                  shape="pill"
+                  disableWebGL={true}
                   type="button"
                   onClick={() => setSelectedGenre(g)}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 select-none cursor-pointer ${
-                    isSelected
-                      ? "bg-white text-black font-black shadow-[0_2px_12px_rgba(255,255,255,0.3)] border border-white"
-                      : "bg-white/5 text-white/70 border border-white/10 hover:bg-white/15 hover:text-white"
-                  }`}
+                  className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 select-none cursor-pointer text-white/80 hover:text-white shadow-sm"
                 >
                   {GENRE_LABELS_VI[g] || g}
-                </button>
+                </LiquidGlassButton>
               );
             })}
           </div>

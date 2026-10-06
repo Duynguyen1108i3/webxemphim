@@ -27,16 +27,26 @@ interface AuthState {
 }
 
 let csrfToken: string | null = null;
+let csrfInFlight: Promise<string> | null = null;
 let refreshInFlight: Promise<AuthUser | null> | null = null;
 
 // Shorter timeout for auth init to avoid long black screen
 const AUTH_INIT_TIMEOUT_MS = 5_000;
 
-async function ensureCsrfToken(force = false) {
+async function ensureCsrfToken(force = false): Promise<string> {
   if (!force && csrfToken) return csrfToken;
-  const data = await apiRequest<CsrfResponse>("/auth/csrf", {}, AUTH_INIT_TIMEOUT_MS);
-  csrfToken = data.csrfToken;
-  return csrfToken;
+  if (!force && csrfInFlight) return csrfInFlight;
+  csrfInFlight = apiRequest<CsrfResponse>("/auth/csrf", {}, AUTH_INIT_TIMEOUT_MS)
+    .then((data) => {
+      csrfToken = data.csrfToken;
+      csrfInFlight = null;
+      return csrfToken;
+    })
+    .catch((err) => {
+      csrfInFlight = null;
+      throw err;
+    });
+  return csrfInFlight;
 }
 
 async function protectedRequest<T>(path: string, options: RequestInit = {}, allowRefresh = true): Promise<T> {

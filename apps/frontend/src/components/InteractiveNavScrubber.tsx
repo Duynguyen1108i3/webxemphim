@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Bookmark, Film, Flame, Globe, Home } from "lucide-react";
+import { LiquidGlassContainer } from "./liquid-glass";
 
 export interface NavScrubberItem {
   to: string;
@@ -58,6 +59,14 @@ export function InteractiveNavScrubber({
   const startScrubbing = (index: number, e: React.PointerEvent) => {
     // Only primary button (left click or touch)
     if (e.button !== 0) return;
+    e.preventDefault();
+
+    const target = e.currentTarget;
+    try {
+      target.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore
+    }
 
     startPointerPos.current = { x: e.clientX, y: e.clientY };
     hasDragged.current = false;
@@ -114,6 +123,11 @@ export function InteractiveNavScrubber({
     };
 
     const onPointerUp = () => {
+      try {
+        target.releasePointerCapture(e.pointerId);
+      } catch {
+        // Ignore
+      }
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("pointercancel", onPointerUp);
@@ -140,14 +154,15 @@ export function InteractiveNavScrubber({
     return (
       <nav
         aria-label="Mobile Bottom Navigation Dock"
-        className={`fixed bottom-3 inset-x-0 z-40 mx-auto w-[94%] max-w-[420px] md:hidden select-none touch-none ${className}`}
+        className={`fixed bottom-3 inset-x-0 z-50 mx-auto w-[94%] max-w-[420px] md:hidden select-none touch-none ${className}`}
         style={{ bottom: "max(12px, env(safe-area-inset-bottom))" }}
       >
-        <div
-          className={`relative flex items-center justify-around rounded-full p-1.5 transition-all duration-300 ${
+        <LiquidGlassContainer
+          type="pill"
+          className={`relative flex items-center justify-around p-1.5 transition-all duration-300 ${
             isScrubbing
-              ? "bg-[#16161c]/90 border border-white/40 shadow-[0_0_28px_rgba(255,255,255,0.25)] ring-1 ring-white/30"
-              : "liquid-glass shadow-[0_12px_36px_rgba(0,0,0,0.85)] border border-white/20"
+              ? "border border-white/40 shadow-[0_0_28px_rgba(255,255,255,0.25)] ring-1 ring-white/30"
+              : "shadow-[0_12px_36px_rgba(0,0,0,0.85)] border border-white/20"
           }`}
         >
 
@@ -164,7 +179,8 @@ export function InteractiveNavScrubber({
                 }}
                 onPointerDown={(e) => startScrubbing(index, e)}
                 type="button"
-                className={`relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-full transition-all duration-200 z-10 flex-1 cursor-pointer select-none active:scale-95 ${
+                draggable={false}
+                className={`relative flex flex-col items-center justify-center py-1.5 px-2.5 rounded-full transition-all duration-200 z-10 flex-1 cursor-pointer select-none active:scale-95 focus:outline-none ${
                   isTarget ? "text-white" : "text-white/60 hover:text-white/90"
                 }`}
                 aria-label={item.label}
@@ -192,21 +208,22 @@ export function InteractiveNavScrubber({
               </button>
             );
           })}
-        </div>
+        </LiquidGlassContainer>
       </nav>
     );
   }
 
   // Header desktop & tablet variant
   return (
-    <nav
+    <LiquidGlassContainer
+      type="pill"
       aria-label="Main Navigation"
       className={`items-center gap-1.5 text-sm font-semibold p-1.5 rounded-full backdrop-blur-md shadow-inner relative whitespace-nowrap select-none touch-none transition-all duration-300 ${
         searchExpanded ? "hidden xl:flex" : "hidden md:flex"
       } ${
         isScrubbing
-          ? "bg-white/10 border border-white/35 shadow-[0_0_24px_rgba(255,255,255,0.22)] ring-1 ring-white/20"
-          : "bg-white/5 border border-white/10"
+          ? "border-white/40 shadow-[0_0_24px_rgba(255,255,255,0.22)] ring-1 ring-white/20"
+          : "border-white/10"
       } ${className}`}
     >
 
@@ -222,7 +239,8 @@ export function InteractiveNavScrubber({
             }}
             onPointerDown={(e) => startScrubbing(index, e)}
             type="button"
-            className={`relative px-4 sm:px-5 py-2 sm:py-2.5 rounded-full transition-all duration-200 z-10 select-none cursor-pointer text-white/70 hover:text-white flex items-center gap-2 active:scale-95 ${
+            draggable={false}
+            className={`relative px-4 sm:px-5 py-2 sm:py-2.5 rounded-full transition-all duration-200 z-10 select-none cursor-pointer text-white/70 hover:text-white flex items-center gap-2 active:scale-95 focus:outline-none ${
               isTarget ? "text-white" : ""
             } ${isScrubbing && !isTarget ? "opacity-50" : "opacity-100"}`}
           >
@@ -243,6 +261,6 @@ export function InteractiveNavScrubber({
           </button>
         );
       })}
-    </nav>
+    </LiquidGlassContainer>
   );
 }
