@@ -66,28 +66,28 @@ export function AmbientBackground({ opacity = 0.65 }: AmbientBackgroundProps) {
 
         {/* Layer 2: Primary Crystal Liquid Glass Aura (Top-Left / Center) */}
         <div
-          className="absolute top-[-10%] left-[-6%] w-[680px] h-[680px] sm:w-[840px] sm:h-[840px] rounded-full filter blur-[28px] sm:blur-[38px] opacity-75 ambient-glass-drift-1 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
+          className="absolute top-[-10%] left-[-6%] w-[680px] h-[680px] sm:w-[840px] sm:h-[840px] rounded-full opacity-75 ambient-glass-drift-1 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
           style={{
             background:
-              "radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.22) 0%, rgba(224, 242, 254, 0.08) 35%, rgba(255, 255, 255, 0.015) 65%, transparent 80%)"
+              "radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.18) 0%, rgba(224, 242, 254, 0.07) 35%, rgba(255, 255, 255, 0.015) 65%, transparent 78%)"
           }}
         />
 
         {/* Layer 3: Secondary Crystal Liquid Glass Aura (Bottom-Right / Center) */}
         <div
-          className="absolute bottom-[-12%] right-[-8%] w-[720px] h-[720px] sm:w-[880px] sm:h-[880px] rounded-full filter blur-[32px] sm:blur-[42px] opacity-70 ambient-glass-drift-2 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
+          className="absolute bottom-[-12%] right-[-8%] w-[720px] h-[720px] sm:w-[880px] sm:h-[880px] rounded-full opacity-70 ambient-glass-drift-2 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
           style={{
             background:
-              "radial-gradient(circle at 65% 65%, rgba(255, 255, 255, 0.20) 0%, rgba(219, 234, 254, 0.07) 40%, rgba(255, 255, 255, 0.01) 70%, transparent 85%)"
+              "radial-gradient(circle at 65% 65%, rgba(255, 255, 255, 0.16) 0%, rgba(219, 234, 254, 0.06) 40%, rgba(255, 255, 255, 0.01) 70%, transparent 82%)"
           }}
         />
 
         {/* Layer 4: Center Diffuse Liquid Glass Specular Pulse */}
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] sm:w-[680px] sm:h-[680px] rounded-full filter blur-[24px] sm:blur-[32px] opacity-55 ambient-glass-drift-3 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] sm:w-[680px] sm:h-[680px] rounded-full opacity-55 ambient-glass-drift-3 pointer-events-none [transform:translate3d(0,0,0)] [backface-visibility:hidden]"
           style={{
             background:
-              "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16) 0%, rgba(241, 245, 249, 0.04) 45%, transparent 75%)"
+              "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.14) 0%, rgba(241, 245, 249, 0.04) 45%, transparent 72%)"
           }}
         />
 

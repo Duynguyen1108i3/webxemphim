@@ -208,6 +208,8 @@ export function VideoPlayer({
     const video = videoRef.current;
     const currentSource = latestSourceRef.current;
     const movie = activePlaybackRef.current;
+    const authState = useAuthStore.getState();
+    const currentUser = authState.user;
 
     const movieId = movie?.id || currentSource?.movieId || (currentSource as any)?.id || "movie";
     const movieTitle = movie?.title || currentSource?.title || "Phim";
@@ -221,8 +223,14 @@ export function VideoPlayer({
     const dur = video && video.duration && !isNaN(video.duration) ? Math.floor(video.duration) : 100;
     const isPaused = video ? video.paused : !playingRef.current;
 
-    const payload = JSON.stringify({
+    const sessionObj = {
       sessionId: playbackSessionId.current,
+      userId: currentUser?.id,
+      username: currentUser?.username || "Khách (Guest)",
+      email: currentUser?.email,
+      avatarUrl: authState.avatarUrl || currentUser?.avatarUrl,
+      role: currentUser?.role,
+      isGuest: !currentUser,
       movieId,
       movieTitle,
       movieSlug,
@@ -232,9 +240,24 @@ export function VideoPlayer({
       episodeTitle,
       currentTime: curTime,
       duration: dur,
+      progressPercent: dur > 0 ? Math.min(100, Math.round((curTime / dur) * 100)) : 0,
       isPaused: stopped ? true : isPaused,
-      stopped
-    });
+      stopped,
+      startedAt: new Date().toISOString(),
+      lastHeartbeatAt: new Date().toISOString()
+    };
+
+    try {
+      if (stopped) {
+        localStorage.removeItem("rytoxgroup:active_viewer_session");
+      } else {
+        localStorage.setItem("rytoxgroup:active_viewer_session", JSON.stringify(sessionObj));
+      }
+    } catch {
+      // Ignore storage quota errors
+    }
+
+    const payload = JSON.stringify(sessionObj);
 
     if (stopped) {
       if (navigator.sendBeacon) {
@@ -265,7 +288,7 @@ export function VideoPlayer({
 
     const interval = setInterval(() => {
       sendHeartbeat(false);
-    }, 20000); // 20s interval for viewer telemetry to eliminate network flooding and CPU wakeups
+    }, 8000); // 8s interval for responsive real-time viewer telemetry
 
     const handleBeforeUnload = () => {
       sendHeartbeat(true);
@@ -451,6 +474,30 @@ export function VideoPlayer({
   const [showControls, setShowControls] = useState(true);
   const showControlsRef = useRef(showControls);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isScrubbingRef = useRef(isScrubbing);
+  isScrubbingRef.current = isScrubbing;
+  const showSpeedMenuRef = useRef(showSpeedMenu);
+  showSpeedMenuRef.current = showSpeedMenu;
+  const showSubtitleMenuRef = useRef(showSubtitleMenu);
+  showSubtitleMenuRef.current = showSubtitleMenu;
+  const isEmbedRef = useRef(isEmbed);
+  isEmbedRef.current = isEmbed;
+  const isFullscreenRef = useRef(isFullscreen);
+  isFullscreenRef.current = isFullscreen;
+  const lastHideTimestampRef = useRef<number>(0);
+  const lastMousePosRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Sync body class so cursor is guaranteed hidden across all fullscreen/overlay portals when idle
+  useEffect(() => {
+    if (!showControls) {
+      document.body.classList.add("player-cursor-hidden");
+    } else {
+      document.body.classList.remove("player-cursor-hidden");
+    }
+    return () => {
+      document.body.classList.remove("player-cursor-hidden");
+    };
+  }, [showControls]);
 
   // Notify parent component (CinematicPlayerOverlay / WatchPage)
   useEffect(() => {
@@ -483,32 +530,42 @@ export function VideoPlayer({
     }
   }, []);
 
-  const showControlsAndResetTimer = useCallback((customDelay = 3000) => {
+  const showControlsAndResetTimer = useCallback((customDelay = 2500) => {
     setShowControls(true);
     clearControlsTimer();
 
-    // Auto-hide only when video is actively playing and no modals/scrubbing block it
-    if (playing && !isScrubbing && !showSpeedMenu && !showSubtitleMenu) {
+    const video = videoRef.current;
+    const isVideoPlaying = playingRef.current || Boolean(video && !video.paused && !video.ended);
+    const shouldAutoHide =
+      (isVideoPlaying || isEmbedRef.current || isFullscreenRef.current) &&
+      !isScrubbingRef.current &&
+      !showSpeedMenuRef.current &&
+      !showSubtitleMenuRef.current;
+
+    if (shouldAutoHide) {
       controlsTimeoutRef.current = setTimeout(() => {
+        lastHideTimestampRef.current = Date.now();
         setShowControls(false);
       }, customDelay);
     }
-  }, [playing, isScrubbing, showSpeedMenu, showSubtitleMenu, clearControlsTimer]);
+  }, [clearControlsTimer]);
 
-  // Sync controls visibility whenever playing, scrubbing, or popup menus change
+  // Sync controls visibility whenever playing, fullscreen, scrubbing, or popup menus change
   useEffect(() => {
-    if (!playing || isScrubbing || showSpeedMenu || showSubtitleMenu) {
+    const video = videoRef.current;
+    const isVideoPlaying = playing || Boolean(video && !video.paused && !video.ended);
+    if ((!isVideoPlaying && !isEmbed && !isFullscreen) || isScrubbing || showSpeedMenu || showSubtitleMenu) {
       clearControlsTimer();
       setShowControls(true);
     } else {
-      showControlsAndResetTimer();
+      showControlsAndResetTimer(2500);
     }
-  }, [playing, isScrubbing, showSpeedMenu, showSubtitleMenu, clearControlsTimer, showControlsAndResetTimer]);
+  }, [playing, isEmbed, isFullscreen, isScrubbing, showSpeedMenu, showSubtitleMenu, clearControlsTimer, showControlsAndResetTimer]);
 
   // Initial auto-hide timer for embeds
   useEffect(() => {
     if (isEmbed) {
-      showControlsAndResetTimer(4000);
+      showControlsAndResetTimer(3000);
     }
   }, [isEmbed, showControlsAndResetTimer]);
 
@@ -517,17 +574,39 @@ export function VideoPlayer({
   }, [clearControlsTimer]);
 
   const handleUserActivity = useCallback(() => {
-    showControlsAndResetTimer();
+    showControlsAndResetTimer(2500);
+  }, [showControlsAndResetTimer]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const now = Date.now();
+    const last = lastMousePosRef.current;
+    const dx = last ? Math.abs(e.clientX - last.x) : 999;
+    const dy = last ? Math.abs(e.clientY - last.y) : 999;
+
+    // Ignore synthetic mousemove events fired by browser when DOM elements hide/shift under a stationary cursor
+    if (last && dx < 3 && dy < 3) {
+      return;
+    }
+    // Right after controls hide (within 250ms), require deliberate cursor movement (> 12px) to prevent layout-shift wakeups
+    if (!showControlsRef.current && now - lastHideTimestampRef.current < 250 && dx < 12 && dy < 12) {
+      return;
+    }
+
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+    showControlsAndResetTimer(2500);
   }, [showControlsAndResetTimer]);
 
   const handleMouseLeave = useCallback(() => {
-    if (playing && !isScrubbing && !showSpeedMenu && !showSubtitleMenu) {
+    const video = videoRef.current;
+    const isVideoPlaying = playingRef.current || Boolean(video && !video.paused && !video.ended);
+    if ((isVideoPlaying || isEmbedRef.current || isFullscreenRef.current) && !isScrubbingRef.current && !showSpeedMenuRef.current && !showSubtitleMenuRef.current) {
       clearControlsTimer();
       controlsTimeoutRef.current = setTimeout(() => {
+        lastHideTimestampRef.current = Date.now();
         setShowControls(false);
-      }, 800);
+      }, 600);
     }
-  }, [playing, isScrubbing, showSpeedMenu, showSubtitleMenu, clearControlsTimer]);
+  }, [clearControlsTimer]);
 
   const handleSurfaceClick = (e: React.MouseEvent) => {
     // If controls are hidden, first click/tap wakes them up without interrupting playback
@@ -580,15 +659,17 @@ export function VideoPlayer({
     void toggleFullscreen();
   };
 
-  // Unlock the video element synchronously on mount inside the user's click tick
+  // Unlock the video element synchronously on mount inside the user's click tick only if no media is attached yet
   useLayoutEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || video.src || hlsRef.current) return;
     const playPromise = video.play();
     if (playPromise !== undefined) {
       playPromise
         .then(() => {
-          video.pause();
+          if (!video.src && !hlsRef.current) {
+            video.pause();
+          }
         })
         .catch(() => {
           // Autoplay or sync play restricted by browser policy, ignore safely
@@ -816,6 +897,9 @@ export function VideoPlayer({
       if (cur > 0.1) {
         onPlayStartedRef.current?.();
       }
+      if (!video.paused && !playingRef.current) {
+        setPlaying(true);
+      }
 
       // If controls are hidden or user is scrubbing, skip state updates to save CPU & avoid re-render storms
       if (!showControlsRef.current) {
@@ -887,7 +971,7 @@ export function VideoPlayer({
       video.removeEventListener("ended", onPause);
       video.removeEventListener("volumechange", onVolume);
     };
-  }, []);
+  }, [activeUrl, isEmbed]);
 
   async function toggle() {
     const video = videoRef.current!;
@@ -1038,14 +1122,14 @@ export function VideoPlayer({
       <div 
         ref={containerRef} 
         className={`relative h-full w-full bg-black flex flex-col items-center justify-center ${
-          !showControls ? "cursor-none" : ""
+          !showControls ? "player-cursor-hidden cursor-none" : ""
         }`}
-        onMouseMove={handleUserActivity}
+        onMouseMove={handleMouseMove}
         onTouchStart={handleUserActivity}
         onMouseLeave={handleMouseLeave}
       >
         
-        {/* ── Compact Top Bar: auto-hides after 4s, shows on activity ── */}
+        {/* ── Compact Top Bar: auto-hides after 3s, shows on activity ── */}
         <div className={`absolute top-0 left-0 right-0 z-[130] flex items-center justify-between px-3 py-2.5 bg-gradient-to-b from-black/85 via-black/45 to-transparent pointer-events-auto select-none transition-all duration-300 ${
           showControls ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none -translate-y-2"
         }`}>
@@ -1066,7 +1150,7 @@ export function VideoPlayer({
             <button
               onClick={() => {
                 toggleFullscreen();
-                showControlsAndResetTimer();
+                showControlsAndResetTimer(2500);
               }}
               className="player-capsule flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold cursor-pointer"
               aria-label={isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
@@ -1077,6 +1161,16 @@ export function VideoPlayer({
             </button>
           </div>
         </div>
+
+        {/* Transparent cursor-hiding shield over cross-origin iframe when controls are idle */}
+        {!showControls && (
+          <div
+            className="absolute inset-0 z-[125] player-cursor-hidden cursor-none bg-transparent"
+            onMouseMove={handleMouseMove}
+            onMouseDown={() => showControlsAndResetTimer(2500)}
+            onTouchStart={handleUserActivity}
+          />
+        )}
 
         {/* ── Direct Video Embed Player ── */}
         <iframe
@@ -1110,19 +1204,27 @@ export function VideoPlayer({
     <div 
       ref={containerRef} 
       className={`group relative grid min-h-screen place-items-center overflow-hidden bg-black select-none ${
-        !showControls && playing ? "cursor-none" : ""
+        !showControls ? "player-cursor-hidden cursor-none" : ""
       }`}
-      onMouseMove={handleUserActivity}
+      onMouseMove={handleMouseMove}
       onTouchStart={handleUserActivity}
       onMouseLeave={handleMouseLeave}
     >
-      <video ref={videoRef} className="h-full max-h-screen w-full object-contain" autoPlay playsInline preload="auto" poster="" crossOrigin="anonymous">
+      <video
+        ref={videoRef}
+        className={`h-full max-h-screen w-full object-contain ${!showControls ? "cursor-none" : ""}`}
+        autoPlay
+        playsInline
+        preload="auto"
+        poster=""
+        crossOrigin="anonymous"
+      >
         {source?.subtitles?.map((sub) => <track key={sub.url} kind="subtitles" srcLang={sub.language} label={sub.label} src={sub.url} />)}
       </video>
       <button 
         onClick={handleSurfaceClick} 
         onDoubleClick={handleSurfaceDoubleClick}
-        className="absolute inset-0 z-0 cursor-default" 
+        className={`absolute inset-0 z-0 ${!showControls ? "cursor-none" : "cursor-default"}`} 
         aria-label={playing ? "Pause video" : "Play video"} 
       />
 
@@ -1138,7 +1240,7 @@ export function VideoPlayer({
         <button
           onClick={() => {
             toggleFullscreen();
-            showControlsAndResetTimer();
+            showControlsAndResetTimer(2500);
           }}
           className="player-capsule flex items-center gap-1.5 px-3.5 py-1.5 text-white text-xs font-semibold cursor-pointer"
           aria-label={isFullscreen ? "Thu nhỏ" : "Toàn màn hình"}
@@ -1396,7 +1498,10 @@ export function VideoPlayer({
               
               {/* Fullscreen */}
               <button 
-                onClick={toggleFullscreen} 
+                onClick={() => {
+                  toggleFullscreen();
+                  showControlsAndResetTimer(2500);
+                }} 
                 className="glass-player-btn cursor-pointer bg-white/20 hover:bg-white/30 text-white" 
                 aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                 title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}

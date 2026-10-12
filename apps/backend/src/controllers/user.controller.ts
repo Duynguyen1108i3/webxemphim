@@ -304,10 +304,26 @@ export async function getFavorites(req: Request, res: Response, next: NextFuncti
   }
 }
 
+const favoriteMovieBodySchema = z.object({
+  id: z.string().min(1).max(200),
+  slug: z.string().max(200).optional(),
+  title: z.string().min(1).max(300),
+  synopsis: z.string().max(5000).optional(),
+  description: z.string().max(5000).optional(),
+  posterUrl: z.string().max(1000).optional(),
+  poster: z.string().max(1000).optional(),
+  backdropUrl: z.string().max(1000).optional(),
+  thumb: z.string().max(1000).optional(),
+  releaseYear: z.coerce.number().int().min(1888).max(2100).optional(),
+  year: z.coerce.number().int().min(1888).max(2100).optional(),
+  runtimeMinutes: z.coerce.number().int().min(1).max(1000).optional(),
+  averageRating: z.coerce.number().min(0).max(10).optional()
+});
+
 export async function addFavorite(req: Request, res: Response, next: NextFunction) {
   try {
     const profileId = String(req.params.profileId);
-    const movie = req.body;
+    const movie = favoriteMovieBodySchema.parse(req.body);
     await prisma.movie.upsert({
       where: { id: movie.id },
       update: {
@@ -316,9 +332,9 @@ export async function addFavorite(req: Request, res: Response, next: NextFunctio
         description: movie.description || movie.synopsis || "",
         posterUrl: movie.posterUrl || movie.poster || "",
         backdropUrl: movie.backdropUrl || movie.thumb || "",
-        releaseYear: parseInt(movie.releaseYear) || parseInt(movie.year) || 2024,
-        runtimeMinutes: parseInt(movie.runtimeMinutes) || 120,
-        averageRating: parseFloat(movie.averageRating) || 0,
+        releaseYear: movie.releaseYear || movie.year || 2024,
+        runtimeMinutes: movie.runtimeMinutes || 120,
+        averageRating: movie.averageRating || 0
       },
       create: {
         id: movie.id,
@@ -328,10 +344,10 @@ export async function addFavorite(req: Request, res: Response, next: NextFunctio
         description: movie.description || movie.synopsis || "",
         posterUrl: movie.posterUrl || movie.poster || "",
         backdropUrl: movie.backdropUrl || movie.thumb || "",
-        releaseYear: parseInt(movie.releaseYear) || parseInt(movie.year) || 2024,
-        runtimeMinutes: parseInt(movie.runtimeMinutes) || 120,
+        releaseYear: movie.releaseYear || movie.year || 2024,
+        runtimeMinutes: movie.runtimeMinutes || 120,
         maturityRating: "PG_13",
-        averageRating: parseFloat(movie.averageRating) || 0,
+        averageRating: movie.averageRating || 0
       }
     });
 

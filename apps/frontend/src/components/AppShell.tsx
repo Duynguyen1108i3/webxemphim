@@ -10,8 +10,10 @@ import { AuthPromptModal } from "./AuthPromptModal";
 import { HoverPreview } from "./MovieRow";
 import { InteractiveNavScrubber } from "./InteractiveNavScrubber";
 import { movieApi, type NormalizedMovie } from "../lib/movieApi";
+import { apiBaseUrl } from "../lib/http";
 import { ShellNavbar, ShellMobileDrawer, ShellSearchOverlay } from "./shell";
 import { AmbientBackground } from "./AmbientBackground";
+import { SEOHead, buildMovieJsonLd } from "./SEOHead";
 import type { MovieCardDto } from "@streamforge/shared-types";
 
 const iosSpringTransition = {
@@ -87,6 +89,42 @@ export function AppShell() {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Real-time online presence heartbeat for authenticated user
+  useEffect(() => {
+    if (!user?.id && !user?.email) return;
+
+    const sendPresence = (offline = false) => {
+      const payload = JSON.stringify({
+        userId: user.id,
+        email: user.email,
+        username: user.username,
+        currentPath: window.location.pathname,
+        offline
+      });
+      if (offline && typeof navigator !== "undefined" && navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: "application/json" });
+        navigator.sendBeacon(`${apiBaseUrl}/playback/presence`, blob);
+        return;
+      }
+      fetch(`${apiBaseUrl}/playback/presence`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: payload
+      }).catch(() => {});
+    };
+
+    sendPresence(false);
+    const interval = window.setInterval(() => sendPresence(false), 15_000);
+    const handlePageHide = () => sendPresence(true);
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [user?.id, user?.email, user?.username]);
 
   // Auth Guard: redirect unauthenticated users to login only for protected routes
   useEffect(() => {
@@ -462,8 +500,80 @@ export function AppShell() {
     );
   }
 
+  const activeSeoMovie = activePlayback || activeMovieDetail;
+  const routeSeo = (() => {
+    if (activeSeoMovie) {
+      const origin = typeof window !== "undefined" ? window.location.origin : "https://rytoxgroup.com";
+      const isPlaying = Boolean(activePlayback);
+      return {
+        title: `${isPlaying ? "Đang xem: " : ""}${activeSeoMovie.title} (${activeSeoMovie.releaseYear || 2026}) Full HD Vietsub`,
+        description:
+          activeSeoMovie.synopsis ||
+          activeSeoMovie.description ||
+          `Xem phim ${activeSeoMovie.title} (${activeSeoMovie.releaseYear || 2026}) chất lượng 4K Ultra HD phụ đề Vietsub trên RytoxGroup.`,
+        ogImage: activeSeoMovie.backdropUrl || activeSeoMovie.posterUrl || "/favicon.jpg",
+        ogType: (activeSeoMovie.mediaType === "tv" ? "video.tv_show" : "video.movie") as "video.tv_show" | "video.movie",
+        jsonLd: buildMovieJsonLd(activeSeoMovie, origin),
+        noindex: false,
+      };
+    }
+    if (q.length > 1) {
+      return {
+        title: `Tìm kiếm "${q}" — Kho Phim 4K Vietsub`,
+        description: `Kết quả tìm kiếm phim, phim bộ và anime cho từ khóa "${q}" trên RytoxGroup.`,
+        ogType: "website" as const,
+        noindex: false,
+      };
+    }
+    switch (location.pathname) {
+      case "/anime":
+        return {
+          title: "Anime Vietsub & Hoạt Hình 4K Tuyển Chọn",
+          description: "Xem Anime mới nhất, hoạt hình Nhật Bản phụ đề Vietsub Full HD & 4K cập nhật mỗi ngày trên RytoxGroup.",
+          ogType: "website" as const,
+          noindex: false,
+        };
+      case "/new-popular":
+        return {
+          title: "Phim Mới & Thịnh Hành — Top Trending IMDb",
+          description: "Danh sách phim điện ảnh, phim bộ và anime mới ra mắt đang thịnh hành nhất tuần này trên RytoxGroup.",
+          ogType: "website" as const,
+          noindex: false,
+        };
+      case "/my-list":
+        return {
+          title: "Danh Sách Phim Của Tôi",
+          description: "Bộ sưu tập các bộ phim yêu thích đã lưu và lịch sử xem phim cá nhân trên RytoxGroup.",
+          ogType: "website" as const,
+          noindex: true,
+        };
+      case "/search":
+        return {
+          title: "Duyệt Phim Theo Ngôn Ngữ & Quốc Gia",
+          description: "Khám phá kho phim Hàn Quốc, Âu Mỹ, Trung Quốc, Nhật Bản, Việt Nam chất lượng cao trên RytoxGroup.",
+          ogType: "website" as const,
+          noindex: false,
+        };
+      case "/profile":
+        return {
+          title: "Hồ Sơ Cá Nhân & Cài Đặt Tài Khoản",
+          description: "Quản lý hồ sơ người dùng, gói thuê bao VIP và tùy chọn cá nhân trên RytoxGroup.",
+          ogType: "website" as const,
+          noindex: true,
+        };
+      default:
+        return {
+          title: "RytoxGroup — Xem Phim, Phim Bộ & Anime 4K Vietsub Trực Tuyến",
+          description: "RytoxGroup — Nền tảng xem phim điện ảnh, phim bộ truyền hình và Anime chất lượng cao 4K Ultra HD, phụ đề Vietsub & thuyết minh mượt mà.",
+          ogType: "website" as const,
+          noindex: false,
+        };
+    }
+  })();
+
   return (
     <div id="app-shell-root" className="relative isolate min-h-screen bg-transparent text-white">
+      <SEOHead {...routeSeo} />
       {/* Ambient Liquid Glass Background Glow - pause and unmount completely during video playback to eliminate GPU/battery drain */}
       {!activePlayback && <AmbientBackground opacity={ambientOpacity} />}
 

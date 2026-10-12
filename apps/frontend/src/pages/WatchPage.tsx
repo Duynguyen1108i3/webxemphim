@@ -17,7 +17,7 @@ export function WatchPage() {
   const title = data?.title ?? id ?? "Now Playing";
 
   return (
-    <main className={`min-h-screen bg-[#0c0d14] text-white ${!controlsVisible ? "cursor-none" : ""}`}>
+    <main className={`min-h-screen bg-[#0c0d14] text-white ${!controlsVisible ? "player-cursor-hidden cursor-none" : ""}`}>
       {/* Top Scrim Gradient Overlay for Contrast on Bright/White Video Scenes */}
       <div className={`absolute top-0 inset-x-0 h-32 sm:h-40 bg-gradient-to-b from-black/85 via-black/45 to-transparent z-10 pointer-events-none transition-opacity duration-300 ${
         controlsVisible ? "opacity-100" : "opacity-0"

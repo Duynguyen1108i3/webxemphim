@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import type { Role } from "@streamforge/shared-types";
 import { env } from "../config/env.js";
 import { ApiError } from "./error.js";
+import { telemetryService } from "../services/telemetry.service.js";
 
 declare global {
   namespace Express {
@@ -39,6 +40,14 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   }
   try {
     req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER } as any) as unknown as Express.Request["user"];
+    if (req.user) {
+      telemetryService.recordUserPresence({
+        userId: req.user.id,
+        email: req.user.email,
+        username: req.user.username,
+        currentPath: req.originalUrl
+      });
+    }
     next();
   } catch {
     throw new ApiError(401, "Invalid or expired access token", "INVALID_TOKEN");
@@ -55,6 +64,14 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
   if (token) {
     try {
       req.user = jwt.verify(token, env.JWT_ACCESS_SECRET, { audience: JWT_AUDIENCE, issuer: JWT_ISSUER } as any) as unknown as Express.Request["user"];
+      if (req.user) {
+        telemetryService.recordUserPresence({
+          userId: req.user.id,
+          email: req.user.email,
+          username: req.user.username,
+          currentPath: req.originalUrl
+        });
+      }
     } catch {
       // Ignore invalid token in optionalAuth
     }

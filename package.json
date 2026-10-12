@@ -13,7 +13,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npx concurrently \"npm run dev --workspace @streamforge/backend\" \"npm run dev --workspace @streamforge/frontend\"",
+    "dev": "npx -y concurrently \"npm run dev --workspace @streamforge/backend\" \"npm run dev --workspace @streamforge/frontend\"",
     "dev:backend": "npm run dev --workspace @streamforge/backend",
     "dev:frontend": "npm run dev --workspace @streamforge/frontend",
     "dev:admin": "npm run dev --workspace @streamforge/admin",

@@ -33,7 +33,7 @@ export const LiquidGlassButton = React.forwardRef<
   edgeIntensity,
   rimIntensity,
   warp,
-  disableWebGL = false,
+  disableWebGL = true,
   children,
   className = "",
   style = {},

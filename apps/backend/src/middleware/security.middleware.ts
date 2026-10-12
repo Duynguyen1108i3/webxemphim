@@ -25,8 +25,33 @@ export const { doubleCsrfProtection, generateToken } = doubleCsrf({
 
 export function applySecurity(app: Express) {
   app.set("trust proxy", 1);
-  
-  // 1. Comprehensive Helmet HTTP Security Headers
+
+  // 0. Force HTTPS in Production (#19 Bắt buộc HTTPS)
+  app.use((req, res, next) => {
+    if (
+      env.NODE_ENV === "production" &&
+      req.headers["x-forwarded-proto"] &&
+      req.headers["x-forwarded-proto"] !== "https"
+    ) {
+      return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+    }
+    next();
+  });
+
+  // 0.5 Block Automated Vulnerability Scanners & Malicious Bots (#13 Chặn Bot)
+  const blockedBotPattern = /(sqlmap|nikto|nmap|masscan|nuclei|acunetix|nessus|dirbuster|gobuster|wpscan|zgrab|havij)/i;
+  app.use((req, res, next) => {
+    const ua = req.headers["user-agent"] || "";
+    if (blockedBotPattern.test(ua)) {
+      return res.status(403).json({
+        error: "Truy cập tự động bị từ chối bởi tường lửa bảo mật.",
+        code: "BOT_BLOCKED"
+      });
+    }
+    next();
+  });
+
+  // 1. Comprehensive Helmet HTTP Security Headers (#18 Thêm Security Headers)
   app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     hidePoweredBy: true,
@@ -57,9 +82,9 @@ export function applySecurity(app: Express) {
     optionsSuccessStatus: 204
   }));
 
-  // 3. Payload Limits (Anti Memory Exhaustion DoS)
-  app.use(express.json({ limit: "5mb" }) as RequestHandler);
-  app.use(express.urlencoded({ extended: true, limit: "5mb" }) as RequestHandler);
+  // 3. Payload & Upload Limits (Anti Memory Exhaustion DoS - #16 Giới hạn File Upload)
+  app.use(express.json({ limit: "3mb" }) as RequestHandler);
+  app.use(express.urlencoded({ extended: true, limit: "3mb" }) as RequestHandler);
   app.use(cookieParser(env.COOKIE_SECRET) as RequestHandler);
   app.use(compression() as RequestHandler);
   app.use(morgan("combined"));
@@ -98,8 +123,13 @@ export function applySecurity(app: Express) {
     if (process.env.NODE_ENV !== "production" && req.headers["x-dev-admin"] === "true") {
       return next();
     }
-    // Exclude telemetry heartbeat beacons (sent via navigator.sendBeacon and periodic timers)
-    if (req.path === "/api/playback/heartbeat" || req.path === "/playback/heartbeat") {
+    // Exclude telemetry heartbeat & presence beacons (sent via navigator.sendBeacon and periodic timers)
+    if (
+      req.path === "/api/playback/heartbeat" ||
+      req.path === "/playback/heartbeat" ||
+      req.path === "/api/playback/presence" ||
+      req.path === "/playback/presence"
+    ) {
       return next();
     }
     return (doubleCsrfProtection as RequestHandler)(req, res, next);

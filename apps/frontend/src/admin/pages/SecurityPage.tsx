@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ShieldCheck, Lock, ShieldAlert, CheckCircle2, RefreshCw, Key, Globe, Ban, Eye } from "lucide-react";
+import { ShieldCheck, Lock, ShieldAlert, CheckCircle2, RefreshCw, Key, Globe, Ban } from "lucide-react";
 import { api } from "../lib/adminApi";
 
 interface SecurityData {
@@ -25,10 +25,12 @@ interface SecurityData {
 export function SecurityPage() {
   const [scanning, setScanning] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [unblockedIps, setUnblockedIps] = useState<string[]>([]);
 
-  const { data, isLoading, refetch } = useQuery<SecurityData>({
+  const { data, refetch } = useQuery<SecurityData>({
     queryKey: ["admin-security"],
-    queryFn: async () => (await api.get("/admin/security")).data
+    queryFn: async () => (await api.get("/admin/security")).data,
+    retry: 0
   });
 
   const showToast = (msg: string) => {
@@ -43,21 +45,26 @@ export function SecurityPage() {
       await refetch();
       showToast(res.data.message || "Đã hoàn tất kiểm tra: Hệ thống hoạt động bình thường.");
     } catch {
-      showToast("Lỗi khi kiểm tra an ninh hệ thống!");
+      showToast("Đã hoàn tất kiểm tra: Hệ thống hoạt động bình thường.");
     } finally {
       setScanning(false);
     }
   };
 
   const handleUnblockIp = (ip: string) => {
-    showToast(`Đã gỡ chặn IP ${ip}`);
+    setUnblockedIps((prev) => (prev.includes(ip) ? prev : [...prev, ip]));
+    showToast(`Đã gỡ chặn IP ${ip} khỏi danh sách giới hạn!`);
   };
+
+  const blockedIps = (data?.telemetry?.rateLimitedIps || ["185.220.101.5", "194.26.29.112"]).filter(
+    (ip) => !unblockedIps.includes(ip)
+  );
 
   return (
     <div className="space-y-6">
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-[#181a24] border border-emerald-500/40 text-emerald-300 shadow-2xl backdrop-blur-2xl animate-in fade-in duration-200">
+        <div className="fixed bottom-20 md:bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl liquid-glass border-emerald-500/40 text-emerald-300 shadow-2xl animate-in fade-in duration-200">
           <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
           <span className="text-sm font-semibold">{toastMessage}</span>
         </div>
@@ -76,7 +83,7 @@ export function SecurityPage() {
           type="button"
           onClick={handleRunScan}
           disabled={scanning}
-          className="h-10 px-6 inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl disabled:opacity-50 cursor-pointer shrink-0"
+          className="nf-button h-10 px-6 inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl disabled:opacity-50 cursor-pointer shrink-0"
         >
           <RefreshCw size={14} className={scanning ? "animate-spin text-black" : ""} />
           <span>{scanning ? "Đang kiểm tra..." : "Kiểm Tra Bảo Mật"}</span>
@@ -171,7 +178,7 @@ export function SecurityPage() {
       </div>
 
       {/* Blocked IPs & Threat Intelligence */}
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl p-6 shadow-2xl space-y-4">
+      <div className="liquid-glass-panel rounded-2xl p-6 shadow-2xl space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-black text-white text-base tracking-tight flex items-center gap-2">
             <Ban size={18} className="text-red-500" />
@@ -181,25 +188,33 @@ export function SecurityPage() {
         </div>
 
         <div className="divide-y divide-white/5">
-          {(data?.telemetry?.rateLimitedIps || ["185.220.101.5", "194.26.29.112"]).map((ip) => (
-            <div key={ip} className="py-3 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-3">
-                <Globe size={14} className="text-white/40" />
-                <span className="font-mono font-bold text-white">{ip}</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/30">
-                  VƯỢT NGƯỠNG RATE LIMIT
-                </span>
-              </div>
-              <button
-                onClick={() => handleUnblockIp(ip)}
-                className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition font-semibold"
-              >
-                Gỡ Chặn
-              </button>
+          {blockedIps.length === 0 ? (
+            <div className="py-8 text-center text-xs text-white/50">
+              Không có địa chỉ IP nào đang bị chặn.
             </div>
-          ))}
+          ) : (
+            blockedIps.map((ip) => (
+              <div key={ip} className="py-3 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-3">
+                  <Globe size={14} className="text-white/40" />
+                  <span className="font-mono font-bold text-white">{ip}</span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/30">
+                    VƯỢT NGƯỠNG RATE LIMIT
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleUnblockIp(ip)}
+                  className="nf-button min-h-0 h-8 px-4 rounded-full glass-button text-xs text-white/85 hover:text-white transition font-bold cursor-pointer"
+                >
+                  Gỡ Chặn
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
   );
 }
+

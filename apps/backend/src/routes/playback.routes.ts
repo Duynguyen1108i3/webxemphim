@@ -8,6 +8,11 @@ const router = Router();
 
 const heartbeatSchema = z.object({
   sessionId: z.string().min(1),
+  userId: z.string().optional(),
+  username: z.string().optional(),
+  email: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  role: z.string().optional(),
   movieId: z.string().min(1),
   movieTitle: z.string().default("Phim"),
   movieSlug: z.string().optional(),
@@ -26,7 +31,12 @@ router.post("/heartbeat", optionalAuth, async (req, res, next) => {
   try {
     const data = heartbeatSchema.parse(req.body);
 
-    let userDetails: { username?: string; email?: string; avatarUrl?: string; role?: string; profileId?: string } = {};
+    let userDetails: { username?: string; email?: string; avatarUrl?: string; role?: string; profileId?: string } = {
+      username: data.username,
+      email: data.email,
+      avatarUrl: data.avatarUrl,
+      role: data.role
+    };
 
     if (req.user) {
       try {
@@ -44,27 +54,60 @@ router.post("/heartbeat", optionalAuth, async (req, res, next) => {
           userDetails = {
             username: dbUser.username,
             email: dbUser.email,
-            avatarUrl: dbUser.avatarUrl || undefined,
+            avatarUrl: dbUser.avatarUrl || data.avatarUrl || undefined,
             role: dbUser.role,
             profileId: dbUser.profiles[0]?.id
           };
         }
       } catch {
-        // Fallback to token user
+        // Fallback to token user or client payload
         userDetails = {
-          email: req.user.email,
-          role: req.user.role
+          username: data.username || req.user.username || req.user.email?.split("@")[0],
+          email: req.user.email || data.email,
+          avatarUrl: data.avatarUrl,
+          role: req.user.role || data.role
         };
       }
     }
 
     telemetryService.recordHeartbeat({
       ...data,
-      userId: req.user?.id,
+      userId: req.user?.id || data.userId,
       ...userDetails,
       ipAddress: req.ip,
       device: data.device || req.get("user-agent")?.slice(0, 50) || "Trình duyệt Web"
     });
+
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const presenceSchema = z.object({
+  userId: z.string().optional(),
+  email: z.string().optional(),
+  username: z.string().optional(),
+  currentPath: z.string().optional(),
+  offline: z.boolean().default(false)
+});
+
+router.post("/presence", optionalAuth, (req, res, next) => {
+  try {
+    const body = presenceSchema.parse(req.body);
+    const userId = req.user?.id || body.userId || "";
+    const email = req.user?.email || body.email;
+    const username = req.user?.username || body.username;
+
+    if (userId || email) {
+      telemetryService.recordUserPresence({
+        userId,
+        email,
+        username,
+        currentPath: body.currentPath,
+        offline: body.offline
+      });
+    }
 
     res.json({ ok: true });
   } catch (error) {

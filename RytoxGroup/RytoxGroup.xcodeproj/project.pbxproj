@@ -1,0 +1,707 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA0000012C10000100000001 /* RytoxGroupApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000012C10000100000001 /* RytoxGroupApp.swift */; };
+		AA0000022C10000100000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000022C10000100000002 /* ContentView.swift */; };
+		AA0000032C10000100000003 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000032C10000100000003 /* AppConfig.swift */; };
+		AA0000042C10000100000004 /* LiquidGlassTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000042C10000100000004 /* LiquidGlassTheme.swift */; };
+		AA0000052C10000100000005 /* LiquidGlassModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000052C10000100000005 /* LiquidGlassModifier.swift */; };
+		AA0000062C10000100000006 /* GlassButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000062C10000100000006 /* GlassButtonStyle.swift */; };
+		AA0000072C10000100000007 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000072C10000100000007 /* Typography.swift */; };
+		AA0000082C10000100000008 /* ColorTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000082C10000100000008 /* ColorTokens.swift */; };
+		AA0000092C10000100000009 /* AmbientBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000092C10000100000009 /* AmbientBackgroundView.swift */; };
+		AA00000A2C1000010000000A /* SpringAnimations.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000A2C1000010000000A /* SpringAnimations.swift */; };
+		AA00000B2C1000010000000B /* MovieModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000B2C1000010000000B /* MovieModels.swift */; };
+		AA00000C2C1000010000000C /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000C2C1000010000000C /* AuthModels.swift */; };
+		AA00000D2C1000010000000D /* UserModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000D2C1000010000000D /* UserModels.swift */; };
+		AA00000E2C1000010000000E /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000E2C1000010000000E /* AuthManager.swift */; };
+		AA00000F2C1000010000000F /* PlaybackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00000F2C1000010000000F /* PlaybackManager.swift */; };
+		AA0000102C10000100000010 /* FavoritesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000102C10000100000010 /* FavoritesManager.swift */; };
+		AA0000112C10000100000011 /* APIEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000112C10000100000011 /* APIEndpoint.swift */; };
+		AA0000122C10000100000012 /* NetworkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000122C10000100000012 /* NetworkClient.swift */; };
+		AA0000132C10000100000013 /* ImageProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000132C10000100000013 /* ImageProxy.swift */; };
+		AA0000142C10000100000014 /* SubtitleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000142C10000100000014 /* SubtitleService.swift */; };
+		AA0000152C10000100000015 /* MovieService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000152C10000100000015 /* MovieService.swift */; };
+		AA0000162C10000100000016 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000162C10000100000016 /* AuthService.swift */; };
+		AA0000172C10000100000017 /* TMDBAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000172C10000100000017 /* TMDBAdapter.swift */; };
+		AA0000182C10000100000018 /* Phim4KAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000182C10000100000018 /* Phim4KAdapter.swift */; };
+		AA0000192C10000100000019 /* AniMapperAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000192C10000100000019 /* AniMapperAdapter.swift */; };
+		AA00001A2C1000010000001A /* CinemetaAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00001A2C1000010000001A /* CinemetaAdapter.swift */; };
+		AA00001B2C1000010000001B /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00001B2C1000010000001B /* KeychainHelper.swift */; };
+		AA00001C2C1000010000001C /* CacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00001C2C1000010000001C /* CacheManager.swift */; };
+		AA00001D2C1000010000001D /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00001D2C1000010000001D /* Formatters.swift */; };
+		AA00001E2C1000010000001E /* Validators.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00001E2C1000010000001E /* Validators.swift */; };
+		AA00001F2C1000010000001F /* HapticFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00001F2C1000010000001F /* HapticFeedback.swift */; };
+		AA0000202C10000100000020 /* AsyncPosterImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000202C10000100000020 /* AsyncPosterImage.swift */; };
+		AA0000212C10000100000021 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000212C10000100000021 /* GlassCard.swift */; };
+		AA0000222C10000100000022 /* LoadingSpinnerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000222C10000100000022 /* LoadingSpinnerView.swift */; };
+		AA0000232C10000100000023 /* ShimmerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000232C10000100000023 /* ShimmerView.swift */; };
+		AA0000242C10000100000024 /* BadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000242C10000100000024 /* BadgeView.swift */; };
+		AA0000252C10000100000025 /* TopNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000252C10000100000025 /* TopNavigationBar.swift */; };
+		AA0000262C10000100000026 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000262C10000100000026 /* MainTabView.swift */; };
+		AA0000272C10000100000027 /* SearchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000272C10000100000027 /* SearchOverlayView.swift */; };
+		AA0000282C10000100000028 /* GlassSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000282C10000100000028 /* GlassSettingsSheet.swift */; };
+		AA0000292C10000100000029 /* NotificationDropdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000292C10000100000029 /* NotificationDropdownView.swift */; };
+		AA00002A2C1000010000002A /* MovieCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002A2C1000010000002A /* MovieCardView.swift */; };
+		AA00002B2C1000010000002B /* MovieRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002B2C1000010000002B /* MovieRowView.swift */; };
+		AA00002C2C1000010000002C /* HeroBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002C2C1000010000002C /* HeroBannerView.swift */; };
+		AA00002D2C1000010000002D /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002D2C1000010000002D /* HomeView.swift */; };
+		AA00002E2C1000010000002E /* NewAndPopularView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002E2C1000010000002E /* NewAndPopularView.swift */; };
+		AA00002F2C1000010000002F /* CastCrewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00002F2C1000010000002F /* CastCrewView.swift */; };
+		AA0000302C10000100000030 /* EpisodeListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000302C10000100000030 /* EpisodeListView.swift */; };
+		AA0000312C10000100000031 /* MovieDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000312C10000100000031 /* MovieDetailSheet.swift */; };
+		AA0000322C10000100000032 /* SubtitleOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000322C10000100000032 /* SubtitleOverlayView.swift */; };
+		AA0000332C10000100000033 /* PlayerControlsOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000332C10000100000033 /* PlayerControlsOverlay.swift */; };
+		AA0000342C10000100000034 /* NativeHLSPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000342C10000100000034 /* NativeHLSPlayer.swift */; };
+		AA0000352C10000100000035 /* EmbedPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000352C10000100000035 /* EmbedPlayerView.swift */; };
+		AA0000362C10000100000036 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000362C10000100000036 /* PlayerView.swift */; };
+		AA0000372C10000100000037 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000372C10000100000037 /* LoginView.swift */; };
+		AA0000382C10000100000038 /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000382C10000100000038 /* RegisterView.swift */; };
+		AA0000392C10000100000039 /* ForgotPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000392C10000100000039 /* ForgotPasswordView.swift */; };
+		AA00003A2C1000010000003A /* AuthPromptModalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003A2C1000010000003A /* AuthPromptModalView.swift */; };
+		AA00003B2C1000010000003B /* WatchHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003B2C1000010000003B /* WatchHistoryView.swift */; };
+		AA00003C2C1000010000003C /* MyListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003C2C1000010000003C /* MyListView.swift */; };
+		AA00003D2C1000010000003D /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB00003D2C1000010000003D /* ProfileView.swift */; };
+		AA00003E2C1000010000003E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB00003E2C1000010000003E /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		CC0000012C10000100000001 /* RytoxGroup.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RytoxGroup.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0000012C10000100000001 /* RytoxGroupApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RytoxGroupApp.swift; sourceTree = "<group>"; };
+		BB0000022C10000100000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		BB0000002C10000100000000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB0000032C10000100000003 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		BB0000042C10000100000004 /* LiquidGlassTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassTheme.swift; sourceTree = "<group>"; };
+		BB0000052C10000100000005 /* LiquidGlassModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidGlassModifier.swift; sourceTree = "<group>"; };
+		BB0000062C10000100000006 /* GlassButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassButtonStyle.swift; sourceTree = "<group>"; };
+		BB0000072C10000100000007 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
+		BB0000082C10000100000008 /* ColorTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorTokens.swift; sourceTree = "<group>"; };
+		BB0000092C10000100000009 /* AmbientBackgroundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmbientBackgroundView.swift; sourceTree = "<group>"; };
+		BB00000A2C1000010000000A /* SpringAnimations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpringAnimations.swift; sourceTree = "<group>"; };
+		BB00000B2C1000010000000B /* MovieModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovieModels.swift; sourceTree = "<group>"; };
+		BB00000C2C1000010000000C /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
+		BB00000D2C1000010000000D /* UserModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserModels.swift; sourceTree = "<group>"; };
+		BB00000E2C1000010000000E /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		BB00000F2C1000010000000F /* PlaybackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackManager.swift; sourceTree = "<group>"; };
+		BB0000102C10000100000010 /* FavoritesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesManager.swift; sourceTree = "<group>"; };
+		BB0000112C10000100000011 /* APIEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIEndpoint.swift; sourceTree = "<group>"; };
+		BB0000122C10000100000012 /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
+		BB0000132C10000100000013 /* ImageProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageProxy.swift; sourceTree = "<group>"; };
+		BB0000142C10000100000014 /* SubtitleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleService.swift; sourceTree = "<group>"; };
+		BB0000152C10000100000015 /* MovieService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovieService.swift; sourceTree = "<group>"; };
+		BB0000162C10000100000016 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		BB0000172C10000100000017 /* TMDBAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TMDBAdapter.swift; sourceTree = "<group>"; };
+		BB0000182C10000100000018 /* Phim4KAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phim4KAdapter.swift; sourceTree = "<group>"; };
+		BB0000192C10000100000019 /* AniMapperAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AniMapperAdapter.swift; sourceTree = "<group>"; };
+		BB00001A2C1000010000001A /* CinemetaAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemetaAdapter.swift; sourceTree = "<group>"; };
+		BB00001B2C1000010000001B /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		BB00001C2C1000010000001C /* CacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheManager.swift; sourceTree = "<group>"; };
+		BB00001D2C1000010000001D /* Formatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formatters.swift; sourceTree = "<group>"; };
+		BB00001E2C1000010000001E /* Validators.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Validators.swift; sourceTree = "<group>"; };
+		BB00001F2C1000010000001F /* HapticFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticFeedback.swift; sourceTree = "<group>"; };
+		BB0000202C10000100000020 /* AsyncPosterImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncPosterImage.swift; sourceTree = "<group>"; };
+		BB0000212C10000100000021 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
+		BB0000222C10000100000022 /* LoadingSpinnerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingSpinnerView.swift; sourceTree = "<group>"; };
+		BB0000232C10000100000023 /* ShimmerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShimmerView.swift; sourceTree = "<group>"; };
+		BB0000242C10000100000024 /* BadgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BadgeView.swift; sourceTree = "<group>"; };
+		BB0000252C10000100000025 /* TopNavigationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopNavigationBar.swift; sourceTree = "<group>"; };
+		BB0000262C10000100000026 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		BB0000272C10000100000027 /* SearchOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchOverlayView.swift; sourceTree = "<group>"; };
+		BB0000282C10000100000028 /* GlassSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassSettingsSheet.swift; sourceTree = "<group>"; };
+		BB0000292C10000100000029 /* NotificationDropdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationDropdownView.swift; sourceTree = "<group>"; };
+		BB00002A2C1000010000002A /* MovieCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovieCardView.swift; sourceTree = "<group>"; };
+		BB00002B2C1000010000002B /* MovieRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovieRowView.swift; sourceTree = "<group>"; };
+		BB00002C2C1000010000002C /* HeroBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeroBannerView.swift; sourceTree = "<group>"; };
+		BB00002D2C1000010000002D /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		BB00002E2C1000010000002E /* NewAndPopularView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewAndPopularView.swift; sourceTree = "<group>"; };
+		BB00002F2C1000010000002F /* CastCrewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CastCrewView.swift; sourceTree = "<group>"; };
+		BB0000302C10000100000030 /* EpisodeListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeListView.swift; sourceTree = "<group>"; };
+		BB0000312C10000100000031 /* MovieDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MovieDetailSheet.swift; sourceTree = "<group>"; };
+		BB0000322C10000100000032 /* SubtitleOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtitleOverlayView.swift; sourceTree = "<group>"; };
+		BB0000332C10000100000033 /* PlayerControlsOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerControlsOverlay.swift; sourceTree = "<group>"; };
+		BB0000342C10000100000034 /* NativeHLSPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHLSPlayer.swift; sourceTree = "<group>"; };
+		BB0000352C10000100000035 /* EmbedPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbedPlayerView.swift; sourceTree = "<group>"; };
+		BB0000362C10000100000036 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
+		BB0000372C10000100000037 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		BB0000382C10000100000038 /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
+		BB0000392C10000100000039 /* ForgotPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordView.swift; sourceTree = "<group>"; };
+		BB00003A2C1000010000003A /* AuthPromptModalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthPromptModalView.swift; sourceTree = "<group>"; };
+		BB00003B2C1000010000003B /* WatchHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHistoryView.swift; sourceTree = "<group>"; };
+		BB00003C2C1000010000003C /* MyListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyListView.swift; sourceTree = "<group>"; };
+		BB00003D2C1000010000003D /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		BB00003E2C1000010000003E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DD0000012C10000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		EE0000012C10000100000001 = {
+			isa = PBXGroup;
+			children = (
+				EE0000022C10000100000002 /* RytoxGroup */,
+				EE0000032C10000100000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		EE0000022C10000100000002 /* RytoxGroup */ = {
+			isa = PBXGroup;
+			children = (
+				EE0000042C10000100000004 /* App */,
+				EE0000052C10000100000005 /* Config */,
+				EE0000062C10000100000006 /* DesignSystem */,
+				EE0000072C10000100000007 /* Models */,
+				EE0000082C10000100000008 /* State */,
+				EE0000092C10000100000009 /* Networking */,
+				EE00000A2C1000010000000A /* Views */,
+				EE00000B2C1000010000000B /* Utils */,
+				BB00003E2C1000010000003E /* Assets.xcassets */,
+			);
+			path = RytoxGroup;
+			sourceTree = "<group>";
+		};
+		EE0000032C10000100000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CC0000012C10000100000001 /* RytoxGroup.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		EE0000042C10000100000004 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000012C10000100000001 /* RytoxGroupApp.swift */,
+				BB0000022C10000100000002 /* ContentView.swift */,
+				BB0000002C10000100000000 /* Info.plist */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		EE0000052C10000100000005 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000032C10000100000003 /* AppConfig.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		EE0000062C10000100000006 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000042C10000100000004 /* LiquidGlassTheme.swift */,
+				BB0000052C10000100000005 /* LiquidGlassModifier.swift */,
+				BB0000062C10000100000006 /* GlassButtonStyle.swift */,
+				BB0000072C10000100000007 /* Typography.swift */,
+				BB0000082C10000100000008 /* ColorTokens.swift */,
+				BB0000092C10000100000009 /* AmbientBackgroundView.swift */,
+				BB00000A2C1000010000000A /* SpringAnimations.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		EE0000072C10000100000007 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				BB00000B2C1000010000000B /* MovieModels.swift */,
+				BB00000C2C1000010000000C /* AuthModels.swift */,
+				BB00000D2C1000010000000D /* UserModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		EE0000082C10000100000008 /* State */ = {
+			isa = PBXGroup;
+			children = (
+				BB00000E2C1000010000000E /* AuthManager.swift */,
+				BB00000F2C1000010000000F /* PlaybackManager.swift */,
+				BB0000102C10000100000010 /* FavoritesManager.swift */,
+			);
+			path = State;
+			sourceTree = "<group>";
+		};
+		EE0000092C10000100000009 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000112C10000100000011 /* APIEndpoint.swift */,
+				BB0000122C10000100000012 /* NetworkClient.swift */,
+				BB0000132C10000100000013 /* ImageProxy.swift */,
+				BB0000142C10000100000014 /* SubtitleService.swift */,
+				BB0000152C10000100000015 /* MovieService.swift */,
+				BB0000162C10000100000016 /* AuthService.swift */,
+				EE00000C2C1000010000000C /* Adapters */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		EE00000C2C1000010000000C /* Adapters */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000172C10000100000017 /* TMDBAdapter.swift */,
+				BB0000182C10000100000018 /* Phim4KAdapter.swift */,
+				BB0000192C10000100000019 /* AniMapperAdapter.swift */,
+				BB00001A2C1000010000001A /* CinemetaAdapter.swift */,
+			);
+			path = Adapters;
+			sourceTree = "<group>";
+		};
+		EE00000A2C1000010000000A /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				EE00000D2C1000010000000D /* Navigation */,
+				EE00000E2C1000010000000E /* Home */,
+				EE00000F2C1000010000000F /* Detail */,
+				EE0000102C10000100000010 /* Player */,
+				EE0000112C10000100000011 /* Auth */,
+				EE0000122C10000100000012 /* Profile */,
+				EE0000132C10000100000013 /* Shared */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		EE00000D2C1000010000000D /* Navigation */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000252C10000100000025 /* TopNavigationBar.swift */,
+				BB0000262C10000100000026 /* MainTabView.swift */,
+				BB0000272C10000100000027 /* SearchOverlayView.swift */,
+				BB0000282C10000100000028 /* GlassSettingsSheet.swift */,
+				BB0000292C10000100000029 /* NotificationDropdownView.swift */,
+			);
+			path = Navigation;
+			sourceTree = "<group>";
+		};
+		EE00000E2C1000010000000E /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				BB00002A2C1000010000002A /* MovieCardView.swift */,
+				BB00002B2C1000010000002B /* MovieRowView.swift */,
+				BB00002C2C1000010000002C /* HeroBannerView.swift */,
+				BB00002D2C1000010000002D /* HomeView.swift */,
+				BB00002E2C1000010000002E /* NewAndPopularView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		EE00000F2C1000010000000F /* Detail */ = {
+			isa = PBXGroup;
+			children = (
+				BB00002F2C1000010000002F /* CastCrewView.swift */,
+				BB0000302C10000100000030 /* EpisodeListView.swift */,
+				BB0000312C10000100000031 /* MovieDetailSheet.swift */,
+			);
+			path = Detail;
+			sourceTree = "<group>";
+		};
+		EE0000102C10000100000010 /* Player */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000322C10000100000032 /* SubtitleOverlayView.swift */,
+				BB0000332C10000100000033 /* PlayerControlsOverlay.swift */,
+				BB0000342C10000100000034 /* NativeHLSPlayer.swift */,
+				BB0000352C10000100000035 /* EmbedPlayerView.swift */,
+				BB0000362C10000100000036 /* PlayerView.swift */,
+			);
+			path = Player;
+			sourceTree = "<group>";
+		};
+		EE0000112C10000100000011 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000372C10000100000037 /* LoginView.swift */,
+				BB0000382C10000100000038 /* RegisterView.swift */,
+				BB0000392C10000100000039 /* ForgotPasswordView.swift */,
+				BB00003A2C1000010000003A /* AuthPromptModalView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		EE0000122C10000100000012 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				BB00003B2C1000010000003B /* WatchHistoryView.swift */,
+				BB00003C2C1000010000003C /* MyListView.swift */,
+				BB00003D2C1000010000003D /* ProfileView.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		EE0000132C10000100000013 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				BB0000202C10000100000020 /* AsyncPosterImage.swift */,
+				BB0000212C10000100000021 /* GlassCard.swift */,
+				BB0000222C10000100000022 /* LoadingSpinnerView.swift */,
+				BB0000232C10000100000023 /* ShimmerView.swift */,
+				BB0000242C10000100000024 /* BadgeView.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		EE00000B2C1000010000000B /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				BB00001B2C1000010000001B /* KeychainHelper.swift */,
+				BB00001C2C1000010000001C /* CacheManager.swift */,
+				BB00001D2C1000010000001D /* Formatters.swift */,
+				BB00001E2C1000010000001E /* Validators.swift */,
+				BB00001F2C1000010000001F /* HapticFeedback.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FF0000012C10000100000001 /* RytoxGroup */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = GG0000012C10000100000001 /* Build configuration list for PBXNativeTarget "RytoxGroup" */;
+			buildPhases = (
+				HH0000012C10000100000001 /* Sources */,
+				DD0000012C10000100000001 /* Frameworks */,
+				II0000012C10000100000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RytoxGroup;
+			productName = RytoxGroup;
+			productReference = CC0000012C10000100000001 /* RytoxGroup.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000012C10000100000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					FF0000012C10000100000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = GG0000022C10000100000002 /* Build configuration list for PBXProject "RytoxGroup" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = EE0000012C10000100000001;
+			productRefGroup = EE0000032C10000100000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FF0000012C10000100000001 /* RytoxGroup */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		II0000012C10000100000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA00003E2C1000010000003E /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		HH0000012C10000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000012C10000100000001 /* RytoxGroupApp.swift in Sources */,
+				AA0000022C10000100000002 /* ContentView.swift in Sources */,
+				AA0000032C10000100000003 /* AppConfig.swift in Sources */,
+				AA0000042C10000100000004 /* LiquidGlassTheme.swift in Sources */,
+				AA0000052C10000100000005 /* LiquidGlassModifier.swift in Sources */,
+				AA0000062C10000100000006 /* GlassButtonStyle.swift in Sources */,
+				AA0000072C10000100000007 /* Typography.swift in Sources */,
+				AA0000082C10000100000008 /* ColorTokens.swift in Sources */,
+				AA0000092C10000100000009 /* AmbientBackgroundView.swift in Sources */,
+				AA00000A2C1000010000000A /* SpringAnimations.swift in Sources */,
+				AA00000B2C1000010000000B /* MovieModels.swift in Sources */,
+				AA00000C2C1000010000000C /* AuthModels.swift in Sources */,
+				AA00000D2C1000010000000D /* UserModels.swift in Sources */,
+				AA00000E2C1000010000000E /* AuthManager.swift in Sources */,
+				AA00000F2C1000010000000F /* PlaybackManager.swift in Sources */,
+				AA0000102C10000100000010 /* FavoritesManager.swift in Sources */,
+				AA0000112C10000100000011 /* APIEndpoint.swift in Sources */,
+				AA0000122C10000100000012 /* NetworkClient.swift in Sources */,
+				AA0000132C10000100000013 /* ImageProxy.swift in Sources */,
+				AA0000142C10000100000014 /* SubtitleService.swift in Sources */,
+				AA0000152C10000100000015 /* MovieService.swift in Sources */,
+				AA0000162C10000100000016 /* AuthService.swift in Sources */,
+				AA0000172C10000100000017 /* TMDBAdapter.swift in Sources */,
+				AA0000182C10000100000018 /* Phim4KAdapter.swift in Sources */,
+				AA0000192C10000100000019 /* AniMapperAdapter.swift in Sources */,
+				AA00001A2C1000010000001A /* CinemetaAdapter.swift in Sources */,
+				AA00001B2C1000010000001B /* KeychainHelper.swift in Sources */,
+				AA00001C2C1000010000001C /* CacheManager.swift in Sources */,
+				AA00001D2C1000010000001D /* Formatters.swift in Sources */,
+				AA00001E2C1000010000001E /* Validators.swift in Sources */,
+				AA00001F2C1000010000001F /* HapticFeedback.swift in Sources */,
+				AA0000202C10000100000020 /* AsyncPosterImage.swift in Sources */,
+				AA0000212C10000100000021 /* GlassCard.swift in Sources */,
+				AA0000222C10000100000022 /* LoadingSpinnerView.swift in Sources */,
+				AA0000232C10000100000023 /* ShimmerView.swift in Sources */,
+				AA0000242C10000100000024 /* BadgeView.swift in Sources */,
+				AA0000252C10000100000025 /* TopNavigationBar.swift in Sources */,
+				AA0000262C10000100000026 /* MainTabView.swift in Sources */,
+				AA0000272C10000100000027 /* SearchOverlayView.swift in Sources */,
+				AA0000282C10000100000028 /* GlassSettingsSheet.swift in Sources */,
+				AA0000292C10000100000029 /* NotificationDropdownView.swift in Sources */,
+				AA00002A2C1000010000002A /* MovieCardView.swift in Sources */,
+				AA00002B2C1000010000002B /* MovieRowView.swift in Sources */,
+				AA00002C2C1000010000002C /* HeroBannerView.swift in Sources */,
+				AA00002D2C1000010000002D /* HomeView.swift in Sources */,
+				AA00002E2C1000010000002E /* NewAndPopularView.swift in Sources */,
+				AA00002F2C1000010000002F /* CastCrewView.swift in Sources */,
+				AA0000302C10000100000030 /* EpisodeListView.swift in Sources */,
+				AA0000312C10000100000031 /* MovieDetailSheet.swift in Sources */,
+				AA0000322C10000100000032 /* SubtitleOverlayView.swift in Sources */,
+				AA0000332C10000100000033 /* PlayerControlsOverlay.swift in Sources */,
+				AA0000342C10000100000034 /* NativeHLSPlayer.swift in Sources */,
+				AA0000352C10000100000035 /* EmbedPlayerView.swift in Sources */,
+				AA0000362C10000100000036 /* PlayerView.swift in Sources */,
+				AA0000372C10000100000037 /* LoginView.swift in Sources */,
+				AA0000382C10000100000038 /* RegisterView.swift in Sources */,
+				AA0000392C10000100000039 /* ForgotPasswordView.swift in Sources */,
+				AA00003A2C1000010000003A /* AuthPromptModalView.swift in Sources */,
+				AA00003B2C1000010000003B /* WatchHistoryView.swift in Sources */,
+				AA00003C2C1000010000003C /* MyListView.swift in Sources */,
+				AA00003D2C1000010000003D /* ProfileView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		JJ0000012C10000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDEFINED_VARIABLES = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		JJ0000022C10000100000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDEFINED_VARIABLES = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		JJ0000032C10000100000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RytoxGroup/App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RytoxGroup;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rytoxgroup.streaming;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		JJ0000042C10000100000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = RytoxGroup/App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RytoxGroup;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rytoxgroup.streaming;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		GG0000012C10000100000001 /* Build configuration list for PBXNativeTarget "RytoxGroup" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				JJ0000032C10000100000003 /* Debug */,
+				JJ0000042C10000100000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		GG0000022C10000100000002 /* Build configuration list for PBXProject "RytoxGroup" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				JJ0000012C10000100000001 /* Debug */,
+				JJ0000022C10000100000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = 000000012C10000100000001 /* Project object */;
+}

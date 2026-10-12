@@ -62,7 +62,7 @@ export function CinematicPlayerOverlay() {
   return (
     <motion.div
       className={`fixed inset-0 z-[200] flex flex-col justify-center bg-black overflow-hidden select-none ${
-        !controlsVisible && playbackStarted ? "cursor-none" : ""
+        !controlsVisible ? "player-cursor-hidden cursor-none" : ""
       }`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

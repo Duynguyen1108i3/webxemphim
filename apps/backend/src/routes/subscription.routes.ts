@@ -94,8 +94,14 @@ router.post("/simulate-payment", async (req, res, next) => {
     }).parse(req.body);
 
     try {
+      const existingSub = await prisma.subscription.findFirst({
+        where: { id: body.subscriptionId, userId: req.user!.id }
+      });
+      if (!existingSub) {
+        return res.status(403).json({ error: "Không có quyền truy cập gói thuê bao này", code: "FORBIDDEN" });
+      }
       const sub = await prisma.subscription.update({
-        where: { id: body.subscriptionId },
+        where: { id: existingSub.id },
         data: { status: "ACTIVE" }
       });
 

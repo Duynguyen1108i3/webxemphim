@@ -1,7 +1,14 @@
 import { z } from "zod";
 
 export const updateAvatarSchema = z.object({
-  avatarUrl: z.string().min(1, "Ảnh đại diện không được để trống").max(5_000_000, "Dung lượng ảnh quá lớn")
+  avatarUrl: z
+    .string()
+    .min(1, "Ảnh đại diện không được để trống")
+    .max(3_000_000, "Dung lượng ảnh quá lớn (tối đa 3MB)")
+    .refine(
+      (val) => /^(https?:\/\/|\/|from-|data:image\/(jpeg|jpg|png|webp|gif);base64,)/i.test(val.trim()),
+      "Định dạng ảnh đại diện không hợp lệ hoặc không an toàn"
+    )
 });
 
 export const updateUsernameSchema = z.object({

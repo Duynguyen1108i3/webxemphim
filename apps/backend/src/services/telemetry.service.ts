@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma.js";
+import { prisma, isDbCircuitOpen, markDbOffline } from "../lib/prisma.js";
 
 export interface ActiveViewerSession {
   sessionId: string;
@@ -26,9 +26,107 @@ export interface ActiveViewerSession {
   lastHeartbeatAt: Date;
 }
 
+export interface UserPresenceRecord {
+  userId: string;
+  email?: string;
+  username?: string;
+  currentPath?: string;
+  lastSeenAt: Date;
+}
+
 class TelemetryService {
   private activeSessions = new Map<string, ActiveViewerSession>();
+  private userPresenceMap = new Map<string, UserPresenceRecord>();
   private lastDbSyncMap = new Map<string, number>();
+  private cachedRecentHistory: any[] = [];
+  private lastHistoryFetchAt = 0;
+
+  public recordUserPresence(data: {
+    userId: string;
+    email?: string;
+    username?: string;
+    currentPath?: string;
+    offline?: boolean;
+  }) {
+    if (!data.userId && !data.email) return;
+    if (data.offline) {
+      this.removeUserPresence(data.userId, data.email);
+      return;
+    }
+    const now = new Date();
+    const record: UserPresenceRecord = {
+      userId: data.userId,
+      email: data.email?.toLowerCase(),
+      username: data.username,
+      currentPath: data.currentPath,
+      lastSeenAt: now
+    };
+    if (data.userId) {
+      this.userPresenceMap.set(data.userId, record);
+    }
+    if (data.email) {
+      this.userPresenceMap.set(data.email.toLowerCase(), record);
+    }
+  }
+
+  public removeUserPresence(userId?: string, email?: string) {
+    if (userId) this.userPresenceMap.delete(userId);
+    if (email) this.userPresenceMap.delete(email.toLowerCase());
+    for (const [sid, session] of this.activeSessions.entries()) {
+      if (
+        (userId && session.userId === userId) ||
+        (email && session.email?.toLowerCase() === email.toLowerCase())
+      ) {
+        this.activeSessions.delete(sid);
+        this.lastDbSyncMap.delete(sid);
+      }
+    }
+  }
+
+  public getUserRealtimeStatus(userId: string, email?: string) {
+    const now = Date.now();
+    const PRESENCE_TIMEOUT_MS = 45_000;
+    const PLAYBACK_TIMEOUT_MS = 35_000;
+    const normalizedEmail = email?.toLowerCase();
+
+    // Check if user is actively watching a movie right now
+    for (const session of this.activeSessions.values()) {
+      if (now - session.lastHeartbeatAt.getTime() <= PLAYBACK_TIMEOUT_MS) {
+        if (
+          (userId && session.userId === userId) ||
+          (normalizedEmail && session.email?.toLowerCase() === normalizedEmail)
+        ) {
+          return {
+            isOnline: true,
+            isWatching: true,
+            watchingMovieTitle: session.movieTitle || "Đang xem phim",
+            lastSeenAt: session.lastHeartbeatAt.toISOString()
+          };
+        }
+      }
+    }
+
+    const presence =
+      (userId ? this.userPresenceMap.get(userId) : undefined) ||
+      (normalizedEmail ? this.userPresenceMap.get(normalizedEmail) : undefined);
+
+    if (presence) {
+      const isOnline = now - presence.lastSeenAt.getTime() <= PRESENCE_TIMEOUT_MS;
+      return {
+        isOnline,
+        isWatching: false,
+        watchingMovieTitle: null,
+        lastSeenAt: presence.lastSeenAt.toISOString()
+      };
+    }
+
+    return {
+      isOnline: false,
+      isWatching: false,
+      watchingMovieTitle: null,
+      lastSeenAt: null
+    };
+  }
 
   public recordHeartbeat(data: {
     sessionId: string;
@@ -53,6 +151,14 @@ class TelemetryService {
     ipAddress?: string;
   }) {
     const { sessionId, stopped } = data;
+
+    if (data.userId || data.email) {
+      this.recordUserPresence({
+        userId: data.userId || "",
+        email: data.email,
+        username: data.username
+      });
+    }
 
     // If client signaled playback stopped, immediately remove session
     if (stopped) {
@@ -98,7 +204,7 @@ class TelemetryService {
 
     // Sync to PostgreSQL DB (prisma.watchHistory) periodically if user has profileId
     const lastSync = this.lastDbSyncMap.get(sessionId) || 0;
-    if (data.profileId && data.movieId && currentTime > 5 && Date.now() - lastSync > 25_000) {
+    if (!isDbCircuitOpen() && data.profileId && data.movieId && currentTime > 5 && Date.now() - lastSync > 25_000) {
       this.lastDbSyncMap.set(sessionId, Date.now());
       this.syncWatchHistoryToDb(data.profileId, data.movieId, currentTime, duration, data.episodeId);
     }
@@ -111,6 +217,7 @@ class TelemetryService {
     duration: number,
     episodeId?: string
   ) {
+    if (isDbCircuitOpen()) return;
     try {
       await prisma.watchHistory.upsert({
         where: {
@@ -135,14 +242,14 @@ class TelemetryService {
           completed: currentTime / duration > 0.9
         }
       });
-    } catch (e) {
-      // Ignore sync error if profile/movie not yet in Postgres
+    } catch {
+      markDbOffline();
     }
   }
 
   public async getActiveTelemetry() {
     const now = Date.now();
-    const TIMEOUT_MS = 20_000; // Sessions without heartbeat in 20s are deemed offline
+    const TIMEOUT_MS = 35_000; // Sessions without heartbeat in 35s are deemed offline
 
     // Clean up stale sessions
     for (const [id, s] of this.activeSessions.entries()) {
@@ -153,7 +260,6 @@ class TelemetryService {
     }
 
     const allSessions = Array.from(this.activeSessions.values());
-    // Alive sessions: any session reporting heartbeat within 20s (both playing and paused)
     const aliveSessions = allSessions
       .filter((s) => now - s.lastHeartbeatAt.getTime() <= TIMEOUT_MS)
       .sort((a, b) => b.lastHeartbeatAt.getTime() - a.lastHeartbeatAt.getTime());
@@ -172,41 +278,43 @@ class TelemetryService {
     }
     const topWatchingMovies = Array.from(movieCountMap.values()).sort((a, b) => b.count - a.count);
 
-    // Get real recent watch history from PostgreSQL
-    let recentHistory: any[] = [];
-    try {
-      const dbHistory = await prisma.watchHistory.findMany({
-        take: 10,
-        orderBy: { lastWatchedAt: "desc" },
-        include: {
-          movie: {
-            select: { id: true, title: true, slug: true, posterUrl: true, backdropUrl: true, releaseYear: true }
-          },
-          profile: {
-            include: {
-              user: {
-                select: { id: true, username: true, email: true, avatarUrl: true, role: true }
+    // Get real recent watch history from PostgreSQL (cached for 15s & skipped when DB circuit is open)
+    if (!isDbCircuitOpen() && now - this.lastHistoryFetchAt > 15_000) {
+      this.lastHistoryFetchAt = now;
+      try {
+        const dbHistory = await prisma.watchHistory.findMany({
+          take: 10,
+          orderBy: { lastWatchedAt: "desc" },
+          include: {
+            movie: {
+              select: { id: true, title: true, slug: true, posterUrl: true, backdropUrl: true, releaseYear: true }
+            },
+            profile: {
+              include: {
+                user: {
+                  select: { id: true, username: true, email: true, avatarUrl: true, role: true }
+                }
               }
             }
           }
-        }
-      });
+        });
 
-      recentHistory = dbHistory.map((h) => ({
-        id: h.id,
-        movieTitle: h.movie?.title || "Phim",
-        posterUrl: h.movie?.posterUrl,
-        username: h.profile?.user?.username || h.profile?.name || "Người xem",
-        email: h.profile?.user?.email,
-        avatarUrl: h.profile?.avatarUrl || h.profile?.user?.avatarUrl,
-        progressSeconds: h.progressSeconds,
-        durationSeconds: h.durationSeconds,
-        progressPercent: h.durationSeconds > 0 ? Math.round((h.progressSeconds / h.durationSeconds) * 100) : 0,
-        completed: h.completed,
-        lastWatchedAt: h.lastWatchedAt
-      }));
-    } catch {
-      recentHistory = [];
+        this.cachedRecentHistory = dbHistory.map((h) => ({
+          id: h.id,
+          movieTitle: h.movie?.title || "Phim",
+          posterUrl: h.movie?.posterUrl,
+          username: h.profile?.user?.username || h.profile?.name || "Người xem",
+          email: h.profile?.user?.email,
+          avatarUrl: h.profile?.avatarUrl || h.profile?.user?.avatarUrl,
+          progressSeconds: h.progressSeconds,
+          durationSeconds: h.durationSeconds,
+          progressPercent: h.durationSeconds > 0 ? Math.round((h.progressSeconds / h.durationSeconds) * 100) : 0,
+          completed: h.completed,
+          lastWatchedAt: h.lastWatchedAt
+        }));
+      } catch {
+        markDbOffline();
+      }
     }
 
     return {
@@ -214,7 +322,7 @@ class TelemetryService {
       totalTabsOpen: aliveSessions.length,
       activeViewers: aliveSessions,
       topWatchingMovies,
-      recentHistory,
+      recentHistory: this.cachedRecentHistory,
       timestamp: new Date().toISOString()
     };
   }

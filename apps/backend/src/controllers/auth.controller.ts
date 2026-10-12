@@ -3,6 +3,7 @@ import { login, refreshSession, register, revokeSession, sendSignupOtp, sendRese
 import { registerSchema, loginSchema, sendOtpSchema, verifyResetCodeSchema } from "../schemas/auth.schema.js";
 import { ApiError } from "../middleware/error.middleware.js";
 import { generateToken } from "../middleware/security.middleware.js";
+import { telemetryService } from "../services/telemetry.service.js";
 
 export function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
   const sameSite = process.env.AUTH_COOKIE_SAME_SITE === "none" ? "none" as const : process.env.AUTH_COOKIE_SAME_SITE === "strict" ? "strict" as const : "lax" as const;
@@ -32,6 +33,11 @@ export async function handleRegister(req: Request, res: Response, next: NextFunc
   try {
     const input = registerSchema.parse(req.body);
     const session = await register(input);
+    telemetryService.recordUserPresence({
+      userId: session.user.id,
+      email: session.user.email,
+      username: session.user.username
+    });
     setAuthCookies(res, session.accessToken, session.refreshToken);
     res.status(201).json({ user: session.user });
   } catch (error) {
@@ -73,6 +79,11 @@ export async function handleLogin(req: Request, res: Response, next: NextFunctio
   try {
     const input = loginSchema.parse(req.body);
     const session = await login({ ...input, userAgent: req.get("user-agent"), ipAddress: req.ip });
+    telemetryService.recordUserPresence({
+      userId: session.user.id,
+      email: session.user.email,
+      username: session.user.username
+    });
     setAuthCookies(res, session.accessToken, session.refreshToken);
     res.json({ user: session.user });
   } catch (error) {
@@ -82,6 +93,9 @@ export async function handleLogin(req: Request, res: Response, next: NextFunctio
 
 export async function handleLogout(req: Request, res: Response, next: NextFunction) {
   try {
+    if (req.user) {
+      telemetryService.removeUserPresence(req.user.id, req.user.email);
+    }
     await revokeSession(req.cookies?.refreshToken);
     clearAuthCookies(res);
     res.status(204).send();
@@ -95,6 +109,13 @@ export async function handleRefresh(req: Request, res: Response, next: NextFunct
     const refreshToken = req.cookies?.refreshToken;
     if (!refreshToken) throw new ApiError(401, "Refresh token is required", "INVALID_REFRESH_TOKEN");
     const session = await refreshSession(refreshToken);
+    if (session.user) {
+      telemetryService.recordUserPresence({
+        userId: session.user.id,
+        email: session.user.email,
+        username: session.user.username
+      });
+    }
     setAuthCookies(res, session.accessToken, session.refreshToken);
     res.json({ user: session.user });
   } catch (error) {

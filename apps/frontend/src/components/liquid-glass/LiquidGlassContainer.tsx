@@ -32,7 +32,7 @@ export const LiquidGlassContainer = React.forwardRef<
   children,
   className = "",
   style = {},
-  disableWebGL = false,
+  disableWebGL = true,
   ...restProps
 }, forwardedRef) => {
   const containerRef = useRef<HTMLDivElement>(null);

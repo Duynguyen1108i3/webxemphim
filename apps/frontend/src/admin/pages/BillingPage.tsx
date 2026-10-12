@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CreditCard, QrCode, Smartphone, DollarSign, Download, Search, CheckCircle2, AlertCircle, RefreshCw, ArrowUpRight } from "lucide-react";
+import { CreditCard, QrCode, Smartphone, DollarSign, Download, Search, CheckCircle2, RefreshCw, X } from "lucide-react";
 import { api } from "../lib/adminApi";
+import { LiquidGlassButton } from "../../components/liquid-glass";
 
 interface PaymentItem {
   id: string;
@@ -32,15 +33,26 @@ export function BillingPage() {
   const [search, setSearch] = useState("");
   const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data, isLoading, refetch } = useQuery<BillingData>({
     queryKey: ["admin-billing"],
-    queryFn: async () => (await api.get("/admin/billing")).data
+    queryFn: async () => (await api.get("/admin/billing")).data,
+    retry: 0
   });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setTimeout(() => {
+      setIsRefreshing(false);
+      showToast("Đã đồng bộ dữ liệu giao dịch mới nhất!");
+    }, 300);
   };
 
   const payments = data?.payments || [];
@@ -59,8 +71,8 @@ export function BillingPage() {
     <div className="space-y-6">
       {/* Toast */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl bg-[#181a24] border border-emerald-500/40 text-emerald-300 shadow-2xl backdrop-blur-2xl animate-in fade-in duration-200">
-          <CheckCircle2 size={18} className="text-emerald-400" />
+        <div className="fixed bottom-20 md:bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl liquid-glass border-emerald-500/40 text-emerald-300 shadow-2xl animate-in fade-in duration-200">
+          <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
           <span className="text-sm font-semibold">{toastMessage}</span>
         </div>
       )}
@@ -75,18 +87,20 @@ export function BillingPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="h-10 w-10 inline-flex items-center justify-center rounded-full glass-button text-white transition active:scale-95 cursor-pointer"
+          <LiquidGlassButton
+            shape="circle"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-10 w-10 text-white cursor-pointer p-0"
             title="Làm mới"
+            aria-label="Làm mới"
           >
-            <RefreshCw size={15} />
-          </button>
+            <RefreshCw size={15} className={isRefreshing ? "animate-spin" : ""} />
+          </LiquidGlassButton>
           <button
             type="button"
             onClick={() => showToast("Đã xuất báo cáo doanh thu thành công!")}
-            className="h-10 px-5 inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl cursor-pointer"
+            className="nf-button h-10 px-5 inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl cursor-pointer"
           >
             <Download size={14} />
             <span>Xuất Báo Cáo</span>
@@ -161,9 +175,10 @@ export function BillingPage() {
           <div className="flex items-center gap-1.5 p-1 rounded-full bg-white/5 border border-white/10 text-xs">
             {(["ALL", "VIETQR", "MOMO", "VISA"] as const).map((m) => (
               <button
+                type="button"
                 key={m}
                 onClick={() => setMethodFilter(m)}
-                className={`px-3.5 py-1.5 rounded-full font-bold transition cursor-pointer ${
+                className={`nf-button min-h-0 h-8 px-4 rounded-full font-bold transition cursor-pointer ${
                   methodFilter === m
                     ? "bg-white text-black shadow-xl"
                     : "text-white/60 hover:text-white hover:bg-white/10"
@@ -176,14 +191,24 @@ export function BillingPage() {
 
           {/* Search input */}
           <div className="relative w-full sm:w-72">
-            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
             <input
               type="text"
               placeholder="Tìm theo email hoặc mã GD..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-white/30 placeholder-white/30"
+              className="h-10 w-full pl-10 pr-8 rounded-full bg-white/5 border border-white/15 text-xs text-white focus:outline-none focus:border-white/35 placeholder-white/40 backdrop-blur-md transition"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="nf-icon absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-white/50 hover:text-white hover:bg-white/10 cursor-pointer"
+                title="Xóa tìm kiếm"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -227,7 +252,7 @@ export function BillingPage() {
                     <td className="py-3.5 px-4 font-mono font-bold text-white/90">{p.id}</td>
                     <td className="py-3.5 px-4 font-medium text-white">{p.userEmail}</td>
                     <td className="py-3.5 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                         p.tier === "PREMIUM" ? "bg-purple-500/15 text-purple-300 border border-purple-500/30" :
                         p.tier === "STANDARD" ? "bg-blue-500/15 text-blue-300 border border-blue-500/30" :
                         "bg-zinc-500/15 text-zinc-300 border border-zinc-500/30"
@@ -250,8 +275,9 @@ export function BillingPage() {
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button
+                        type="button"
                         onClick={() => setSelectedPayment(p)}
-                        className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition font-medium"
+                        className="nf-button min-h-0 h-8 px-3.5 rounded-full glass-button text-xs text-white/85 hover:text-white transition font-bold cursor-pointer"
                       >
                         Chi tiết
                       </button>
@@ -266,11 +292,18 @@ export function BillingPage() {
 
       {/* Transaction Detail Modal */}
       {selectedPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-white/15 bg-[#141620] p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-3xl liquid-glass p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <h4 className="font-bold text-white text-base">Chi Tiết Giao Dịch {selectedPayment.id}</h4>
-              <button onClick={() => setSelectedPayment(null)} className="text-white/40 hover:text-white">✕</button>
+              <button
+                type="button"
+                onClick={() => setSelectedPayment(null)}
+                className="nf-icon rounded-full p-2 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer"
+                aria-label="Đóng"
+              >
+                <X size={18} />
+              </button>
             </div>
 
             <div className="space-y-2.5 text-xs">
@@ -297,17 +330,17 @@ export function BillingPage() {
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
+              <LiquidGlassButton
+                shape="pill"
                 onClick={() => setSelectedPayment(null)}
-                className="h-10 px-5 inline-flex items-center justify-center rounded-full glass-button text-xs font-bold text-white transition cursor-pointer"
+                className="h-10 px-5 text-xs font-bold text-white cursor-pointer"
               >
                 Đóng
-              </button>
+              </LiquidGlassButton>
               <button
                 type="button"
                 onClick={() => handleRefund(selectedPayment.id)}
-                className="h-10 px-5 inline-flex items-center justify-center rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-bold text-red-400 transition cursor-pointer"
+                className="nf-button h-10 px-5 inline-flex items-center justify-center rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-bold text-red-400 transition cursor-pointer"
               >
                 Hoàn tiền giao dịch
               </button>
@@ -318,3 +351,4 @@ export function BillingPage() {
     </div>
   );
 }
+

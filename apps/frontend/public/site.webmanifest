@@ -1,0 +1,22 @@
+{
+  "name": "RytoxGroup — Xem Phim, Phim Bộ & Anime 4K",
+  "short_name": "RytoxGroup",
+  "description": "Nền tảng xem phim điện ảnh, phim bộ truyền hình và Anime 4K Ultra HD Vietsub trực tuyến.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#141414",
+  "lang": "vi-VN",
+  "icons": [
+    {
+      "src": "/favicon.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/favicon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

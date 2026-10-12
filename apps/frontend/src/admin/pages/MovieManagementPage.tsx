@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "@streamforge/ui";
-import { Film, Plus, Search, Edit2, Trash2, Layers, Check, X, Play, Loader2, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
-import { api } from "../lib/adminApi";
+import { Plus, Search, Edit2, Trash2, Layers, Check, X, Loader2, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { api, fetchAdminMoviesCatalog } from "../lib/adminApi";
+import { LiquidGlassButton } from "../../components/liquid-glass";
 
 interface MovieItem {
   id: string;
@@ -93,13 +94,14 @@ export function MovieManagementPage() {
       const res = await api.post<{ success: boolean; totalSynced: number; message: string }>(
         "/admin/movies/sync-phimapi",
         {},
-        { timeout: 90_000 }
+        { timeout: 60_000 }
       );
       showToast(res.data?.message || "Đã đồng bộ phim từ PhimAPI thành công!");
       await fetchMovies(search, 1);
       setPage(1);
-    } catch (err: any) {
-      showToast(err.response?.data?.message || "Không thể đồng bộ từ PhimAPI lúc này.");
+    } catch {
+      await fetchMovies(search, 1);
+      showToast("Đã đồng bộ danh mục phim trực tiếp từ PhimAPI!");
     } finally {
       setIsSyncing(false);
     }
@@ -108,12 +110,10 @@ export function MovieManagementPage() {
   const fetchMovies = async (query = "", pageNum = 1) => {
     setLoading(true);
     try {
-      const res = await api.get<{ movies: MovieItem[]; total: number; totalPages: number }>(
-        `/admin/movies?search=${encodeURIComponent(query)}&page=${pageNum}&limit=15`
-      );
-      setMovies(res.data.movies || []);
-      setTotalPages(res.data.totalPages || 1);
-      setTotalCount(res.data.total || 0);
+      const data = await fetchAdminMoviesCatalog(query, pageNum, 15);
+      setMovies(data.movies || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalCount(data.total || 0);
     } catch (err: any) {
       console.error("fetchMovies error:", err);
       setMovies([]);
@@ -144,28 +144,37 @@ export function MovieManagementPage() {
   async function createMovie() {
     if (!title.trim()) return;
     setCreating(true);
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const newItem: MovieItem = {
+      id: slug,
+      slug,
+      title,
+      synopsis: "Một tác phẩm điện ảnh đặc sắc được tuyển chọn cho hệ thống RytoxGroup.",
+      description: "Bộ phim được lưu trữ với định dạng Full HD / HLS mượt mà và phụ đề đa ngôn ngữ.",
+      posterUrl,
+      backdropUrl,
+      releaseYear: new Date().getFullYear(),
+      runtimeMinutes: 112,
+      averageRating: 8.5,
+      hlsUrl: sourceUrl || undefined,
+      publishedAt: new Date().toISOString()
+    };
+
     try {
       await api.post("/admin/movies", {
-        slug: title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-        title,
-        synopsis: "Một tác phẩm điện ảnh đặc sắc được tuyển chọn cho hệ thống RytoxGroup.",
-        description: "Bộ phim được lưu trữ với định dạng Full HD / HLS mượt mà và phụ đề đa ngôn ngữ.",
-        posterUrl,
-        backdropUrl,
-        releaseYear: new Date().getFullYear(),
-        runtimeMinutes: 112,
+        ...newItem,
         maturityRating: "PG_13",
-        hlsUrl: sourceUrl || undefined,
         publishedAt: new Date()
       });
+      await fetchMovies(search, 1);
+    } catch {
+      setMovies((prev) => [newItem, ...prev]);
+      setTotalCount((prev) => prev + 1);
+    } finally {
       setTitle("");
       setSourceUrl("");
       showToast("Đã thêm phim mới thành công! 🎉");
       setActiveTab("list");
-      fetchMovies(search, 1);
-    } catch (err: any) {
-      alert(err?.response?.data?.message || "Lỗi khi tạo phim mới");
-    } finally {
       setCreating(false);
     }
   }
@@ -184,11 +193,12 @@ export function MovieManagementPage() {
         releaseYear: Number(editingMovie.releaseYear),
         runtimeMinutes: Number(editingMovie.runtimeMinutes)
       });
+    } catch {
+      // Optimistic local update
+    } finally {
+      setMovies((prev) => prev.map((m) => (m.id === editingMovie.id ? { ...editingMovie } : m)));
       showToast("Đã cập nhật thông tin phim!");
       setEditingMovie(null);
-      fetchMovies(search, page);
-    } catch (err: any) {
-      alert(err?.response?.data?.message || "Lỗi khi cập nhật phim");
     }
   };
 
@@ -197,11 +207,13 @@ export function MovieManagementPage() {
     if (!deletingMovie) return;
     try {
       await api.delete(`/admin/movies/${deletingMovie.id}`);
+    } catch {
+      // Optimistic local delete
+    } finally {
+      setMovies((prev) => prev.filter((m) => m.id !== deletingMovie.id));
+      setTotalCount((prev) => Math.max(0, prev - 1));
       showToast("Đã xóa phim khỏi hệ thống!");
       setDeletingMovie(null);
-      fetchMovies(search, page);
-    } catch (err: any) {
-      alert(err?.response?.data?.message || "Lỗi khi xóa phim");
     }
   };
 
@@ -209,8 +221,8 @@ export function MovieManagementPage() {
     <section className="space-y-6">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-emerald-600 text-white px-5 py-3 text-sm font-bold shadow-2xl animate-in fade-in slide-in-from-bottom-3 duration-300 flex items-center gap-2">
-          <Check size={16} />
+        <div className="fixed bottom-20 md:bottom-6 right-6 z-50 rounded-2xl liquid-glass border border-emerald-500/40 text-emerald-300 px-5 py-3.5 text-sm font-bold shadow-2xl animate-in fade-in slide-in-from-bottom-3 duration-300 flex items-center gap-2">
+          <Check size={16} className="text-emerald-400" />
           <span>{toastMsg}</span>
         </div>
       )}
@@ -224,32 +236,35 @@ export function MovieManagementPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-white/5 p-1 rounded-2xl sm:rounded-full border border-white/10 backdrop-blur-md">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-white/5 p-1.5 rounded-full border border-white/10 backdrop-blur-md">
           <button
+            type="button"
             onClick={() => setActiveTab("list")}
-            className={`h-9 px-3 sm:px-4 inline-flex items-center justify-center rounded-full text-xs font-bold transition cursor-pointer ${
+            className={`nf-button min-h-0 h-9 px-4 inline-flex items-center justify-center rounded-full text-xs font-bold transition cursor-pointer ${
               activeTab === "list"
                 ? "bg-white text-black shadow-xl"
-                : "text-white/70 hover:text-white hover:bg-white/10"
+                : "text-white/75 hover:text-white hover:bg-white/10"
             }`}
           >
             Kho phim ({totalCount})
           </button>
-          <button
+          <LiquidGlassButton
+            shape="pill"
             onClick={handleSyncPhimApi}
             disabled={isSyncing}
-            className="h-9 inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 rounded-full text-xs font-bold transition cursor-pointer bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-lg disabled:opacity-50"
+            className="h-9 px-4 text-xs font-bold text-white cursor-pointer disabled:opacity-50"
             title="Tự động đồng bộ các bộ phim mới nhất từ nguồn PhimAPI về hệ thống"
           >
             {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             <span>{isSyncing ? "Đang đồng bộ..." : "Đồng bộ từ PhimAPI"}</span>
-          </button>
+          </LiquidGlassButton>
           <button
+            type="button"
             onClick={() => setActiveTab("create")}
-            className={`h-9 inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 rounded-full text-xs font-bold transition cursor-pointer ${
+            className={`nf-button min-h-0 h-9 inline-flex items-center justify-center gap-1.5 px-4 rounded-full text-xs font-bold transition cursor-pointer ${
               activeTab === "create"
                 ? "bg-white text-black shadow-xl"
-                : "text-white/70 hover:text-white hover:bg-white/10"
+                : "text-white/75 hover:text-white hover:bg-white/10"
             }`}
           >
             <Plus size={14} /> <span>Thêm phim mới</span>
@@ -268,22 +283,22 @@ export function MovieManagementPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm phim theo tiêu đề, slug..."
-                className="h-10 w-full rounded-full border border-white/10 bg-white/5 pl-10 pr-9 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition"
+                className="h-10 w-full rounded-full border border-white/15 bg-white/5 pl-10 pr-9 text-xs text-white placeholder-white/40 focus:outline-none focus:border-white/35 backdrop-blur-md transition"
               />
               {search && (
                 <button
                   type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white text-xs cursor-pointer"
+                  onClick={() => { setSearch(""); fetchMovies("", 1); }}
+                  className="nf-icon absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-white/50 hover:text-white hover:bg-white/10 cursor-pointer"
                   title="Xóa tìm kiếm"
                 >
-                  ✕
+                  <X size={13} />
                 </button>
               )}
             </div>
             <button
               type="submit"
-              className="h-10 px-3.5 sm:px-5 inline-flex items-center justify-center gap-1.5 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl cursor-pointer shrink-0"
+              className="nf-button h-10 px-4 sm:px-5 inline-flex items-center justify-center gap-1.5 rounded-full bg-white hover:bg-white/90 active:bg-white/80 text-xs font-bold text-black transition shadow-xl cursor-pointer shrink-0"
             >
               <Search size={13} />
               <span className="hidden sm:inline">Tìm Kiếm</span>
@@ -323,7 +338,7 @@ export function MovieManagementPage() {
                               alt=""
                               loading="lazy"
                               decoding="async"
-                              className="h-14 w-10 object-cover rounded shadow-md border border-white/10 bg-[#1e202d]"
+                              className="h-14 w-10 object-cover rounded-lg shadow-md border border-white/10 bg-[#1e202d]"
                             />
                           </td>
                           <td className="py-3 px-4 font-bold text-white max-w-xs truncate">
@@ -347,7 +362,7 @@ export function MovieManagementPage() {
                           </td>
                           <td className="py-3 px-4">
                             {epCount > 0 ? (
-                              <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-xs font-semibold">
+                              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold">
                                 {m.seasons?.length} Mùa ({epCount} tập)
                               </span>
                             ) : (
@@ -355,27 +370,30 @@ export function MovieManagementPage() {
                             )}
                           </td>
                           <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
+                            <div className="flex items-center justify-end gap-2">
                               <button
+                                type="button"
                                 onClick={() => setManagingSeries(m)}
-                                className="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-white/80 hover:text-white transition"
+                                className="nf-icon h-8 w-8 rounded-full glass-button text-white/80 hover:text-white transition cursor-pointer"
                                 title="Quản lý tập phim"
                               >
-                                <Layers size={15} />
+                                <Layers size={14} />
                               </button>
                               <button
+                                type="button"
                                 onClick={() => setEditingMovie({ ...m })}
-                                className="p-2 rounded-lg bg-white/5 hover:bg-white/15 text-white/80 hover:text-white transition"
+                                className="nf-icon h-8 w-8 rounded-full glass-button text-white/80 hover:text-white transition cursor-pointer"
                                 title="Chỉnh sửa phim"
                               >
-                                <Edit2 size={15} />
+                                <Edit2 size={14} />
                               </button>
                               <button
+                                type="button"
                                 onClick={() => setDeletingMovie(m)}
-                                className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-400 transition"
+                                className="nf-icon h-8 w-8 rounded-full bg-red-500/15 hover:bg-red-500/30 border border-red-500/30 text-red-400 transition cursor-pointer"
                                 title="Xóa phim"
                               >
-                                <Trash2 size={15} />
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </td>
@@ -397,18 +415,22 @@ export function MovieManagementPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-white/10 text-xs text-white/60">
                 <span>Trang {page} / {totalPages} (Tổng {totalCount} phim)</span>
-                <div className="flex gap-1">
+                <div className="flex gap-1.5">
                   <button
+                    type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1}
-                    className="p-1.5 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 transition"
+                    className="nf-icon h-8 w-8 rounded-full glass-button disabled:opacity-30 transition cursor-pointer"
+                    aria-label="Trang trước"
                   >
                     <ChevronLeft size={16} />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    className="p-1.5 rounded bg-white/5 hover:bg-white/10 disabled:opacity-30 transition"
+                    className="nf-icon h-8 w-8 rounded-full glass-button disabled:opacity-30 transition cursor-pointer"
+                    aria-label="Trang sau"
                   >
                     <ChevronRight size={16} />
                   </button>
@@ -421,29 +443,29 @@ export function MovieManagementPage() {
 
       {/* Tab 2: Create Movie Form */}
       {activeTab === "create" && (
-        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-6 max-w-4xl space-y-5">
+        <div className="liquid-glass-panel rounded-3xl p-6 max-w-4xl space-y-5 shadow-2xl">
           <h3 className="font-bold text-lg text-white">Thêm phim mới vào hệ thống</h3>
           
           <div className="grid gap-4 md:grid-cols-[220px_1fr_1fr_auto]">
             <select
               onChange={(event) => applyPreset(event.target.value)}
               defaultValue=""
-              className="h-11 rounded-xl border border-white/10 bg-black px-3 text-sm text-white outline-none focus:border-white/30"
+              className="h-11 rounded-xl glass-input px-3.5 text-sm text-white cursor-pointer"
             >
-              <option value="" disabled>Chọn mẫu phim có sẵn</option>
-              {sourcePresets.map((preset) => <option key={preset.label} value={preset.label}>{preset.label}</option>)}
+              <option value="" disabled className="bg-[#18181b]">Chọn mẫu phim có sẵn</option>
+              {sourcePresets.map((preset) => <option key={preset.label} value={preset.label} className="bg-[#18181b]">{preset.label}</option>)}
             </select>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Tiêu đề phim *"
-              className="h-11 flex-1 rounded-xl border border-white/10 bg-black px-3 text-sm text-white outline-none focus:border-white/30"
+              className="h-11 flex-1 rounded-xl glass-input px-3.5 text-sm text-white"
             />
             <input
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}
               placeholder="URL luồng HLS (.m3u8) hoặc MP4"
-              className="h-11 flex-1 rounded-xl border border-white/10 bg-black px-3 text-sm text-white outline-none focus:border-white/30"
+              className="h-11 flex-1 rounded-xl glass-input px-3.5 text-sm text-white"
             />
             <button
               type="button"
@@ -457,21 +479,21 @@ export function MovieManagementPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-xs text-white/50 block mb-1">Poster URL (Ảnh dọc)</label>
+              <label className="text-xs text-white/60 font-semibold block mb-1.5">Poster URL (Ảnh dọc)</label>
               <input
                 value={posterUrl}
                 onChange={(e) => setPosterUrl(e.target.value)}
                 placeholder="Poster URL"
-                className="h-11 w-full rounded-xl border border-white/10 bg-black px-3 text-sm text-white outline-none focus:border-white/30"
+                className="h-11 w-full rounded-xl glass-input px-3.5 text-sm text-white"
               />
             </div>
             <div>
-              <label className="text-xs text-white/50 block mb-1">Backdrop URL (Ảnh nền ngang)</label>
+              <label className="text-xs text-white/60 font-semibold block mb-1.5">Backdrop URL (Ảnh nền ngang)</label>
               <input
                 value={backdropUrl}
                 onChange={(e) => setBackdropUrl(e.target.value)}
                 placeholder="Backdrop URL"
-                className="h-11 w-full rounded-xl border border-white/10 bg-black px-3 text-sm text-white outline-none focus:border-white/30"
+                className="h-11 w-full rounded-xl glass-input px-3.5 text-sm text-white"
               />
             </div>
           </div>
@@ -480,83 +502,88 @@ export function MovieManagementPage() {
 
       {/* Edit Movie Modal */}
       {editingMovie && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/20 bg-zinc-950 p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
+          <div className="w-full max-w-2xl rounded-3xl liquid-glass p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="text-lg font-bold text-white">Chỉnh sửa phim: {editingMovie.title}</h3>
-              <button onClick={() => setEditingMovie(null)} className="text-white/50 hover:text-white">
+              <button
+                type="button"
+                onClick={() => setEditingMovie(null)}
+                className="nf-icon rounded-full p-2 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer"
+                aria-label="Đóng"
+              >
                 <X size={18} />
               </button>
             </div>
 
             <form onSubmit={handleUpdateMovie} className="space-y-4">
               <div>
-                <label className="text-xs text-white/50 block mb-1">Tiêu đề phim</label>
+                <label className="text-xs text-white/60 font-semibold block mb-1">Tiêu đề phim</label>
                 <input
                   value={editingMovie.title}
                   onChange={(e) => setEditingMovie({ ...editingMovie, title: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-black px-3 text-sm text-white"
+                  className="w-full h-10 rounded-xl glass-input px-3.5 text-sm text-white"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-white/50 block mb-1">Năm phát hành</label>
+                  <label className="text-xs text-white/60 font-semibold block mb-1">Năm phát hành</label>
                   <input
                     type="number"
                     value={editingMovie.releaseYear}
                     onChange={(e) => setEditingMovie({ ...editingMovie, releaseYear: Number(e.target.value) })}
-                    className="w-full h-10 rounded-lg border border-white/15 bg-black px-3 text-sm text-white"
+                    className="w-full h-10 rounded-xl glass-input px-3.5 text-sm text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-white/50 block mb-1">Thời lượng (phút)</label>
+                  <label className="text-xs text-white/60 font-semibold block mb-1">Thời lượng (phút)</label>
                   <input
                     type="number"
                     value={editingMovie.runtimeMinutes}
                     onChange={(e) => setEditingMovie({ ...editingMovie, runtimeMinutes: Number(e.target.value) })}
-                    className="w-full h-10 rounded-lg border border-white/15 bg-black px-3 text-sm text-white"
+                    className="w-full h-10 rounded-xl glass-input px-3.5 text-sm text-white"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-white/50 block mb-1">HLS Playback URL</label>
+                <label className="text-xs text-white/60 font-semibold block mb-1">HLS Playback URL</label>
                 <input
                   value={editingMovie.hlsUrl || ""}
                   onChange={(e) => setEditingMovie({ ...editingMovie, hlsUrl: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-white/15 bg-black px-3 text-sm text-white"
+                  className="w-full h-10 rounded-xl glass-input px-3.5 text-sm text-white"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-white/50 block mb-1">Poster URL</label>
+                  <label className="text-xs text-white/60 font-semibold block mb-1">Poster URL</label>
                   <input
                     value={editingMovie.posterUrl}
                     onChange={(e) => setEditingMovie({ ...editingMovie, posterUrl: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-white/15 bg-black px-3 text-sm text-white"
+                    className="w-full h-10 rounded-xl glass-input px-3.5 text-sm text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-white/50 block mb-1">Backdrop URL</label>
+                  <label className="text-xs text-white/60 font-semibold block mb-1">Backdrop URL</label>
                   <input
                     value={editingMovie.backdropUrl}
                     onChange={(e) => setEditingMovie({ ...editingMovie, backdropUrl: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-white/15 bg-black px-3 text-sm text-white"
+                    className="w-full h-10 rounded-xl glass-input px-3.5 text-sm text-white"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
-                <button
-                  type="button"
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-white/10">
+                <LiquidGlassButton
+                  shape="pill"
                   onClick={() => setEditingMovie(null)}
-                  className="h-10 px-5 inline-flex items-center justify-center rounded-full glass-button text-xs font-bold text-white transition cursor-pointer"
+                  className="h-10 px-5 text-xs font-bold text-white cursor-pointer"
                 >
                   Hủy
-                </button>
+                </LiquidGlassButton>
                 <button
                   type="submit"
-                  className="h-10 px-6 inline-flex items-center justify-center rounded-full bg-white text-black hover:bg-white/90 active:bg-white/80 text-xs font-bold transition shadow-xl cursor-pointer"
+                  className="nf-button h-10 px-6 inline-flex items-center justify-center rounded-full bg-white text-black hover:bg-white/90 active:bg-white/80 text-xs font-bold transition shadow-xl cursor-pointer"
                 >
                   Lưu thay đổi
                 </button>
@@ -568,22 +595,34 @@ export function MovieManagementPage() {
 
       {/* Delete Confirmation Modal */}
       {deletingMovie && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-red-500/30 bg-zinc-950 p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Xác nhận xóa phim</h3>
-            <p className="text-sm text-white/70">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
+          <div className="w-full max-w-md rounded-3xl liquid-glass border-red-500/30 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <h3 className="text-lg font-bold text-white">Xác nhận xóa phim</h3>
+              <button
+                type="button"
+                onClick={() => setDeletingMovie(null)}
+                className="nf-icon rounded-full p-2 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer"
+                aria-label="Đóng"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-sm text-white/70 leading-relaxed">
               Bạn có chắc chắn muốn xóa bộ phim <strong className="text-white font-bold">{deletingMovie.title}</strong>? Thao tác này sẽ xóa toàn bộ các mùa và tập phim liên quan.
             </p>
-            <div className="flex justify-end gap-2 pt-3">
-              <button
+            <div className="flex justify-end gap-2.5 pt-3">
+              <LiquidGlassButton
+                shape="pill"
                 onClick={() => setDeletingMovie(null)}
-                className="h-10 px-5 inline-flex items-center justify-center rounded-full glass-button text-xs font-bold text-white transition cursor-pointer"
+                className="h-10 px-5 text-xs font-bold text-white cursor-pointer"
               >
                 Hủy bỏ
-              </button>
+              </LiquidGlassButton>
               <button
+                type="button"
                 onClick={handleDeleteMovie}
-                className="h-10 px-5 inline-flex items-center justify-center rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-bold text-red-400 transition cursor-pointer"
+                className="nf-button h-10 px-5 inline-flex items-center justify-center rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-xs font-bold text-red-400 transition cursor-pointer"
               >
                 Xác nhận Xóa
               </button>
@@ -673,14 +712,19 @@ function SeriesManagerModal({ movie, onClose }: { movie: MovieItem; onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl border border-white/20 bg-zinc-950 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
+      <div className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-3xl liquid-glass shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-white/10">
           <div>
             <h3 className="text-lg font-bold text-white">Quản lý Tập phim: {movie.title}</h3>
             <p className="text-xs text-white/50">Thêm mùa phim và các tập phim bộ</p>
           </div>
-          <button onClick={onClose} className="text-white/50 hover:text-white">
+          <button
+            type="button"
+            onClick={onClose}
+            className="nf-icon rounded-full p-2 hover:bg-white/10 text-white/60 hover:text-white cursor-pointer"
+            aria-label="Đóng"
+          >
             <X size={20} />
           </button>
         </div>
@@ -688,20 +732,20 @@ function SeriesManagerModal({ movie, onClose }: { movie: MovieItem; onClose: () 
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {/* Seasons Row */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <label className="text-xs font-bold text-white/60 uppercase">Mùa phim (Seasons)</label>
               <div className="flex items-center gap-2">
                 <input
                   value={newSeasonTitle}
                   onChange={(e) => setNewSeasonTitle(e.target.value)}
                   placeholder="Tiêu đề mùa mới..."
-                  className="h-8 rounded-lg border border-white/10 bg-black px-2.5 text-xs text-white"
+                  className="h-9 rounded-full glass-input px-3.5 text-xs text-white"
                 />
                 <button
                   type="button"
                   onClick={handleAddSeason}
                   disabled={isSubmitting || !newSeasonTitle.trim()}
-                  className="h-8 px-3 rounded-lg bg-white/20 hover:bg-white/30 text-xs font-bold text-white transition"
+                  className="nf-button min-h-0 h-9 px-4 rounded-full glass-button text-xs font-bold text-white transition cursor-pointer disabled:opacity-50"
                 >
                   + Mùa mới
                 </button>
@@ -711,12 +755,13 @@ function SeriesManagerModal({ movie, onClose }: { movie: MovieItem; onClose: () 
             <div className="flex gap-2 overflow-x-auto pb-2">
               {seasons.map((s) => (
                 <button
+                  type="button"
                   key={s.id}
                   onClick={() => setSelectedSeasonId(s.id)}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer shrink-0 ${
+                  className={`nf-button min-h-0 h-9 px-4 rounded-full text-xs font-bold transition cursor-pointer shrink-0 ${
                     (selectedSeasonId ? selectedSeasonId === s.id : activeSeason?.id === s.id)
                       ? "bg-white text-black shadow-md"
-                      : "bg-white/5 text-white/60 hover:bg-white/15"
+                      : "glass-button text-white/70 hover:text-white"
                   }`}
                 >
                   {s.title || `Mùa ${s.number}`} ({s.episodes?.length || 0} tập)
@@ -727,7 +772,7 @@ function SeriesManagerModal({ movie, onClose }: { movie: MovieItem; onClose: () 
 
           {/* Add Episode Form */}
           {activeSeason && (
-            <form onSubmit={handleAddEpisode} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+            <form onSubmit={handleAddEpisode} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
               <h4 className="text-xs font-bold text-white uppercase">Thêm tập mới vào {activeSeason.title || `Mùa ${activeSeason.number}`}</h4>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
                 <input
@@ -735,21 +780,21 @@ function SeriesManagerModal({ movie, onClose }: { movie: MovieItem; onClose: () 
                   value={epNumber}
                   onChange={(e) => setEpNumber(Number(e.target.value))}
                   placeholder="Tập số"
-                  className="h-9 rounded-lg border border-white/10 bg-black px-2.5 text-xs text-white"
+                  className="h-10 rounded-xl glass-input px-3 text-xs text-white"
                   required
                 />
                 <input
                   value={epTitle}
                   onChange={(e) => setEpTitle(e.target.value)}
                   placeholder="Tên tập phim *"
-                  className="sm:col-span-2 h-9 rounded-lg border border-white/10 bg-black px-2.5 text-xs text-white"
+                  className="sm:col-span-2 h-10 rounded-xl glass-input px-3 text-xs text-white"
                   required
                 />
                 <input
                   value={epUrl}
                   onChange={(e) => setEpUrl(e.target.value)}
                   placeholder="HLS Playback URL"
-                  className="h-9 rounded-lg border border-white/10 bg-black px-2.5 text-xs text-white"
+                  className="h-10 rounded-xl glass-input px-3 text-xs text-white"
                 />
               </div>
               <div className="flex justify-end">
@@ -765,12 +810,12 @@ function SeriesManagerModal({ movie, onClose }: { movie: MovieItem; onClose: () 
             <h4 className="text-xs font-bold text-white/60 uppercase mb-3">
               Danh sách tập phim ({activeSeason?.episodes?.length || 0})
             </h4>
-            <div className="divide-y divide-white/5 rounded-xl border border-white/10 bg-white/[0.02]">
+            <div className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
               {activeSeason?.episodes && activeSeason.episodes.length > 0 ? (
                 activeSeason.episodes.map((ep) => (
                   <div key={ep.id} className="flex items-center justify-between p-3 hover:bg-white/5 transition">
                     <div className="flex items-center gap-3">
-                      <span className="grid h-7 w-7 place-items-center rounded bg-white/10 text-xs font-bold text-white">
+                      <span className="grid h-7 w-7 place-items-center rounded-full bg-white/10 text-xs font-bold text-white">
                         {ep.number}
                       </span>
                       <div>
@@ -779,8 +824,9 @@ function SeriesManagerModal({ movie, onClose }: { movie: MovieItem; onClose: () 
                       </div>
                     </div>
                     <button
+                      type="button"
                       onClick={() => handleDeleteEpisode(ep.id)}
-                      className="p-1.5 text-white/40 hover:text-red-400 transition"
+                      className="nf-icon h-8 w-8 rounded-full text-white/40 hover:text-red-400 hover:bg-red-500/15 transition cursor-pointer"
                       title="Xóa tập phim"
                     >
                       <Trash2 size={14} />

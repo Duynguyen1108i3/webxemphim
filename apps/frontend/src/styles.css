@@ -266,7 +266,6 @@ video {
 .nf-button,
 .nf-icon {
   transition: transform 180ms var(--nf-ease), filter 180ms var(--nf-ease), box-shadow 180ms var(--nf-ease), background-color 180ms var(--nf-ease);
-  will-change: transform;
 }
 
 .nf-button:hover,
@@ -469,7 +468,6 @@ video {
     border-color 200ms cubic-bezier(.16, 1, .3, 1),
     box-shadow 200ms cubic-bezier(.16, 1, .3, 1),
     color 200ms cubic-bezier(.16, 1, .3, 1);
-  will-change: transform;
 }
 
 /* Icon-only capsules must not inherit the link padding. Without this, a
@@ -937,38 +935,46 @@ button:active {
   transform: scale(0.94) !important;
 }
 
-/* Admin Liquid Glass Card and Panels */
+/* Admin Liquid Glass Card and Panels (Hardware-Composited 120fps Surface) */
 .liquid-glass-card {
-  background: rgba(22, 24, 34, 0.65);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: linear-gradient(165deg, rgba(26, 29, 42, 0.90) 0%, rgba(16, 18, 26, 0.95) 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-top: 1px solid rgba(255, 255, 255, 0.28);
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.2), 0 20px 50px rgba(0, 0, 0, 0.55);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s, border-color 0.25s;
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.2), 0 16px 40px rgba(0, 0, 0, 0.5);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s, box-shadow 0.25s;
   transform: translate3d(0, 0, 0);
   -webkit-transform: translate3d(0, 0, 0);
   contain: content;
 }
 
 .liquid-glass-card:hover {
-  background: rgba(26, 29, 42, 0.75);
+  background: linear-gradient(165deg, rgba(30, 34, 48, 0.94) 0%, rgba(18, 20, 30, 0.97) 100%);
   border-color: rgba(255, 255, 255, 0.18);
   border-top-color: rgba(255, 255, 255, 0.4);
   transform: translateY(-2px);
-  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.3), 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 25px rgba(229, 9, 20, 0.1);
+  box-shadow: inset 0 1px 2px 0 rgba(255, 255, 255, 0.3), 0 20px 48px rgba(0, 0, 0, 0.6);
 }
 
 .liquid-glass-panel {
-  background: rgba(18, 20, 28, 0.65);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-top: 1px solid rgba(255, 255, 255, 0.24);
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), 0 25px 60px rgba(0, 0, 0, 0.6);
+  background: linear-gradient(165deg, rgba(22, 25, 36, 0.92) 0%, rgba(14, 16, 24, 0.96) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.26);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.16), 0 20px 48px rgba(0, 0, 0, 0.55);
   transform: translate3d(0, 0, 0);
   -webkit-transform: translate3d(0, 0, 0);
   contain: content;
+}
+
+/* Prevent nested backdrop-filter passes inside large cards/panels to guarantee 120fps scrolling */
+.liquid-glass-panel .glass-button,
+.liquid-glass-panel .glass-input,
+.liquid-glass-panel [class*="backdrop-blur"],
+.liquid-glass-card .glass-button,
+.liquid-glass-card [class*="backdrop-blur"],
+.movie-card .glass-button,
+.movie-card [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .pulse-green {
@@ -981,4 +987,13 @@ button:active {
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
-
+/* Force hide mouse cursor across all video player layers and fullscreen descendants when idle */
+.player-cursor-hidden,
+.player-cursor-hidden *,
+.player-cursor-hidden video,
+.player-cursor-hidden button,
+.player-cursor-hidden a,
+.player-cursor-hidden:fullscreen,
+.player-cursor-hidden:fullscreen * {
+  cursor: none !important;
+}

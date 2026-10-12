@@ -1,10 +1,16 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 
 export function AdminGuard({ children }: { children: ReactNode }) {
-  const { user, initialized } = useAuthStore();
+  const { user, initialized, initialize } = useAuthStore();
   const location = useLocation();
+
+  useEffect(() => {
+    if (!initialized) {
+      initialize();
+    }
+  }, [initialized, initialize]);
 
   if (!initialized) {
     return (

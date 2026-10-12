@@ -1,17 +1,42 @@
+# Dependencies & Build Outputs
 node_modules
 dist
 apps/*/dist
+packages/*/dist
+*.tsbuildinfo
 apps/*/tsconfig.tsbuildinfo
+packages/*/tsconfig.tsbuildinfo
+
+# Environment & Secrets (Never commit real credentials)
 .env
-.env.local
+.env.*
+!.env.example
+apps/*/.env
+apps/*/.env.*
+!apps/*/.env.example
+
+# OS & Editor Metadata
 .DS_Store
+**/.DS_Store
+
+# Testing, Logs & Local Dev Temp Files
 coverage
 playwright-report
 test-results
 *.log
 otp_code.txt
+**/otp_code.txt
 .dev_auth_store.json
-apps/backend/.dev_auth_store.json
+**/.dev_auth_store.json
 admin.txt
 scratch/
 *.backup
+
+# iOS / Xcode Build Artifacts & DerivedData
+RytoxGroup/build/
+**/DerivedData/
+**/xcuserdata/
+**/*.xcuserdata/
+*.ipa
+*.xcuserstate
+
